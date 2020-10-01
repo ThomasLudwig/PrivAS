@@ -1,0 +1,8 @@
+rootProject.name = 'PrivAS'
+include 'PrivASClient'
+include 'PrivASRPP'
+include 'PrivASTPS'
+include 'Client'
+include 'RPP'
+include 'TPS'
+
