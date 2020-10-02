@@ -1,14 +1,44 @@
 plugins {
     id 'java'
+    id 'idea'
 }
 
 group 'fr.inserm.u1078'
-version '1.0.0'
+version Version.getVersion()
 
-repositories {
-    mavenCentral()
+class Version{
+    Version(){
+
+    }
+
+    static String getVersion(){
+        try {
+            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/CHANGELOG.md"));
+            String line;
+            while((line = br.readLine()) != null) {
+                if(line.startsWith("## ")) {
+                    br.close();
+                    return line.split(" ")[1].split("\\(")[0];
+                }
+            }
+            br.close();
+        } catch(Exception e){
+            //ignore
+        }
+        return "unknown";
+    }
 }
 
-dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+task FullDeploy {
+    dependsOn('ensureDirectory')
+    subprojects.each { dependsOn("${it.name}:Deliver") }
 }
+
+task ensureDirectory {
+    doLast {
+        mkdir "build"
+        mkdir "build/libs"
+    }
+}
+
+
