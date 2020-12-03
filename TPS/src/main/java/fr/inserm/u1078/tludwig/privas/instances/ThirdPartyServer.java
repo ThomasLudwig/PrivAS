@@ -102,9 +102,7 @@ public class ThirdPartyServer extends Instance {
    */
   private final long randomSeed;
   
-  private String count = "";
-  
-  private int failedFisher = 0; 
+  private int failedFisher = 0;
 
   /**
    * Constructs an instance of ThirdPartyServer
@@ -151,7 +149,7 @@ public class ThirdPartyServer extends Instance {
       Crypto.savePrivateRSAKey(kp, privateFile);
       System.err.println("Saving private [" + privateFile + "]");
       Crypto.savePublicRSAKey(kp, publicFile);
-      System.err.println("Saving private [" + publicFile + "]");
+      System.err.println("Saving public [" + publicFile + "]");
       System.out.println(Crypto.getPublicRSAKeyAsString(kp));
     } catch (IOException | NoSuchAlgorithmException e) {
       System.err.println(MSG.cat(MSG.MSG_FAIL_KEYGEN, e));
@@ -167,16 +165,16 @@ public class ThirdPartyServer extends Instance {
    */
   public void start(int nbThreads) throws Exception { //DONE trycatch all errors coming from the algorithm and propagate through TPStatus.ERROR
     this.started = new Date().getTime();
-    this.started(MSG.TPS_STARTED, false);
+    this.statusStarted(MSG.TPS_STARTED, false);
     PrivateKey privateKey = Crypto.readAndDeletePrivateRSAKey(privateKeyFilename);
-    this.started(MSG.TPS_RSA, false);
+    this.statusStarted(MSG.TPS_RSA, false);
     UniversalReader in = new UniversalReader(aesFilename);
     aesKey = Crypto.decryptRSA(privateKey, in.readLine());
-    this.started(MSG.TPS_AES, false);
+    this.statusStarted(MSG.TPS_AES, false);
     in.close();
     in = new UniversalReader(algorithmFilename);
     String algorithm = in.readLine();
-    this.started(MSG.cat(MSG.TPS_ALGO, algorithm), false);
+    this.statusStarted(MSG.cat(MSG.TPS_ALGO, algorithm), false);
     in.close();
 
     String[] algo = algorithm.split(":");
@@ -221,23 +219,23 @@ public class ThirdPartyServer extends Instance {
         break;
 
       default:
-        this.error("Unexpected Algorithm ["+algo[0]+"]");
+        this.statusError("Unexpected Algorithm ["+algo[0]+"]");
         break;
     }
-    this.done();
+    this.statusDone();
   }
   
   public void debug(int nbThreads) throws Exception {
     this.started = new Date().getTime();
-    this.started(MSG.TPS_STARTED, false);
-    this.started(MSG.TPS_RSA, false);
+    this.statusStarted(MSG.TPS_STARTED, false);
+    this.statusStarted(MSG.TPS_RSA, false);
     UniversalReader in = new UniversalReader(this.sessionDir + File.separator + "aes.key");
     aesKey = in.readLine();
-    this.started(MSG.TPS_AES, false);
+    this.statusStarted(MSG.TPS_AES, false);
     in.close();
     in = new UniversalReader(algorithmFilename);
     String algorithm = in.readLine();
-    this.started(MSG.cat(MSG.TPS_ALGO, algorithm), false);
+    this.statusStarted(MSG.cat(MSG.TPS_ALGO, algorithm), false);
     in.close();
 
     String[] algo = algorithm.split(":");
@@ -278,10 +276,10 @@ public class ThirdPartyServer extends Instance {
         break;
 
       default:
-        this.error("Unexpected Algorithm ["+algo[0]+"]");
+        this.statusError("Unexpected Algorithm ["+algo[0]+"]");
         break;
     }
-    this.done();
+    this.statusDone();
   }
 
   /**
@@ -293,15 +291,17 @@ public class ThirdPartyServer extends Instance {
    * @throws IOException
    */
   private void updateStatusFile(TPStatus.State key, String msg, boolean addDuration) throws IOException {
-    PrintWriter out = new PrintWriter(new FileWriter(this.statusFilename));
-    String line = key + "\t" + MSG.RET+msg;
+    String details = msg;
     if (addDuration) {
       long diff = new Date().getTime() - started;
       String duration = (diff / 1000d) + "s";
-      line += " (in " + duration + ")";
+      details += " (in " + duration + ")";
     }
-    out.println(line);
-    System.err.println(line);
+    TPStatus tpStatus = new TPStatus(new Date().getTime(), key, details);
+    System.err.println(tpStatus);
+
+    PrintWriter out = new PrintWriter(new FileWriter(this.statusFilename, true));
+    out.println(tpStatus);
     out.close();
   }
 
@@ -310,11 +310,10 @@ public class ThirdPartyServer extends Instance {
    *
    * @param msg         Message of the Status
    * @param addDuration do we add elapsed time since start ?
-   * @param addCount
    * @throws IOException
    */
-  public void running(String msg, boolean addDuration, boolean addCount) throws IOException {
-    this.updateStatusFile(TPStatus.State.RUNNING, addCount ? msg+MSG.RET+count : msg, addDuration);    
+  public void statusRunning(String msg, boolean addDuration) throws IOException {
+    this.updateStatusFile(TPStatus.State.RUNNING, msg, addDuration);
   }
   
   /**
@@ -324,7 +323,7 @@ public class ThirdPartyServer extends Instance {
    * @param addDuration do we add elapsed time since start ?
    * @throws IOException
    */
-  public void started(String msg, boolean addDuration) throws IOException {
+  public void statusStarted(String msg, boolean addDuration) throws IOException {
     this.updateStatusFile(TPStatus.State.STARTED, msg, addDuration);
   }
   
@@ -334,7 +333,7 @@ public class ThirdPartyServer extends Instance {
    * @param msg Message of the Status
    * @throws IOException 
    */
-  public void error(String msg) throws IOException{
+  public void statusError(String msg) throws IOException{
     this.updateStatusFile(TPStatus.State.ERROR, msg, false);
   }
 
@@ -343,7 +342,7 @@ public class ThirdPartyServer extends Instance {
    *
    * @throws IOException
    */
-  private void done() throws IOException {
+  private void statusDone() throws IOException {
     this.updateStatusFile(TPStatus.State.DONE, MSG.TPS_DONE, true);
   }
   
@@ -377,17 +376,14 @@ public class ThirdPartyServer extends Instance {
     int clientVariants = countVariants(clientData);
     int rppGenes = rppData.keySet().size();
     int rppVariants = countVariants(rppData);    
-    started(MSG.cat(MSG.WSS_CLIENT_VARIANTS, clientVariants + ""), true);
-    started(MSG.cat(MSG.WSS_CLIENT_GENES, clientGenes + ""), true);
+    statusStarted(MSG.cat(MSG.WSS_CLIENT_VARIANTS, clientVariants), false);
+    statusStarted(MSG.cat(MSG.WSS_CLIENT_GENES, clientGenes), false);
     
-    started(MSG.cat(MSG.WSS_RPP_VARIANTS, rppVariants + ""), true);
-    started(MSG.cat(MSG.WSS_RPP_GENES, rppGenes + ""), true);
+    statusStarted(MSG.cat(MSG.WSS_RPP_VARIANTS, rppVariants), false);
+    statusStarted(MSG.cat(MSG.WSS_RPP_GENES, rppGenes), false);
     ArrayList<String> genes = getCommonGenes(clientData, rppData);
-    started(MSG.cat(MSG.WSS_COMMON_GENES, genes.size() + "")
-            + ", l" + MSG.cat(MSG.WSS_CLIENT_GENES, clientData.keySet().size() + "")
-            + ", " + MSG.cat(MSG.WSS_RPP_GENES, rppData.keySet().size() + ""), true);
-    
-    count = "Client: "+clientVariants+" variants in "+clientGenes+" genes.      RPP: "+rppVariants+" variants in "+rppGenes+" genes";
+    statusStarted(MSG.cat(MSG.WSS_COMMON_GENES, genes.size()), false);
+
     if (genes.size() > 0) {
       nbAffected = clientData.get(genes.get(0)).get(0).split("\t").length - 2;
       nbUnaffected = rppData.get(genes.get(0)).get(0).split("\t").length - 2;
@@ -395,6 +391,7 @@ public class ThirdPartyServer extends Instance {
       String missingControl = missingLine(nbUnaffected);
       HashMap<String, ArrayList<String>> genotypes = new HashMap<>();
 
+      statusStarted(MSG.WSS_OK_PARSE, true);
       int filtered = 0;
       failedFisher = 0;
       for (String gene : genes) {
@@ -403,19 +400,19 @@ public class ThirdPartyServer extends Instance {
         ArrayList<String> merge = merge(variantLineCase, variantLineControl, missingCases, missingControl);
         
         filtered += removeAlleleFrequency(merge, nbAffected, frqThreshold);
-        
-        
+
         if(!merge.isEmpty())
-          genotypes.put(gene, merge);//TODO look here
+          genotypes.put(gene, merge);
       }
-      System.err.println("******* Filtered Variants on frequency ["+filtered+"] on fisher callrate ["+failedFisher+"]  **************");
-      running(MSG.WSS_OK_PARSE, true, false);
+      statusStarted(MSG.cat(MSG.WSS_FILTERED_FREQUENCY, filtered), false);
+      statusStarted(MSG.cat(MSG.WSS_FILTERED_FISHER, failedFisher), false);
+      statusStarted(MSG.WSS_OK_FILTER, true);
       //TODO debug export input data !
       export(genotypes);
       
       return genotypes;
     }
-    running(MSG.WSS_NO_DATA, true, false);
+    statusRunning(MSG.WSS_NO_DATA, false);
     return null;
   }
   

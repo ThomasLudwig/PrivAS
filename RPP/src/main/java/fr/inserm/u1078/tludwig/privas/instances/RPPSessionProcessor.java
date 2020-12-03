@@ -1,20 +1,19 @@
 package fr.inserm.u1078.tludwig.privas.instances;
 
-import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
 import fr.inserm.u1078.tludwig.privas.listener.ProgressListener;
-import fr.inserm.u1078.tludwig.privas.utils.BedFile;
-import fr.inserm.u1078.tludwig.privas.utils.BedRegion;
-import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
-import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
+import fr.inserm.u1078.tludwig.privas.utils.*;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * SessionProcessor handles the Session Management for an RPP.
@@ -38,6 +37,8 @@ import java.security.NoSuchAlgorithmException;
  * @author Thomas E. Ludwig (INSERM - U1078) 2020-01-16
  */
 public class RPPSessionProcessor {
+
+  public static final String DIRECTORY = null;
 
   /**
    * The RPP Server to which this processor is attached
@@ -73,6 +74,10 @@ public class RPPSessionProcessor {
    */
   private final BedFile bed;
   /**
+   * Quality Control Parameters;
+   */
+  private final QCParam qcParam;
+  /**
    * the Hash Salt (to hash fields during the extraction)
    */
   private final String kHash;
@@ -96,6 +101,10 @@ public class RPPSessionProcessor {
    */
   private boolean tpsTriggered;
 
+  private final List<TPStatus> tpStatuses;
+
+  private int tpsStatusesSentToClient;
+
   /**
    * Constructor for a new session
    *
@@ -107,7 +116,7 @@ public class RPPSessionProcessor {
    * @param limitToSNVs is variant selection limited to SNVs ?
    * @param kHash       the Hash Salt (to hash fields during the extraction)
    */
-  RPPSessionProcessor(RPP rpp, String session, String datasetName, double maxMaf, double maxMafNFE, String minCsq, boolean limitToSNVs, BedFile bed, String kHash) {
+  RPPSessionProcessor(RPP rpp, String session, String datasetName, double maxMaf, double maxMafNFE, String minCsq, boolean limitToSNVs, BedFile bed, QCParam qcParam, String kHash) {
     this.rpp = rpp;
     this.session = session;
     this.datasetName = datasetName;
@@ -116,11 +125,13 @@ public class RPPSessionProcessor {
     this.minCsq = minCsq;
     this.limitToSNVs = limitToSNVs;
     this.bed = bed;
+    this.qcParam = qcParam;
     this.kHash = kHash;
+    this.tpStatuses = new ArrayList<>();
     rpp.logDebug("SessionProcessor created");
   }
 
-  RPPSessionProcessor(RPP rpp, String session) throws IOException, BedRegion.BedRegionException, NumberFormatException {
+  RPPSessionProcessor(RPP rpp, String session) throws IOException, BedRegion.BedRegionException, QualityControl.QCException, NumberFormatException {
     this.rpp = rpp;
     this.session = session;
     UniversalReader in = new UniversalReader(rpp.getFilenameFor(session, FileFormat.FILE_SESSION_PARAMETERS));
@@ -131,7 +142,9 @@ public class RPPSessionProcessor {
     this.minCsq = in.readLine();
     this.limitToSNVs = "TRUE".equalsIgnoreCase(in.readLine());
     this.bed = BedFile.deserialize(in.readLine());
+    this.qcParam = QCParam.deserialize(in.readLine());
     in.close();
+    this.tpStatuses = new ArrayList<>();
     rpp.logDebug("SessionProcessor restored");
   }
 
@@ -145,6 +158,7 @@ public class RPPSessionProcessor {
       out.println(this.minCsq);
       out.println(this.limitToSNVs);
       out.println(this.bed.serialize());
+      out.println(this.qcParam.serialize());
       out.close();
     } catch (IOException e) {
       rpp.logError("Unable to save session parameters");
@@ -163,7 +177,7 @@ public class RPPSessionProcessor {
     boolean needTPSMonitoring = false;
     
     switch (status.getState()) {//TODO restore works almost well, more test are need dans RPP crashes and TPS hasn't produces its first message
-      //maybe are a new TPS status, data received, job submited
+      //maybe are a new TPS status, data received, job submitted
       case NEW_SESSION:
       case WAITING_BOTH:
       case WAITING_CLIENT:
@@ -177,7 +191,7 @@ public class RPPSessionProcessor {
       case TPS_SENDING:
       case TPS_PENDING:
       case TPS_RUNNING:
-      case TPS_ERROR: //intermitent error might need status update
+      case TPS_ERROR: //intermittent error might need status update
         tpsTriggered = true;
         needTPSMonitoring = true;
         break;
@@ -195,8 +209,10 @@ public class RPPSessionProcessor {
       this.waitForData();
     if (!this.rppExtracted)
       this.startExtraction();
-    if (needTPSMonitoring)
+    if (needTPSMonitoring) {
       this.startMonitoringTPS();
+      this.startForwardingTPSToClient();
+    }
     if (status.getState() == RPPStatus.State.TPS_DONE)
       this.getResults();
   }
@@ -210,6 +226,7 @@ public class RPPSessionProcessor {
       if (clientDataReceived && rppExtracted) {
         sendDataAndStart();
         startMonitoringTPS();
+        this.startForwardingTPSToClient();
         rpp.stopThread();
       }
       if (!clientDataReceived && rpp.checkClientFile(session)) {//wait for clientData
@@ -235,39 +252,55 @@ public class RPPSessionProcessor {
     });
   }
 
+  private void startForwardingTPSToClient() {
+    tpsStatusesSentToClient = 0;
+    rpp.submitRepeating(() -> {
+      if(tpsStatusesSentToClient < this.tpStatuses.size())
+        rpp.sendTPSStatusToClient(session, this.tpStatuses.get(tpsStatusesSentToClient++));
+    }, Parameters.RPP_TP_TO_CLIENT_REFRESH_DELAY);
+  }
+
   /**
    * It Periodically gets via ssh the serialized
    * <p>
    * TPSStatus file Updates the RRP Status according to the TPSStatus
    */
   private void startMonitoringTPS() {
-    //Start Monitoring Thrid Party
+    //Start Monitoring Third Party
     rpp.submitRepeating(() -> {
-      TPStatus tpStatus = rpp.getThirdPartyStatus(session);
-      switch (tpStatus.getState()) {
-        case PENDING:
-          int before = -1;
-          try {
-            before = new Integer(tpStatus.getDetails());
-          } catch (NumberFormatException e) {
-            //Nothing
+      try{
+        List<TPStatus> latestTPStatuses = rpp.getThirdPartyStatuses(session, this.tpStatuses.size());
+        if(!latestTPStatuses.isEmpty()) {
+          this.tpStatuses.addAll(latestTPStatuses);
+          TPStatus tpStatus = latestTPStatuses.get(latestTPStatuses.size() - 1);
+          switch (tpStatus.getState()) {
+            case PENDING:
+              int before = -1;
+              try {
+                before = new Integer(tpStatus.getDetails());
+              } catch (NumberFormatException e) {
+                //Nothing
+              }
+              rpp.setStatus(session, RPPStatus.pending(before));
+              break;
+            case STARTED:
+            case RUNNING:
+              rpp.setStatus(session, RPPStatus.running(tpStatus.getDetails()));
+              break;
+            case DONE:
+              rpp.setStatus(session, RPPStatus.retrieving(tpStatus.getDetails()));
+              getResults();
+              rpp.stopThread();
+              break;
+            case ERROR:
+              rpp.setStatus(session, RPPStatus.tpsError(tpStatus.getDetails()));
+              rpp.stopThread();
+              break;
+            default:
           }
-          rpp.setStatus(session, RPPStatus.pending(before));
-          break;
-        case RUNNING:
-          rpp.setStatus(session, RPPStatus.running(tpStatus.getDetails()));
-          break;
-        case DONE:
-          rpp.setStatus(session, RPPStatus.retrieving(tpStatus.getDetails()));
-          getResults();
-          rpp.stopThread();
-        case ERROR:
-          rpp.setStatus(session, RPPStatus.tpsError(tpStatus.getDetails()));
-          rpp.stopThread();
-        case UNKNOWN:
-          rpp.setStatus(session, RPPStatus.tpsUnknown());
-          break;
-        default:
+        }
+      } catch(Exception ex){
+        rpp.setStatus(session, RPPStatus.tpsUnreachable(ex.getMessage()));
       }
     }, Parameters.RPP_THIRD_PARTY_REFRESH_DELAY);
   }
@@ -290,15 +323,38 @@ public class RPPSessionProcessor {
    * Starts an Extractor Thread, which is responsible for extracting RPP Data according to the selected filters
    */
   private void startExtraction() {
-    String filename = rpp.getGenotypeFilenames().get(datasetName);
+
     rpp.submitNow(() -> {
+      RPPDataset rppDataset = rpp.getRPPDataset(datasetName);
+      String genotypeFilename = rppDataset.getGenotypeFilename(qcParam);
+      String excludedVariantFilename = rppDataset.getExcludedVariantFilename(qcParam);
+
+      boolean exists = FileUtils.exists(genotypeFilename) && FileUtils.exists(excludedVariantFilename);
+
+
       ProgressListener progress = percent -> rpp.setStatus(session, RPPStatus.extracting(rpp.getStatus(session), percent));
+      int nbRec = 0;
       try {
-        File d = new File(rpp.getFilenameFor(session, null /* directory */));
+        File d = new File(rpp.getFilenameFor(session, DIRECTORY));
         if (!d.exists() && !d.mkdirs())
           rpp.logError(MSG.cat(MSG.FAIL_MKDIR, d.getAbsolutePath()));
+        if(exists){
+          nbRec = rpp.getRPPDataset(datasetName).getGenotypeSize(qcParam);
+        } else {
+          String inputVCFFilename = rppDataset.getVCFFilename();
+          String outputVCFFilename = rppDataset.getQCVCFFilename(qcParam);
+          //applyQC
+          rpp.logInfo(MSG.action(MSG.SP_QC, session));
+          int nbAfterQC = QualityControl.applyQC(inputVCFFilename, this.qcParam, outputVCFFilename, excludedVariantFilename, false);
+          //convertToGenotype
+          rpp.logInfo(MSG.action(MSG.SP_CONVERT, session));
+          nbRec = GenotypesFileHandler.convertVCF2Genotypes(outputVCFFilename, genotypeFilename);
+          File del = new File(outputVCFFilename);
+          del.delete();
+        }
+        //Extract genotype
         rpp.logInfo(MSG.action(MSG.SP_RPP, session));
-        int nbLines = GenotypesFileHandler.extractGenotypesToFile(filename, rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA), rpp.getGenotypeFileSize(filename), maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, kHash, progress);
+        int nbLines = GenotypesFileHandler.extractGenotypesToFile(genotypeFilename, rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA), nbRec, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, kHash, progress);
         PrintWriter out = new PrintWriter(new FileWriter(rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA_OK)));
         out.println(nbLines);
         out.close();
@@ -310,7 +366,7 @@ public class RPPSessionProcessor {
           rpp.setStatus(session, RPPStatus.rppDataExtracted(rpp.getStatus(session)));
         }
         rppExtracted = true;
-      } catch (GenotypesFileHandler.GenotypeFileException | IOException | InvalidKeyException | NoSuchAlgorithmException ex) {
+      } catch (GenotypesFileHandler.GenotypeFileException | IOException | InvalidKeyException | NoSuchAlgorithmException | QualityControl.QCException ex) {
         rpp.logError(MSG.done(MSG.SP_KO_RPP, ex));
         rpp.logError(ex);
         rppExtractionFailed = ex.getMessage();

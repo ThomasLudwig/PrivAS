@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Status of an RPP Instance
@@ -27,7 +28,7 @@ public class RPPStatus {
   /**
    * Optionnal details associated to the status
    */
-  private final String details;
+  private final String details; //TODO force TPS message, the whole log is a single string
   /**
    * Date of creation of the Status
    */
@@ -202,14 +203,23 @@ public class RPPStatus {
   public static RPPStatus tpsError(String details){
     return new RPPStatus(State.TPS_ERROR, details);
   }
-  
+
   /**
    * Creates a new RPPStatus :
    * TPS is in an unknown state
-   * @return 
+   * @return
    */
   public static RPPStatus tpsUnknown(){
     return new RPPStatus(State.TPS_UNKNOWN, null);
+  }
+
+  /**
+   * Creates a new RPPStatus :
+   * TPS is in an unknown state
+   * @return
+   */
+  public static RPPStatus tpsUnreachable(String details){
+    return new RPPStatus(State.TPS_UNREACHABLE, details);
   }
 
   /**
@@ -318,6 +328,10 @@ public class RPPStatus {
      * TPS is in an unknown state
      */
     TPS_UNKNOWN,
+    /**
+     * RPP cannot reach TPS
+     */
+    TPS_UNREACHABLE,
     /**
      * Results are available on RPP
      */

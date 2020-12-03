@@ -31,6 +31,14 @@ public class FileFormat {
    */
   public static final String FILE_RPP_DATA = "rpp.gz";
   /**
+   * VCF File after QC was applied
+   */
+  public static final String FILE_RPP_QC_VCF = "after.qc.vcf.gz";
+  /**
+   * VCF File after QC, converted to genotype file
+   */
+  public static final String FILE_RPP_GENOTYPE = "afer.qc.genotype.gz";
+  /**
    * Tag that guarantees that the rpp data file was complete
    */
   public static final String FILE_RPP_DATA_OK = "rpp.gz.ok";
@@ -91,12 +99,16 @@ public class FileFormat {
    */
   public static final String FILE_RESULTS_EXTENSION = "results";
   /**
-   * Extension for bed files;
+   * Extension for bed files
    */
   public static final String FILE_BED_EXTENSION = "bed";
+  /**
+   * Extension for QC Parameters File
+    */
+  public static final String FILE_QC_PARAM_EXTENSION = "param";
    /**
-    * Extension for list of excluded variants;
-    */       
+    * Extension for list of excluded variants
+    */
   public static final String FILE_EXCLUSION_EXTENSION = "lst";
   /**
    * Extension for PNG Images

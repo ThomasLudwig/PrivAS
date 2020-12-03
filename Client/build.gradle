@@ -6,6 +6,7 @@ plugins {
 group 'fr.inserm.u1078'
 version Version.getVersion()
 
+
 class Version{
     Version(){
 
@@ -13,7 +14,7 @@ class Version{
 
     static String getVersion(){
         try {
-            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/CHANGELOG.md"))
+            BufferedReader br = new BufferedReader(new FileReader("Core/src/main/resources/CHANGELOG.md"))
             String line
             while((line = br.readLine()) != null) {
                 if(line.startsWith("## ")) {

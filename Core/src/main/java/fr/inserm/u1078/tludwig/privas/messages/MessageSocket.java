@@ -162,20 +162,26 @@ public class MessageSocket {
     String type = is.readUTF();
     HashMap<String, String> kv = new HashMap<>();
     String keyList = is.readUTF();
-    if (keyList.length() > 1) {
-      String[] keys = keyList.split(",");
-      int[] blocks = new int[keys.length];
-      String[] blockSizes = is.readUTF().split(",");
-      for (int i = 0; i < keys.length; i++)
-        blocks[i] = new Integer(blockSizes[i]);
-      for (int i = 0; i < keys.length; i++) {
-        StringBuilder sb = new StringBuilder();
-        for (int j = 0; j < blocks[i]; j++)
-          sb.append(is.readUTF());
-        kv.put(keys[i], sb.toString());
+    try {
+      if (keyList.length() > 1) {
+        String[] keys = keyList.split(",");
+        int[] blocks = new int[keys.length];
+        String[] blockSizes = is.readUTF().split(",");
+        for (int i = 0; i < keys.length; i++)
+          blocks[i] = new Integer(blockSizes[i]);
+        for (int i = 0; i < keys.length; i++) {
+          StringBuilder sb = new StringBuilder();
+          for (int j = 0; j < blocks[i]; j++)
+            sb.append(is.readUTF());
+          kv.put(keys[i], sb.toString());
+        }
       }
+      return Message.buildMessage(type, kv);
+    } catch(IOException | MessageException e){
+      throw e;
+    } catch(Exception e1){ //Something else (NumberFormatException | NullPointer | ArrayIndexOutOfBounds...
+      throw new IOException("Unable to read Message("+e1.getClass().getSimpleName()+")", e1);
     }
-    return Message.buildMessage(type, kv);
   }
 
   /**

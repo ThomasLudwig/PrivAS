@@ -3,13 +3,7 @@ package fr.inserm.u1078.tludwig.privas.utils;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 
-import java.io.BufferedReader;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -78,12 +72,9 @@ public class GenotypesFileHandler {
    * @return
    */
   public static String vcfFilename2GenotypesFilename(String vcfFilename) {
-    String ret = vcfFilename;
-    if (ret.toLowerCase().endsWith(".gz"))
-      ret = ret.substring(0, ret.length() - ".gz".length());
-    if (ret.toLowerCase().endsWith(".vcf"))
-      ret = ret.substring(0, ret.length() - ".vcf".length());
-    return ret + "." + FileFormat.FILE_GENO_EXTENSION + ".gz";
+    String directory = FileUtils.getDirectory(new File(vcfFilename));
+    String basename = FileUtils.getBasename(vcfFilename, FileFormat.FILE_VCF_EXTENSION);
+    return directory + File.separator + basename + "." + FileFormat.FILE_GENO_EXTENSION + ".gz";
   }
 
   /**
@@ -101,7 +92,7 @@ public class GenotypesFileHandler {
    * @throws IOException                                                                     if there are problems while reading the file
    * @throws GenotypesFileHandler.GenotypeFileException if the file is not in the exception format
    */
-  public static void convertVCF2Genotypes(String vcfFilename, String genotypeFilename) throws IOException, GenotypeFileException {
+  public static int convertVCF2Genotypes(String vcfFilename, String genotypeFilename) throws IOException, GenotypeFileException {
     int idxCsq = -1;
     int idxGene = -1;
     int idxMaf = -1;
@@ -156,6 +147,7 @@ public class GenotypesFileHandler {
     out = new PrintWriter(new FileWriter(genotypeFilename + ".size"));
     out.println(nbLines);
     out.close();
+    return nbLines;
   }
 
   /**

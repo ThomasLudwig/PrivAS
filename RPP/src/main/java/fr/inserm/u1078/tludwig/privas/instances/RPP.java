@@ -3,12 +3,8 @@ package fr.inserm.u1078.tludwig.privas.instances;
 import fr.inserm.u1078.tludwig.privas.constants.*;
 import fr.inserm.u1078.tludwig.privas.listener.StandardErrorLogger;
 import fr.inserm.u1078.tludwig.privas.messages.*;
-import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
-import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
-import fr.inserm.u1078.tludwig.privas.utils.Crypto;
-import fr.inserm.u1078.tludwig.privas.utils.BedFile;
-import fr.inserm.u1078.tludwig.privas.utils.BedRegion;
-import fr.inserm.u1078.tludwig.privas.utils.VariantExclusionSet;
+import fr.inserm.u1078.tludwig.privas.utils.*;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -24,6 +20,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -45,10 +42,14 @@ public class RPP extends Instance implements Runnable {
   //DONE?, when there is a problem with RPP, Client isn't always aware : (ex : from wss filename in the config file leads to filenotfound)
   private final ArrayList<String> sessions;
   private final RPPThirdPartyConnector thirdPartyConnector;
-  private final HashMap<String, String> genotypeFilenames;
-  private final HashMap<String, String> bedfileNames;
-  private final HashMap<String, String> excludedVariantsFilenames;
+  private final ArrayList<String> orderedDatasets;
+  private final HashMap<String, RPPDataset> rppDatasets;
+
+  //private final HashMap<String, String> vcfFilenames;
+  //private final HashMap<String, String> bedfileNames;
+  //private final HashMap<String, String> excludedVariantsFilenames;
   private final HashMap<String, String> datasetsBySession;
+  private final HashMap<String, QCParam> qcParamsBySession;
   private final HashMap<String, String> hashesBySession;
   private final String sessionDirectory;
   private final String expiredSessionList;
@@ -78,10 +79,13 @@ public class RPP extends Instance implements Runnable {
     
     int port = -1;
     this.addLogListener(new StandardErrorLogger());
-    HashMap<String, String> rppData = null;
-    HashMap<String, String> bedFileNames = null;
-    HashMap<String, String> excludedVFilenames = null;
+    //HashMap<String, String> rppData = null;
+    //HashMap<String, String> bedFileNames = null;
+    //HashMap<String, String> excludedVFilenames = null;
+    orderedDatasets = new ArrayList<>();
+    rppDatasets = new HashMap<>();
     datasetsBySession = new HashMap<>();
+    qcParamsBySession = new HashMap<>();
     hashesBySession = new HashMap<>();
     String sessionDir = null;
     String expiredList = null;
@@ -103,14 +107,20 @@ public class RPP extends Instance implements Runnable {
               port = new Integer(f[1]);
               break;
             case FileFormat.RPP_TAG_DATA:
-              rppData = new HashMap<>();
-              bedFileNames = new HashMap<>();
-              excludedVFilenames = new HashMap<>();
+              //rppData = new HashMap<>();
+              //bedFileNames = new HashMap<>();
+              //excludedVFilenames = new HashMap<>();
               for (String dataset : f[1].split(",")) {
-                String[] ds = dataset.split(":");
+                RPPDataset rppDataset = RPPDataset.parse(dataset);
+                String name = rppDataset.getName();
+                if(orderedDatasets.contains(name))
+                  throw new RPP.ConfigFileParsingException("Duplicate dataset name ["+name+"], will be ignored");
+                orderedDatasets.add(name);
+                rppDatasets.put(name, rppDataset);
+                /*String[] ds = dataset.split(":");
                 rppData.put(ds[0], ds[1]);
                 bedFileNames.put(ds[0], ds[2]);
-                excludedVFilenames.put(ds[0], ds[3]);
+                excludedVFilenames.put(ds[0], ds[3]);*/
               }
               break;
             case FileFormat.RPP_TAG_RPP_SESSION_DIR:
@@ -148,7 +158,8 @@ public class RPP extends Instance implements Runnable {
 
     if (port == -1)
       throw missingParameters(MSG.RPP_DESC_PORT, configFile, MSG.RPP_SYNTAX_PORT);
-    if (rppData == null)
+    //if (rppData == null)
+    if (orderedDatasets.isEmpty())
       throw missingParameters(MSG.RPP_DESC_DATA, configFile, MSG.RPP_SYNTAX_DATA);
     if (sessionDir == null)
       throw missingParameters(MSG.RPP_DESC_RPP_SESSION_DIR, configFile, MSG.RPP_SYNTAX_RPP_SESSION_DIR);
@@ -170,9 +181,9 @@ public class RPP extends Instance implements Runnable {
     this.tpsName = tpName;
     this.rppMonitors = new HashMap<>();
     this.thirdPartyConnector = new RPPThirdPartyConnector(this, tpsAddress, tpsUser, tpsLaunchCommand, tpsGetKeyCommand, tpsSessiondir);
-    this.genotypeFilenames = rppData;
-    this.bedfileNames = bedFileNames;
-    this.excludedVariantsFilenames = excludedVFilenames;
+    //this.vcfFilenames = rppData;
+    //this.bedfileNames = bedFileNames;
+    //this.excludedVariantsFilenames = excludedVFilenames;
     this.sessionDirectory = sessionDir;
     this.expiredSessionList = expiredList;
     this.sessions = new ArrayList<>();
@@ -182,8 +193,10 @@ public class RPP extends Instance implements Runnable {
     System.err.println("Session directory : " + sessionDir);
     System.err.println("Expired Session list : " + expiredList);
     System.err.println("Available Datasets :");
-    for (String key : rppData.keySet())
-      System.err.println("\t" + key + " : " + rppData.get(key));
+    //for (String key : rppData.keySet())
+    //  System.err.println("\t" + key + " : " + rppData.get(key));
+    for (String key : orderedDatasets)
+      System.err.println("\t" + key + " : " + rppDatasets.get(key));
     System.err.println("TPS : " + tpName + "(" + tpsUser + "@" + tpsAddress + ":" + tpsSessiondir + ")");
     System.err.println("TPS Launch : " + tpsLaunchCommand);
     System.err.println("TPS Get : " + tpsGetKeyCommand);
@@ -337,7 +350,7 @@ public class RPP extends Instance implements Runnable {
     try {
       RPPSessionProcessor sp = new RPPSessionProcessor(this, session);
       sp.init();
-    } catch (BedRegion.BedRegionException | IOException | NumberFormatException e) {
+    } catch (BedRegion.BedRegionException | IOException | NumberFormatException | QualityControl.QCException e) {
       logError("Unable to restore saved session ["+session+"]");
       logError(e);
     }
@@ -412,14 +425,14 @@ public class RPP extends Instance implements Runnable {
     return ret.toString();
   }
 
-  /**
-   * Gets Map link a Dataset (key) to the path to a Genotype File (value)
-   *
-   * @return
-   */
-  public HashMap<String, String> getGenotypeFilenames() {
-    return genotypeFilenames;
-  }
+//  /**
+//   * Gets Map link a Dataset (key) to the path to a VCF File (value)
+//   *
+//   * @return
+//   */
+//v  public HashMap<String, String> getVCFFilenames() {
+//    return vcfFilenames;
+//  }
 
   /**
    * Gets the number of variant in a Genotype File
@@ -433,6 +446,10 @@ public class RPP extends Instance implements Runnable {
     } catch (IOException e) {
       return -1;
     }
+  }
+
+  public RPPDataset getRPPDataset(String datasetName){
+    return this.rppDatasets.get(datasetName);
   }
 
   /**
@@ -452,8 +469,8 @@ public class RPP extends Instance implements Runnable {
    * <li>Gets the Results from the Third Party
    * </ol>
    */
-  private void processSession(String session, String datasetName, double maxMaf, double maxMafNFE, String minCsq, boolean limitToSNVs, BedFile bed, String kHash) {
-    RPPSessionProcessor sp = new RPPSessionProcessor(this, session, datasetName, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, kHash);
+  private void processSession(String session, String datasetName, double maxMaf, double maxMafNFE, String minCsq, boolean limitToSNVs, BedFile bed, QCParam qcParam, String kHash) {
+    RPPSessionProcessor sp = new RPPSessionProcessor(this, session, datasetName, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, qcParam, kHash);
     this.rppSessionProcessors.put(session, sp);
     sp.serialize();
     //sp.init();
@@ -474,7 +491,7 @@ public class RPP extends Instance implements Runnable {
     MessageSocket monitor = this.rppMonitors.get(session);
     if (monitor != null)
       try {
-        monitor.writeMessage(new SendStatus(session, status));
+        monitor.writeMessage(new SendRPPStatus(session, status));
       } catch (Message.EmptyParameterException | IOException ex) {
         logInfo(MSG.cat(MSG.RPP_ERR_SEND_STATUS_CLIENT_LEFT, session));
         this.rppMonitors.put(session, null);
@@ -529,7 +546,8 @@ public class RPP extends Instance implements Runnable {
 
     String dataset = datasetsBySession.get(session);
     String hash = hashesBySession.get(session);
-    VariantExclusionSet ves = new VariantExclusionSet(excludedVariantsFilenames.get(dataset), hash);
+    QCParam qcParam = qcParamsBySession.get(session);
+    VariantExclusionSet ves = rppDatasets.get(dataset).getVariantExclusionSet(hash, qcParam);
     out = new PrintWriter(new FileWriter(this.getFilenameFor(session, FileFormat.FILE_RPP_EXCLUDED_VARIANTS)));
     out.println(ves.serialize());
     out.close();
@@ -609,22 +627,35 @@ public class RPP extends Instance implements Runnable {
    */
   private Message sendStatus(String session, MessageSocket socket) {
     this.rppMonitors.put(session, socket);
-    SendStatus first = null;
+    SendRPPStatus first = null;
     try {
-      first = new SendStatus(session, RPP.this.getStatus(session));
+      first = new SendRPPStatus(session, RPP.this.getStatus(session));
     } catch (Message.EmptyParameterException e) {
       //Impossible
     }
 
     submitLater(() -> {
       try {
-        socket.writeMessage(new SendStatus(session, RPP.this.getStatus(session)));
+        socket.writeMessage(new SendRPPStatus(session, RPP.this.getStatus(session)));
       } catch (Message.EmptyParameterException | IOException ex) {
         RPP.this.logWarning(MSG.RPP_ERR_SEND_AFTER_BINDING);
         RPP.this.logWarning(ex);
       }
     }, Parameters.RPP_MONITOR_FIRST_DELAY);
     return first;
+  }
+
+  public void sendTPSStatusToClient(String session, TPStatus tpStatus){
+    try {
+      SendTPSStatus sendTPSStatus = new SendTPSStatus(session, tpStatus);
+      MessageSocket monitor = rppMonitors.get(session);
+      monitor.writeMessage(sendTPSStatus);
+    } catch (Message.EmptyParameterException ignore) {
+      //That's impossible outside from java reflection
+    } catch (IOException e) {
+      RPP.this.logWarning(MSG.RPP_ERR_SEND_TPS);
+      RPP.this.logWarning(e);
+    }
   }
   
   public void sendDataAndStart(String session) {
@@ -646,8 +677,9 @@ public class RPP extends Instance implements Runnable {
    * @param sessionId the Session ID
    * @return
    */
-  public TPStatus getThirdPartyStatus(String sessionId) {
-    return this.thirdPartyConnector.getStatus(sessionId);
+  public List<TPStatus> getThirdPartyStatuses(String sessionId, int last) throws Exception {
+    List<TPStatus> tpStatus = this.thirdPartyConnector.getStatuses(sessionId, last);
+    return tpStatus;
   }
 
   /**
@@ -739,7 +771,7 @@ public class RPP extends Instance implements Runnable {
      */
     private Message getRPPConfiguration(AskRPPConfiguration askRPPConfiguration) throws Message.EmptyParameterException {
       StringBuilder datasets = new StringBuilder();
-      for (String dataset : RPP.this.genotypeFilenames.keySet())
+      for (String dataset : RPP.this.orderedDatasets)
         datasets.append(",").append(dataset);
       return new SendRPPConfiguration(datasets.substring(1), tpsName);
     }
@@ -815,6 +847,7 @@ public class RPP extends Instance implements Runnable {
         String minCsq = askSession.getMinCSQ();
         boolean limitToSNVs = askSession.getLimitToSNVs();
         BedFile bed = askSession.getBedFile();
+        QCParam qcParam = askSession.getQCParam();
         String clientRSAString = askSession.getClientPublicKey();
         String datasetName = askSession.getDataset();
 
@@ -822,6 +855,7 @@ public class RPP extends Instance implements Runnable {
         String session = generateSessionId();
         createSessionDirectory(session);
         datasetsBySession.put(session, datasetName);
+        qcParamsBySession.put(session, qcParam);
         String thirdPartyPublicPem = thirdPartyConnector.getTPSPublicKey(session);
         if (thirdPartyPublicPem == null || thirdPartyPublicPem.isEmpty()) {
           logError(MSG.RPP_ERR_TPS_KEY);
@@ -832,11 +866,11 @@ public class RPP extends Instance implements Runnable {
         PublicKey clientRSA = Crypto.buildPublicRSAKey(clientRSAString);
         String encryptedKHash = Crypto.encryptRSA(clientRSA, kHash);
         setStatus(session, RPPStatus.newSession());
-        BedFile bed2 = BedFile.getIntersection(bed, getBedFile(datasetName));
+        BedFile bed2 = BedFile.getIntersection(bed, rppDatasets.get(datasetName).getBedFile());
         SendSession sendSession = new SendSession(session, encryptedKHash, thirdPartyPublicPem, bed2);
-        processSession(session, datasetName, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed2, kHash);
+        processSession(session, datasetName, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed2, qcParam, kHash);
         return sendSession;
-      } catch (Message.EmptyParameterException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | IOException | BedRegion.BedRegionException e) {
+      } catch (Message.EmptyParameterException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | IOException | BedRegion.BedRegionException | QualityControl.QCException e) {
         String errorMessage = MSG.cat(MSG.RPP_ERR_NEW_SESSION, e);
         logWarning(errorMessage);
         logWarning(e);
@@ -859,24 +893,24 @@ public class RPP extends Instance implements Runnable {
     }
   }
 
-  public BedFile getBedFile(String datasetName) throws IOException, BedRegion.BedRegionException {
-    return new BedFile(this.bedfileNames.get(datasetName));
-  }
+  //public BedFile getBedFile(String datasetName) throws IOException, BedRegion.BedRegionException {
+  //  return new BedFile(this.rppDatasets.get(datasetName).getBedFilename());
+  //}
 
   /**
    * Exception thrown when there is a problem while parsing an RPP Configuration File
    */
   public static class ConfigFileParsingException extends Exception {
 
-    private ConfigFileParsingException(String missing, String configFile, String syntax) {
+    ConfigFileParsingException(String missing, String configFile, String syntax) {
       this(MSG.CL_EX(missing, configFile, syntax));
     }
 
-    private ConfigFileParsingException(String message) {
+    ConfigFileParsingException(String message) {
       super(message);
     }
 
-    private ConfigFileParsingException(String message, Throwable cause) {
+    ConfigFileParsingException(String message, Throwable cause) {
       super(message, cause);
     }
   }

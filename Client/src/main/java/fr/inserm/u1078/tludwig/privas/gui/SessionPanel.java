@@ -97,7 +97,7 @@ public class SessionPanel extends JPanel implements SessionListener {
   /**
    * Shows the Status of this Session on the RPP Server
    */
-  private final JTextArea status; //TODO JTextArea 2-3 lines
+  private final JTextField rppStatus;
   /**
    * Shows the path to the Genotype File used by the Client (and its number of variants)
    */
@@ -155,7 +155,7 @@ public class SessionPanel extends JPanel implements SessionListener {
     this.tpsName = new JTextField();
     this.thirdParty = new JTextArea(nbrow, nbcol);
     this.algorithm = new JTextField();
-    this.status = new JTextArea(3, 60);
+    this.rppStatus = new JTextField();
     this.genotypeFile = new JTextField();
 
     this.rppLed = new JPanel();
@@ -199,7 +199,7 @@ public class SessionPanel extends JPanel implements SessionListener {
     this.tpsName.setEditable(false);
     this.thirdParty.setEditable(false);
     this.algorithm.setEditable(false);
-    this.status.setEditable(false);
+    this.rppStatus.setEditable(false);
     this.genotypeFile.setEditable(false);
 
     this.publicKey.setLineWrap(true);
@@ -221,7 +221,7 @@ public class SessionPanel extends JPanel implements SessionListener {
     privateKeySP.setViewportView(privateKey);
     thirdParty.setBackground(LookAndFeel.TEXT_BG_COLOR);
     thirdPartySP.setViewportView(thirdParty);
-    status.setBackground(LookAndFeel.TEXT_BG_COLOR);
+    rppStatus.setBackground(LookAndFeel.TEXT_BG_COLOR);
 
     rppPanel.setLayout(new BoxLayout(rppPanel, BoxLayout.LINE_AXIS));
     rppPanel.add(rppLed);
@@ -246,7 +246,7 @@ public class SessionPanel extends JPanel implements SessionListener {
     addElement(main, publicKeySP, GUI.SP_LABEL_PUBLIC, GUI.SP_TOOLTIP_PUBLIC, 9, ALL);
     addElement(main, privateKeySP, GUI.SP_LABEL_PRIVATE, GUI.SP_TOOLTIP_PRIVATE, 10, ALL);
     addElement(main, thirdPartySP, GUI.SP_LABEL_THIRD_PARTY_KEY, GUI.SP_TOOLTIP_THIRD_PARTY_KEY, 11, ALL);
-    addElement(main, status, GUI.SP_LABEL_STATUS, GUI.SP_TOOLTIP_STATUS, 12, ALL);
+    addElement(main, rppStatus, GUI.SP_LABEL_STATUS, GUI.SP_TOOLTIP_STATUS, 12, ALL);
 
     this.setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
     this.add(main);    
@@ -469,7 +469,7 @@ public class SessionPanel extends JPanel implements SessionListener {
         //ignore
     }
 
-    this.setText(this.status, msg);
+    this.setText(this.rppStatus, msg);
     try {
       this.clientWindow.updateMenuItems(state);
     } catch (Exception e) {

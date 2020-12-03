@@ -13,7 +13,12 @@ public class Parameters {
   /**
    * Delay in ms when RPP asks for TPS status
    */
-  public static final int RPP_THIRD_PARTY_REFRESH_DELAY = 250;
+  public static final int RPP_THIRD_PARTY_REFRESH_DELAY = 1000;
+
+  /**
+   * Delay in ms when RPP look for TPS update to send to the client
+   */
+  public static final int RPP_TP_TO_CLIENT_REFRESH_DELAY = 40;
 
   /**
    * Delay in ms when RPP checks completion of writting of Client Data (received by another thread)

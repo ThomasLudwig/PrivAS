@@ -3,6 +3,8 @@ package fr.inserm.u1078.tludwig.privas.gui;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.GUI;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
+import fr.inserm.u1078.tludwig.privas.utils.FileUtils;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -69,9 +71,14 @@ public class CriteriaPane extends JPanel {
    */
   private final JTextField bedFileTF;
   /**
-   * To set the list of excluded variants (due to bad QC)
+   * To set the list of excluded variants (manually)
    */
   private final JTextField excludedVariantsTF;
+
+  /**
+   * To set the QC parameter file
+   */
+  private final JTextField qcParametersTF;
 
   //WSS parameters
   /**
@@ -81,7 +88,7 @@ public class CriteriaPane extends JPanel {
   /**
    * To choose the maximum number of permutations in the test
    */
-  private final JTextField permuationJTF;
+  private final JTextField permutationJTF;
   
   /**
    * To chosse the maximum frequency of alleles over pooled data
@@ -119,11 +126,12 @@ public class CriteriaPane extends JPanel {
     this.limitToSNVsCB = new JCheckBox("", true);
     this.bedFileTF = new JTextField(30);
     this.excludedVariantsTF = new JTextField(30);
+    this.qcParametersTF = new JTextField(30);
 
     this.doWSS = new JRadioButton(GUI.CRIT_RADIO_WSS);
-    this.permuationJTF = new JTextField(10);
+    this.permutationJTF = new JTextField(10);
     this.frqThresholdJTF = new JTextField(4);
-    this.permuationJTF.setText("" + Parameters.CRIT_DEFAULT_WSS_PERM);
+    this.permutationJTF.setText("" + Parameters.CRIT_DEFAULT_WSS_PERM);
     this.frqThresholdJTF.setText("" + Parameters.CRIT_DEFAULT_WSS_FRQ);
     this.pvalueLabel = new JLabel(GUI.CRIT_LABEL_MIN_PVAL);
     this.durationLabel = new JLabel(GUI.CRIT_LABEL_DURATION);
@@ -139,11 +147,15 @@ public class CriteriaPane extends JPanel {
     
     JButton bedFileButton = new JButton(GUI.CHOOSE);
     JButton excludedVariantsButton = new JButton(GUI.CHOOSE);
+    JButton qcParametersButton = new JButton(GUI.CHOOSE);
     
     bedFileButton.addActionListener(e -> chooseBedFile());
     excludedVariantsButton.addActionListener(e -> chooseExcludedVariants());
+    qcParametersButton.addActionListener(e -> chooseQCParameters());
+
     bedFileTF.setEnabled(false);
     excludedVariantsTF.setEnabled(false);
+    qcParametersTF.setEnabled(false);
     
     JPanel selectionPanel = new JPanel();
     selectionPanel.setLayout(new GridBagLayout());
@@ -159,13 +171,14 @@ public class CriteriaPane extends JPanel {
     addComp(selectionPanel, c, GUI.CRIT_LABEL_MAF_NFE, mafNFEJTF, null, row++);    
     addComp(selectionPanel, c, GUI.SP_LABEL_LIMIT_SNV, limitToSNVsCB, null, row++);
     addComp(selectionPanel, c, GUI.CRIT_LABEL_BEDFILE, bedFileTF, bedFileButton, row++);
+    addComp(selectionPanel, c, GUI.CRIT_LABEL_QC_PARAMETERS, qcParametersTF, qcParametersButton, row++);
     addComp(selectionPanel, c, GUI.CRIT_LABEL_EXCLUDED_VARIANTS, excludedVariantsTF, excludedVariantsButton, row++);
     
     JPanel wssS1Panel = new JPanel();
     wssS1Panel.add(doWSS);
     wssS1Panel.add(Box.createHorizontalStrut(GUI.HSP_MEDIUM));
     wssS1Panel.add(new JLabel(GUI.CRIT_LABEL_PERM));
-    wssS1Panel.add(permuationJTF);
+    wssS1Panel.add(permutationJTF);
     wssS1Panel.add(Box.createHorizontalStrut(GUI.HSP_MEDIUM));
     wssS1Panel.add(new JLabel(GUI.CRIT_LABEL_FRQ));
     wssS1Panel.add(frqThresholdJTF);
@@ -187,7 +200,7 @@ public class CriteriaPane extends JPanel {
     this.add(wssPanel);
 
     this.doWSS.setSelected(true);
-    this.permuationJTF.getDocument().addDocumentListener(new DocumentListener() {
+    this.permutationJTF.getDocument().addDocumentListener(new DocumentListener() {
       @Override
       public void insertUpdate(DocumentEvent e) {
         this.update();
@@ -205,8 +218,8 @@ public class CriteriaPane extends JPanel {
 
       public void update() {
         try {
-          long permutation = new Long(permuationJTF.getText());
-          permuationJTF.setBackground(LookAndFeel.getBackgroundTextColor());
+          long permutation = new Long(permutationJTF.getText());
+          permutationJTF.setBackground(LookAndFeel.getBackgroundTextColor());
           double minPvalue = 1d / (permutation);
           pvalueLabel.setText(GUI.CRIT_LABEL_MIN_PVAL + ": " + minPvalue);
           double dur = (permutation * nbVariants) / RATE;
@@ -240,13 +253,13 @@ public class CriteriaPane extends JPanel {
           /*if (doWSS.isSelected())
             algorithm = Constants.ALGO_WSS + ":" + permutation; */
         } catch (NumberFormatException e) {
-          permuationJTF.setBackground(Color.RED);
+          permutationJTF.setBackground(Color.RED);
           pvalueLabel.setText(GUI.CRIT_LABEL_MIN_PVAL + ": " + Constants.DETAILS_UNKNOWN);
           durationLabel.setText(GUI.CRIT_LABEL_DURATION + ": " + Constants.DETAILS_UNKNOWN);
         }
       }
     });
-    permuationJTF.setText("" + Parameters.CRIT_DEFAULT_WSS_PERM);
+    permutationJTF.setText("" + Parameters.CRIT_DEFAULT_WSS_PERM);
     
     this.frqThresholdJTF.getDocument().addDocumentListener(new DocumentListener() {
       @Override
@@ -285,7 +298,7 @@ public class CriteriaPane extends JPanel {
   
   private void updateAlgorithm(){
     if (doWSS.isSelected())
-      algorithm = Constants.ALGO_WSS + ":" + permuationJTF.getText() + ":" + frqThresholdJTF.getText();
+      algorithm = Constants.ALGO_WSS + ":" + permutationJTF.getText() + ":" + frqThresholdJTF.getText();
   }
   
   private void addComp(JPanel panel, GridBagConstraints c, String label, Component comp, JButton button, int row){
@@ -313,10 +326,15 @@ public class CriteriaPane extends JPanel {
   public void chooseBedFile(){
     FileExtensionChooser dial = this.clientWindow.getBedFileDialog();
     if (dial.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) 
-      this.bedFileTF.setText(dial.getSelectedFile().getAbsolutePath());      
-    
+      this.bedFileTF.setText(dial.getSelectedFile().getAbsolutePath());
   }
-  
+
+  public void chooseQCParameters(){
+    FileExtensionChooser dial = this.clientWindow.getQCParametersDialog();
+    if (dial.showOpenDialog(this) == JFileChooser.APPROVE_OPTION)
+      this.qcParametersTF.setText(dial.getSelectedFile().getAbsolutePath());
+  }
+
   public void chooseExcludedVariants(){
     FileExtensionChooser dial = this.clientWindow.getExclusionDialog();
     if (dial.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) 
@@ -329,6 +347,10 @@ public class CriteriaPane extends JPanel {
   
   public String getExcludedVariantsFilename(){
     return this.excludedVariantsTF.getText();
+  }
+
+  public String getQCParamFilename(){
+    return this.qcParametersTF.getText();
   }
 
   /**
@@ -410,9 +432,41 @@ public class CriteriaPane extends JPanel {
    * @return 
    */
   public int display() {
-    this.permuationJTF.setText(this.permuationJTF.getText());
+    this.permutationJTF.setText(this.permutationJTF.getText());
     this.frqThresholdJTF.setText(this.frqThresholdJTF.getText());
     this.updateDatasets(this.clientWindow.getClient().getSession().getAvailableDatasets());
     return JOptionPane.showConfirmDialog(null, this, GUI.CRIT_TITLE, JOptionPane.OK_CANCEL_OPTION);
+  }
+
+  public void setQCParam(String filename) {
+    this.qcParametersTF.setText(filename);
+  }
+
+  public void setExcludedVariantsFilename(String filename) {
+    this.excludedVariantsTF.setText(filename);
+  }
+
+  public int checkQC(){
+    return this.checkFile(this.qcParametersTF.getText());
+  }
+
+  public int checkExcludedVariants(){
+    return this.checkFile(this.excludedVariantsTF.getText());
+  }
+
+  public int checkBed(){
+    return this.checkFile(this.bedFileTF.getText());
+  }
+
+  public static final int CHECK_OK = 0;
+  public static final int CHECK_EMPTY = 1;
+  public static final int CHECK_NOT_FOUND = 2;
+
+  private int checkFile(String filename){
+    if(filename == null)
+      return CHECK_EMPTY;
+    if(filename.isEmpty())
+      return CHECK_EMPTY;
+    return FileUtils.exists(filename) ? CHECK_OK : CHECK_NOT_FOUND;
   }
 }
