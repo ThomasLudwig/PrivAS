@@ -1,10 +1,16 @@
 package fr.inserm.u1078.tludwig.privas;
 
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
+import fr.inserm.u1078.tludwig.privas.documentation.ClientDocumentation;
 import fr.inserm.u1078.tludwig.privas.gui.ClientWindow;
 import fr.inserm.u1078.tludwig.privas.gui.LookAndFeel;
 import fr.inserm.u1078.tludwig.privas.instances.Client;
 import fr.inserm.u1078.tludwig.privas.listener.StandardErrorLogger;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.net.InetAddress;
 
 /**
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -26,20 +32,30 @@ public class ClientRun {
    * @param args the command line arguments
    */
   public static void main(String[] args) throws Exception {
+    String devComputer = "DESKTOP-VRJB1QR";
+    String dir = MSG.GUI_DEFAULT_DIRECTORY;
+    String devDir = "C:\\Users\\user\\Documents\\Projet\\PrivGene\\privas";
+    File file = new File(devDir);
+    if(file.exists() && file.isDirectory())
+      dir = devDir;
+
     System.err.println(MSG.MSG_WELCOME);
 
     if (args.length < 1) {
-      launchGUI(MSG.GUI_DEFAULT_DIRECTORY);
+      launchGUI(dir);
       return;
     }
 
     if(args[0].startsWith("-")){
       switch (args[0].toLowerCase()) {
         case MSG.ARG_CONVERT_VCF:
-          Main.convertVCF(args);
+          Main.convertVCF(args, true);
           break;
-        case MSG.ARG_IDE:
-          launchGUI("C:\\Users\\user\\Documents\\Projet\\PrivGene\\privas");
+        case MSG.ARG_DOC:
+          doc(args);
+          break;
+        case MSG.ARG_QC:
+          Main.qc(args, true);
           break;
         default:
           usage();
@@ -49,13 +65,30 @@ public class ClientRun {
     }
   }
 
+  public static void doc(String[] args) throws Exception {
+    String outFile = "Client.rst";
+    PrintWriter out = new PrintWriter(new FileWriter(outFile));
+    out.println(ClientDocumentation.getClientDocumentation());
+    out.close();
+  }
+
   /**
    * Prints the various usages of this program
    */
-  private static void usage() {
-    System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_INSTANCES);
-    usageGUI(false);
+  public static String getUsage() {
+    StringBuilder ret = new StringBuilder();
+    ret.append(MSG.MSG_USAGE).append("\n");
+    ret.append(usageGUI(false)).append("\n");
+    ret.append(MSG.MSG_QC).append("\n");
+    ret.append(Main.usageQualityControl(false, true)).append("\n");
+    ret.append(MSG.MSG_TOOLS).append("\n");
+    ret.append(Main.usageConvertVCF(false, true));
+
+    return ret.toString();
+  }
+
+  public static void usage(){
+    System.err.println(getUsage());
   }
 
   /**
@@ -63,11 +96,13 @@ public class ClientRun {
    *
    * @param prefix - should print the "Usage :" prefix ?
    */
-  private static void usageGUI(boolean prefix) {
+  private static String usageGUI(boolean prefix) {
+    StringBuilder ret = new StringBuilder();
     if (prefix)
-      System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_DESC_GUI);
-    System.err.println(MSG.MSG_CMD_GUI);
+      ret.append(MSG.MSG_USAGE).append("\n");;
+    ret.append(MSG.MSG_DESC_GUI).append("\n");;
+    ret.append(MSG.MSG_CMD_GUI).append("\n");;
+    return ret.toString();
   }
 
   /**

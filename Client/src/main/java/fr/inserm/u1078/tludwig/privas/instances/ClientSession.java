@@ -3,11 +3,9 @@ package fr.inserm.u1078.tludwig.privas.instances;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
-import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
-import fr.inserm.u1078.tludwig.privas.utils.Crypto;
+import fr.inserm.u1078.tludwig.privas.utils.*;
 import fr.inserm.u1078.tludwig.privas.listener.SessionListener;
-import fr.inserm.u1078.tludwig.privas.utils.BedFile;
-import fr.inserm.u1078.tludwig.privas.utils.BedRegion;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -108,6 +106,11 @@ public class ClientSession {
    * List of all well covered positions
    */
   private BedFile bedFile = null;
+
+  /**
+   * QC Parameters
+   */
+  private QCParam qcParam; //TODO (de)serialize, listener
   /**
    * Third Party Server's Public RSA Key
    */
@@ -506,6 +509,14 @@ public class ClientSession {
 
   public void setBedFile(BedFile bedFile) {
     this.bedFile = bedFile;
+  }
+
+  public QCParam getQCParam() {
+    return qcParam;
+  }
+
+  public void setQCParam(QCParam qcParam) {
+    this.qcParam = qcParam;
   }
 
   /**

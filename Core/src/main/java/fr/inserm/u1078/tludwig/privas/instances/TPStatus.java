@@ -2,6 +2,8 @@ package fr.inserm.u1078.tludwig.privas.instances;
 
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 
+import java.util.Date;
+
 /**
  * Third Party Server Status
  *
@@ -10,6 +12,8 @@ import fr.inserm.u1078.tludwig.privas.constants.Constants;
  * Javadoc Complete on 2019-08-07
  */
 public class TPStatus {
+
+  private final long epoch;
 
   /**
    * The State of the Status
@@ -23,36 +27,44 @@ public class TPStatus {
   /**
    * Builds a TPSStatus from a Key and details
    *
+   * @param epoch   timestamp (from TPS's point of view)
    * @param state   the State
    * @param details details associated to the status
    */
-  public TPStatus(State state, String details) {
+  public TPStatus(long epoch, State state, String details) {
+    this.epoch = epoch;
     this.state = state;
-    this.details = details;
+    if(details == null)
+      this.details = "";
+    else
+      this.details = details.replace("\n", Constants.RET).replace("\t",Constants.TAB);;
   }
 
-  /**
-   * Parses a String to build a Status (deserialization)
-   *
-   * @param line serialized TPSStatus
-   */
-  public TPStatus(String line) {
-    if (line != null) {
-      String[] f = line.split("\t");
-      String k = f[0];
-      String d = (f.length > 1) ? f[1] : null;
-      State tmpKey = State.UNKNOWN;
-      try {
-        tmpKey = State.valueOf(k);
-      } catch (Exception e) {
-        //Ignore
-      }
-      this.state = tmpKey;
-      this.details = d;
-    } else {
-      this.state = State.UNKNOWN;
-      this.details = Constants.DETAILS_UNKNOWN;
+  public TPStatus(String serialized){
+    long e = new Date().getTime();
+    State s = State.UNKNOWN;
+    String d = "";
+
+    String[] f = serialized.split("\t", -1);
+    try{
+      e = Long.parseLong(f[0]);
+    } catch (Exception ignore){
+      //whatever
     }
+    try{
+      s = State.valueOf(f[1]);
+    } catch (Exception ignore){
+      //whatever
+    }
+    try{
+      d = f[2];
+    } catch (Exception ignore){
+      //whatever
+    }
+
+    this.epoch = e;
+    this.state = s;
+    this.details = d;
   }
 
   /**
@@ -70,15 +82,16 @@ public class TPStatus {
    * @return
    */
   public String getDetails() {
-    return details;
+    return details.replace(Constants.TAB,"\t").replace(Constants.RET,"\n");
+  }
+
+  public long getEpoch() {
+    return epoch;
   }
 
   @Override
   public String toString() {
-    if (this.details == null)
-      return this.state.toString();
-    else
-      return this.state + "\t" + this.details;
+    return this.epoch + "\t" + this.state + "\t" + this.details;
   }
 
   /**
@@ -88,26 +101,46 @@ public class TPStatus {
     /**
      * Job is Pending
      */
-    PENDING,
+    PENDING (1, "Job has been submitted."), //TODO how to determine PENDING, since the java instance is not started ?
     /**
      * Job is Started
      */
-    STARTED,
+    STARTED(2, "Job has started, Data validation/preparation."),
     /**
      * Job is Running
      */
-    RUNNING, 
+    RUNNING(3, "Association Tests are running."),
     /**
      * Job is Done
      */
-    DONE, 
+    DONE(4, "Association Tests are complete."),
     /**
      * Job has encountered an error
      */
-    ERROR, 
+    ERROR(-1, "There was an error on TPS."),
+    /**
+     * Can't read TPS's status file
+     */
+    UNREACHABLE(-2, "RPP was not able to retrieve TPS's status file"),
     /**
      * Job is in an unknown state
      */
-    UNKNOWN
+    UNKNOWN(0, "TPS is in an unknown state.");
+
+    private final int code;
+    private final String description;
+
+    State(int code, String description){
+      this.code = code;
+      this.description = description;
+    }
+
+    public int getCode() {
+      return code;
+    }
+
+    public String getDescription() {
+      return description;
+    }
   }
 }

@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.constants;
 
+import fr.inserm.u1078.tludwig.privas.Main;
 import fr.inserm.u1078.tludwig.privas.messages.SessionMessage;
 import fr.inserm.u1078.tludwig.privas.instances.RPPStatus;
 import fr.inserm.u1078.tludwig.privas.messages.Message;
@@ -34,11 +35,13 @@ public class MSG {
   //public static final String ARG_THIRDPARTY = "thirdparty";
   public static final String ARG_KEYGEN = "--keygen";
   public static final String ARG_DEBUG = "--debug";
+  public static final String ARG_DOC = "--doc";
   public static final String ARG_CONVERT_VCF = "--vcf2genotype";
   public static final String ARG_ATTACK = "--attack";
   public static final String ARG_WSSKEY = "--wss";
   public static final String ARG_RANKSUMKEY = "--rank";
-  public static final String ARG_IDE = "--ide";
+  public static final String ARG_QC = "--qc";
+  public static final String ARG_QC_CONV = "--qc-convert";
 
   //general
   public static final String FAIL_MKDIR = "Could not create directory";
@@ -75,6 +78,7 @@ public class MSG {
   public static final String RPP_ERR_SEND_STATUS = "Unable to send status for session ";
   public static final String RPP_ERR_SEND_STATUS_CLIENT_LEFT = "Client has left, " + RPP_ERR_SEND_STATUS;
   public static final String RPP_ERR_SEND_AFTER_BINDING = "Unable to send status after monitor binding";
+  public static final String RPP_ERR_SEND_TPS = "Unable to send TPS status to Client";
   public static final String RPP_ERR_RPP_THREAD = "Failed to open a new listener:";
   public static final String RPP_ERR_SOCKET = "Unable to read message from client:";
   public static final String RPP_ERR_TYPE_UNKNOWN = "I don't know what to do with message of type";
@@ -105,6 +109,10 @@ public class MSG {
   public static final String CL_OK_CONNECT = "Connected to RPP";
   public static final String CL_KO_CONNECT = "Failed to Connect to RPP";
 
+  public static final String CL_APPLY_QC = "Applying Quality control to VCF File";
+  public static final String Cl_QC_APPLIED = "QC Successfully applied";
+  public static final String CL_KO_QC = "Failed to apply QC";
+
   public static final String CL_NEW_SESSION_LABEL = "Asking a new Session";
   public static final String CL_NEW_SESSION_DATASET = "Selected Dataset";
   public static final String CL_NEW_SESSION_MAF = "Max Minor Allele Frequency";
@@ -114,7 +122,7 @@ public class MSG {
 
   public static String CL_NEW_SESSION(String dataset, double maxMAF, String minCSQ, String bedFilename, String exclusionFilename) {
     return CL_NEW_SESSION_LABEL
-            + ": " + cat(CL_NEW_SESSION_MAF, maxMAF + "")
+            + ": " + cat(CL_NEW_SESSION_MAF, maxMAF)
             + ", " + cat(CL_NEW_SESSION_CSQ, minCSQ)
             + ", " + cat(CL_NEW_SESSION_DATASET, dataset)
             + ", " + cat(CL_NEW_SESSION_BED, bedFilename)
@@ -209,6 +217,8 @@ public class MSG {
 
   //SessionProcessor
   public static final String SP_OK_CLIENT = "Client Data Written for session";
+  public static final String SP_QC = "Applying QC to input VCF file";
+  public static final String SP_CONVERT = "Converting QCed VCF file to genotype";
   public static final String SP_RPP = "Starting extraction for session";
   public static final String SP_OK_RPP = "Extraction Complete for session";
   public static final String SP_EMPTY_RPP = "RPP data extraction, according to selected criteria yielded empty results";
@@ -226,18 +236,22 @@ public class MSG {
 
   //WSS
   public static final String WSS_NO_COMMON_GENE = "No genes common to both dataset where found";
-  public static final String WSS_CLIENT_GENES = "Genes in Client's Data";
-  public static final String WSS_CLIENT_VARIANTS = "Total number of Variants in Client's Data";
-  public static final String WSS_RPP_GENES = "Genes in RPP's Data";
-  public static final String WSS_RPP_VARIANTS = "Variants in RPP's Data";
-  public static final String WSS_COMMON_GENES = "Genes in Both Datasets";
-  public static final String WSS_OK_PARSE = "All data have been parsed";
-  public static final String WSS_NO_DATA = "No data to parse";
+  public static final String WSS_CLIENT_GENES = "Number of Genes in Client's Data";
+  public static final String WSS_CLIENT_VARIANTS = "Number of Variants in Client's Data";
+  public static final String WSS_RPP_GENES = "Number of Genes in RPP's Data";
+  public static final String WSS_RPP_VARIANTS = "Number of Variants in RPP's Data";
+  public static final String WSS_COMMON_GENES = "Number of Genes common to all Datasets";
+  public static final String WSS_FILTERED_FREQUENCY = "Number of Variants filtered due to pooled frequency";
+  public static final String WSS_FILTERED_FISHER = "Number of Variants filtered due to significant call-rate discrepancy";
+
+  public static final String WSS_OK_PARSE = "All data have been parsed.";
+  public static final String WSS_OK_FILTER = "All filters have been applied.";
+  public static final String WSS_NO_DATA = "No data to parse.";
 
   //WSSHandler
-  public static final String WH_MAP_NULL = "Gene/Genotypes map is null";
+  public static final String WH_MAP_NULL = "Gene/Genotypes map is null.";
   public static final String WH_GENO_LIST_LOADED = "Genotypes files (genes) loaded";
-  public static final String WH_NO_GENOTYPE = "No genotypes loaded for this gene";
+  public static final String WH_NO_GENOTYPE = "No genotypes loaded for this gene.";
   public static final String WH_PERMUTATIONS = "Permutations so far";
   public static final String WH_LEFT = "Genes left";
   public static final String WH_ETA = "Estimated end at";
@@ -248,7 +262,7 @@ public class MSG {
   public static final String RET = "<RET>";
   
   public static String WH_PROGRESS(int permutations, int left, int total) {
-    return cat(WH_PERMUTATIONS, permutations + "") + ". " + cat(WH_LEFT, left + "/" + total) + ".";
+    return cat(WH_PERMUTATIONS, permutations) + ". " + cat(WH_LEFT, left + "/" + total) + ".";
   }
 
   public static String WH_PROGRESS(int permutations, int left, int total, long eta) {
@@ -257,16 +271,12 @@ public class MSG {
   }
   public static final String WH_START= "Start Association Tests";
   
-  public static final String WH_END= "Computation ended";
+  public static final String WH_END= "Computation complete. All genes have been processed in";
   public static final String WH_END(long start, long end) {
     return WH_END + " " + (end-start)/1000D + "s";
   }
   
-  public static final String WH_DONE = "Transferring Results to RPP Server. All genes have been processed in";
-
-  public static String WH_DONE(double start) {
-    return WH_DONE + " " + (new Date().getTime() - start)/1000 + "s";
-  }
+  public static final String WH_DONE = "Transferring Results to RPP Server.";
 
   //Status
   //public static final String STATUS_UNDEFINED = "Status undefined";
@@ -346,14 +356,19 @@ public class MSG {
   public static final String MSG_WELCOME = "Welcome to " + MSG.getTitle();
   public static final String MSG_USAGE = "Usage :";
   public static final String MSG_INSTANCES = "Instances :";
+  public static final String MSG_QC = "Quality Control :";
   public static final String MSG_TOOLS = "Tools :";
 
+  public static final String MSG_CMD_JAVA_CLIENT = "java -jar PrivAS.Client.jar";
+  public static final String MSG_CMD_JAVA_RPP = "java -jar PrivAS.RPP.jar";
+  public static final String MSG_CMD_JAVA_TPS = "java -jar PrivAS.TPS.jar";
+
   public static final String MSG_DESC_GUI = "- Launch the Client GUI:";
-  public static final String MSG_CMD_GUI = T + "[Directory]";
+  public static final String MSG_CMD_GUI = T + MSG_CMD_JAVA_CLIENT + " " + "[Directory]";
   public static final String MSG_FAIL_GUI = "Unable to start instance of GUI client: ";
 
   public static final String MSG_DESC_RPP = "- Launch the Reference Panel Provider Server: ";
-  public static final String MSG_CMD_RPP = T + "ConfigFile.rpp";
+  public static final String MSG_CMD_RPP = T + MSG_CMD_JAVA_RPP + " " + "ConfigFile.rpp";
   public static final String MSG_EXTRA_RPP = N
           + "ConfigFile Format :" + N
           + "___________________" + N
@@ -380,19 +395,30 @@ public class MSG {
   public static final String MSG_FAIL_TPS = "Unable to start instance of Third Party Server: ";
 
   public static final String MSG_DESC_KEYGEN = "- Generate a keypair for the Third-Party Server:";
-  public static final String MSG_CMD_KEYGEN = T + MSG.ARG_KEYGEN
+  public static final String MSG_CMD_KEYGEN = T + MSG_CMD_JAVA_TPS + " " + MSG.ARG_KEYGEN
           + " Work_Directory"
           + " Session_ID";
 
   public static final String MSG_FAIL_KEYGEN = "Unable to save generated keypair: ";
 
-  public static final String MSG_DESC_PREPARE = "- Prepare Reference Panel Provider Data:";
-  public static final String MSG_CMD_PREPARE = T + MSG.ARG_CONVERT_VCF
+  public static final String MSG_DESC_PREPARE = "- Convert a VCF file to a genotypes file:";
+  public static final String MSG_CMD_PREPARE_CLIENT = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_CONVERT_VCF
+          + " vep_annotated_file.vcf(.gz)";
+  public static final String MSG_CMD_PREPARE_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_CONVERT_VCF
           + " vep_annotated_file.vcf(.gz)";
   public static final String MSG_FAIL_PREPARE = "Unable to save generated keypair: ";
 
+  public static final String MSG_DESC_QC = "- Perform a Quality Control on a VCF file";
+  public static final String MSG_CMD_QC_CLIENT = T + MSG_CMD_JAVA_CLIENT + " " + MSG.ARG_QC + " input.vcf(.gz) qc.param";
+  public static final String MSG_CMD_QC_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_QC + " input.vcf(.gz) qc.param";
+  public static final String MSG_FAIL_QC = "Unable to perform QC on VCF file: ";
+
+  public static final String MSG_DESC_QC_CONV = "- Perform default Quality Control on a VCF file and convert results to genotype file.";
+  public static final String MSG_CMD_QC_CONV_CLIENT = T + MSG_CMD_JAVA_CLIENT + " " + MSG.ARG_QC_CONV + " input.vcf(.gz)";
+  public static final String MSG_CMD_QC_CONV_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_QC_CONV + " input.vcf(.gz)";
+
   public static final String MSG_DESC_WSS = "- Compute a WSS Association Test (localy):";
-  public static final String MSG_CMD_WSS = T + MSG.ARG_WSSKEY
+  public static final String MSG_CMD_WSS = T + MSG_CMD_JAVA_TPS + MSG.ARG_WSSKEY
           + " genetype_files.lst"
           + " phenotypes.tsv"
           + " NB_CORES"
@@ -400,7 +426,7 @@ public class MSG {
           + " results.tsv";
   
   public static final String MSG_DESC_RANKSUM = "- Compute a WSS Ranksum:";
-  public static final String MSG_CMD_RANKSUM = T + MSG.ARG_RANKSUMKEY
+  public static final String MSG_CMD_RANKSUM = T + MSG_CMD_JAVA_TPS + MSG.ARG_RANKSUMKEY
           + " geneName"
           + " phenotype.tsv"
           + " statuses.bool";
@@ -437,6 +463,10 @@ public class MSG {
     return DOT + msg;
   }
 
+  public static String cat(String msg, Number n){
+    return cat(msg, n.toString());
+  }
+
   public static String cat(String msg, String param) {
     return msg + " [" + param + "]";
   }
@@ -459,7 +489,7 @@ public class MSG {
    * @return
    */
   public static String getTitle() {
-    return TITLE + " " + getVersion();
+    return TITLE + " " + Main.getVersion();
   }
 
   /**

@@ -2,6 +2,8 @@ package fr.inserm.u1078.tludwig.privas.messages;
 
 import fr.inserm.u1078.tludwig.privas.utils.BedFile;
 import fr.inserm.u1078.tludwig.privas.utils.BedRegion;
+import fr.inserm.u1078.tludwig.privas.utils.QCParam;
+import fr.inserm.u1078.tludwig.privas.utils.QualityControl;
 
 /**
  * Message from the Client to the RPP Asking to start a new Session with a set of parameters
@@ -30,7 +32,7 @@ public class AskSession extends Message {
    * @param bed             list of all well covered positions
    * @throws EmptyParameterException if at least one of the values is null
    */
-  public AskSession(String clientPublicKey, String dataset, double maxAF, double maxAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed) throws EmptyParameterException {
+  public AskSession(String clientPublicKey, String dataset, double maxAF, double maxAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed, QCParam qcParam) throws EmptyParameterException {
     this.setClientPublicKey(clientPublicKey);
     this.setDataset(dataset);
     this.setMaxAF(maxAF);
@@ -38,6 +40,8 @@ public class AskSession extends Message {
     this.setMinCSQ(minCSQ);
     this.setLimitToSNVs(limitToSNVs);
     this.setBedFile(bed);
+    //TODO Excuded variants ?
+    this.setQCParam(qcParam);
   }
 
   /**
@@ -184,5 +188,17 @@ public class AskSession extends Message {
    */
   public BedFile getBedFile() throws BedRegion.BedRegionException {
     return BedFile.deserialize(this.getValue(Key.BED_FILE));
+  }
+
+  public void setQCParam(QCParam qcParam){
+    try {
+      this.set(Key.QC_PARAM, qcParam.serialize());
+    } catch (EmptyParameterException ex) {
+      //Ignore, impossible
+    }
+  }
+
+  public QCParam getQCParam() throws QualityControl.QCException {
+    return QCParam.deserialize(this.getValue(Key.QC_PARAM));
   }
 }

@@ -66,6 +66,16 @@ public class Constants {
   * Tabulation
   */  
   public static final String T = "\t";
+
+  /**
+   * Replaces tabulation character where it is forbidden
+   */
+  public static final String TAB = "<TAB>";
+
+  /**
+   * Replaces new line character where it is forbidden
+   */
+  public static final String RET = "<RET>";
   /**
    * OK String
    */

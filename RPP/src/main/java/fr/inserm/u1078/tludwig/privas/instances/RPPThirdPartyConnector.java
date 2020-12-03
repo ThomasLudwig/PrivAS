@@ -4,11 +4,11 @@ import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
-import java.io.BufferedReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Inner Class responsible of the communication with the Third Party Server
@@ -141,24 +141,46 @@ public class RPPThirdPartyConnector {
    * @param sessionId the Session ID
    * @return
    */
-  TPStatus getStatus(String sessionId) {
-    TPStatus status = new TPStatus(TPStatus.State.UNKNOWN, "");
+  List<TPStatus> getStatuses(String sessionId, int last) throws Exception{
+    ArrayList<TPStatus> statuses = new ArrayList<>();
+
     String dest = rpp.getFilenameFor(sessionId, FileFormat.FILE_TPS_STATUS);
     String cmd = "scp " + login + "@" + address + ":" + sessionDir + "/" + sessionId + "/" + FileFormat.FILE_TPS_STATUS + " " + dest;
-    try {
+   /* try {*/
       exec(cmd);
+   /*   try {*/
+        UniversalReader in = new UniversalReader(dest);
+        String line;
+        try{
+          for(int i = 0; i < last; i++)
+            in.readLine();
+          while((line = in.readLine()) != null) {
+            if (!line.isEmpty()) {
+              String[] f = line.split("\t", -1);
+              statuses.add(new TPStatus(new Long(f[0]), TPStatus.State.valueOf(f[1]), f[2]));
+            }
+          }
+        } catch(EOFException ignore) {
+          //ignored - TPS is writing in the file, while RPP is reading, sometimes an incomplete line is read.
+        }
+        try {
+          in.close();
+        } catch(IOException ignore){
+          //don't care
+        }
+   /*   } catch(FileNotFoundException ex) { //TODO this will completly mess yp the offset !!
+        //The file doesn't yet exist on TPS
+        statuses.add(new TPStatus(new Date().getTime(), TPStatus.State.PENDING, ""));
+      } catch (IOException e) {
+        statuses.add(new TPStatus(new Date().getTime(), TPStatus.State.UNREACHABLE, e.getClass().getSimpleName()));
+      } catch(Exception e){
+        statuses.add(new TPStatus(new Date().getTime(), TPStatus.State.UNKNOWN, "RPP has been unable to get TPS's status"));
+      }
     } catch (IOException | InterruptedException ex) {
       rpp.setStatus(sessionId, RPPStatus.tpsError(ex.getMessage()));
-    }
-    try {
-      UniversalReader in = new UniversalReader(dest);
-      status = new TPStatus(in.readLine());
-    } catch (IOException e) {
-      //Nothing
-      //rpp.logDebug(e.getMessage());
-    }
-
-    return status;
+      statuses.add(new TPStatus(new Date().getTime(), TPStatus.State.UNREACHABLE, ex.getClass().getSimpleName()));
+    }*/
+    return statuses;
   }
 
   /**

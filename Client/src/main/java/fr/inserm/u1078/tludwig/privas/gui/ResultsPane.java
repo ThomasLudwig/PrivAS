@@ -15,16 +15,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Comparator;
-import javax.swing.BoxLayout;
-import javax.swing.JFileChooser;
-import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
+import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
@@ -42,12 +33,13 @@ import org.jsoup.nodes.Document;
  *
  * Javadoc Complete on 2019-08-09
  */
-public class ResultsPane extends JPanel {
+public class ResultsPane extends JFrame {
 
   /**
    * The Client Window owning (calling) this Panel
    */
   private final ClientWindow clientWindow;
+  private final JPanel mainPanel;
 
   //FIXED  wrong color and Point Shape when only chrom2 is present
   private static final String[] COLUMN_TOOLTIP = {"",
@@ -135,6 +127,7 @@ public class ResultsPane extends JPanel {
    */
   public ResultsPane(ClientWindow clientWindow) {
     this.clientWindow = clientWindow;
+    this.mainPanel = new JPanel();
     this.init();
   }
 
@@ -142,15 +135,25 @@ public class ResultsPane extends JPanel {
    * Initializes the Panel (layouts)
    */
   private void init() {
-    this.setLayout(new BorderLayout());
-    this.add(new JLabel(GUI.RP_NO_RESULTS), BorderLayout.CENTER);
+    try {
+      this.setIconImage(Toolkit.getDefaultToolkit().createImage(ClassLoader.getSystemResource(GUI.IMAGE_PATH_LOGO)));
+    } catch (Exception e) {
+      //Nothing
+    }
+    mainPanel.setLayout(new BorderLayout());
+    mainPanel.add(new JLabel(GUI.RP_NO_RESULTS), BorderLayout.CENTER);
+    this.getContentPane().setLayout(new BorderLayout());
+    this.getContentPane().add(mainPanel, BorderLayout.CENTER);
+    this.setTitle(GUI.RP_TITLE);
+    this.pack();
   }
 
   /**
    * Shows this panel as a JOptionPane
    */
   public void display() {
-    JOptionPane.showMessageDialog(this.clientWindow, this, GUI.RP_TITLE, JOptionPane.INFORMATION_MESSAGE);
+    this.pack();
+    this.setVisible(true);
   }
 
   /**
@@ -265,7 +268,7 @@ public class ResultsPane extends JPanel {
       buildGUI(table);
     } catch (IOException e) {
       String msg = MSG.cat(GUI.RP_KO_LOAD, results.getAbsolutePath());
-      this.add(new JLabel(msg), BorderLayout.CENTER);
+      mainPanel.add(new JLabel(msg), BorderLayout.CENTER);
       this.clientWindow.getClient().logError(msg);
       this.clientWindow.getClient().logError(e);
     }
@@ -287,11 +290,11 @@ public class ResultsPane extends JPanel {
     south.setLayout(new BoxLayout(south, BoxLayout.LINE_AXIS));
     south.add(getManhattan(table, (int) (0.9 * PWIDTH), PHEIGHT, Manhattan.THEME_DARK));
 
-    this.removeAll();
-    this.setLayout(new BorderLayout());
-    this.add(getMenuBar(table), BorderLayout.NORTH);
-    this.add(scrollPane, BorderLayout.CENTER);
-    this.add(south, BorderLayout.SOUTH);
+    mainPanel.removeAll();
+    mainPanel.setLayout(new BorderLayout());
+    mainPanel.add(getMenuBar(table), BorderLayout.NORTH);
+    mainPanel.add(scrollPane, BorderLayout.CENTER);
+    mainPanel.add(south, BorderLayout.SOUTH);
   }
 
   /**

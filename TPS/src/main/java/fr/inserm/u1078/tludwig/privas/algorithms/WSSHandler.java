@@ -144,7 +144,7 @@ public class WSSHandler {
    */
   public byte[] start(HashMap<String, ArrayList<String>> mergedGenotypes, int nbAffected, int nbUnaffected) throws IOException {
     if (mergedGenotypes == null) {
-      status(MSG.WH_MAP_NULL, false);
+      statusError(MSG.WH_MAP_NULL);
       return null;
     }
 
@@ -166,10 +166,32 @@ public class WSSHandler {
    *
    * @param s the new status
    */
-  private void status(String s, boolean addCount) {
+  private void statusRunning(String s) {
     if (tps != null)
       try {
-        tps.running(s, false, addCount);
+        tps.statusRunning(s, false);
+      } catch (IOException e) {
+        //Nothing
+      }
+    else
+      System.err.println(s);
+  }
+
+  private void statusStarted(String s) {
+    if (tps != null)
+      try {
+        tps.statusStarted(s, false);
+      } catch (IOException e) {
+        //Nothing
+      }
+    else
+      System.err.println(s);
+  }
+
+  private void statusError(String s) {
+    if (tps != null)
+      try {
+        tps.statusError(s);
       } catch (IOException e) {
         //Nothing
       }
@@ -215,7 +237,7 @@ public class WSSHandler {
       wss.add(new WSS(f[0], statuses, f[1]));
     }
     in.close();
-    status(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size() + ""), true);
+    statusRunning(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size()));
   }
 
   /**
@@ -229,7 +251,7 @@ public class WSSHandler {
   private void loadData(HashMap<String, ArrayList<String>> mergedGenotypes, int nbAffected, int nbUnaffected) throws IOException {
     
     //TODO for debugging purpose only remove before release !
-    String id = "debug."+new Date().getTime();
+   /* String id = "debug."+new Date().getTime();
     PrintWriter out = null;
     if(Main.DEBUG){
       out = new PrintWriter(new FileWriter("/PROJECTS/PrivGene/PrivAS/debug/"+id+".pheno"));
@@ -241,7 +263,7 @@ public class WSSHandler {
       out.println(sb.substring(1));
       out.close();
       out = new PrintWriter(new FileWriter("/PROJECTS/PrivGene/PrivAS/debug/"+id+".geno"));
-    }
+    }*/
     
     //number of affected individuals in the dataset
     nbAff = nbAffected;
@@ -254,16 +276,16 @@ public class WSSHandler {
     for (String gene : mergedGenotypes.keySet()) {
       ArrayList<String> genotypes = mergedGenotypes.get(gene);
       if (genotypes == null)
-        status(MSG.cat(MSG.WH_NO_GENOTYPE, gene), false);
-      else if(out != null)
+        statusError(MSG.cat(MSG.WH_NO_GENOTYPE, gene));  //TODO exit ?
+      /*else if(out != null)
         for(String ge : genotypes) 
-          out.println(gene+"\t"+ge);
+          out.println(gene+"\t"+ge);*/
       wss.add(new WSS(gene, statuses, genotypes));
     }
 
-    status(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size() + ""), true);
-    if(out != null)
-      out.close();
+    statusRunning(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size()));
+   /* if(out != null)
+      out.close();*/
   }
 
   /**
@@ -279,7 +301,7 @@ public class WSSHandler {
    */
   private byte[] run() {
     long startComp = new Date().getTime();
-    status(Constants.DF_TPS.format(new Date()) + MSG.WH_START, true);
+    statusRunning(/*Constants.DF_TPS.format(new Date()) + */MSG.WH_START);
     //init
     Shuffler shuffler = new Shuffler(nbUnaff, nbAff, randomSeed);
     final long start = new Date().getTime();
@@ -315,7 +337,7 @@ public class WSSHandler {
     
     wss = keep;
     out.flush();
-    status(MSG.WH_PROGRESS(k, wss.size(), totalGenes), true);
+    statusRunning(MSG.WH_PROGRESS(k, wss.size(), totalGenes));
     int previousRemaining = wss.size();
 
     int previousK = k;
@@ -348,7 +370,7 @@ public class WSSHandler {
         long nbIterLeft = (this.maxK - k) * wss.size(); //long in case it is more than maxint=2147483647                 
         double iterByMs = nbIterDone / ms;
         long msLeft = (long) (nbIterLeft / iterByMs);
-        status(Constants.DF_TPS.format(new Date()) + MSG.WH_PROGRESS(k, wss.size(), totalGenes, msLeft), true);
+        statusRunning(MSG.WH_PROGRESS(k, wss.size(), totalGenes, msLeft));
         //update values
         previousRemaining = wss.size();
         previousK = k;
@@ -356,8 +378,8 @@ public class WSSHandler {
       }
     }
     Date endComp = new Date();
-    status(Constants.DF_TPS.format(endComp) + MSG.WH_END(startComp, endComp.getTime()), false);
-    status(MSG.WH_DONE(start), false);
+    statusRunning(MSG.WH_END(startComp, endComp.getTime()));
+    statusRunning(MSG.WH_DONE);
     out.close();
     return resultStream.toByteArray();
   }

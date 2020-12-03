@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 (2020-12-03)
+### Core
+* Quality Control : *added* QC on VCF data. The same QC is performed both on the Client's and RPP's data.
+### Client
+* TPSStatus : *added* TPSLogWindow
+* ResultsPane : *changed* JFrame instead of JOptionPane
+### RPP
+### TPS
+
 ## 1.0.0 (2020-10-02)
 ### Core
 * Message : **added** class StartSession and SessionStarted to delay extraction
