@@ -4,16 +4,18 @@ import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.GUI;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
-import fr.inserm.u1078.tludwig.privas.instances.Client;
-import fr.inserm.u1078.tludwig.privas.instances.RPPStatus;
+import fr.inserm.u1078.tludwig.privas.instances.*;
 import fr.inserm.u1078.tludwig.privas.gui.ResultsPane.ParsingException;
-import fr.inserm.u1078.tludwig.privas.instances.MessageException;
-import fr.inserm.u1078.tludwig.privas.instances.MonitoringException;
+import fr.inserm.u1078.tludwig.privas.utils.FileUtils;
+import fr.inserm.u1078.tludwig.privas.utils.QCParam;
+import fr.inserm.u1078.tludwig.privas.utils.QualityControl;
+
 import java.awt.BorderLayout;
 import java.awt.Toolkit;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -22,6 +24,9 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingWorker;
+
+import static fr.inserm.u1078.tludwig.privas.gui.CriteriaPane.CHECK_NOT_FOUND;
+import static fr.inserm.u1078.tludwig.privas.gui.CriteriaPane.CHECK_OK;
 
 /**
  * The Main Window of the GUI (Client Application)
@@ -32,6 +37,7 @@ import javax.swing.SwingWorker;
  */
 public class ClientWindow extends JFrame {
 
+  private final JMenuItem applyQCToVCF;
   private final JMenuItem loadVCF;
   private final JMenuItem loadGenotype;
   private final JMenuItem loadSession;
@@ -40,17 +46,20 @@ public class ClientWindow extends JFrame {
   private final JMenuItem quit;
   private final JMenuItem connect;
   private final JMenuItem startSession;
+  private final JMenuItem showTPSLog;
   private final JMenuItem getResults;
 
   private final LoggingPanel loggingPanel;
   private final ConnectionPane connectionPane;
   private final CriteriaPane criteriaPane;
   private final ResultsPane resultsPane;
+  private final TPSLogWindow tpsLogWindow;
   private final FileExtensionChooser fcVCF;
   private final FileExtensionChooser fcGenotypes;
   private final FileExtensionChooser fcPRIVG;
   private final FileExtensionChooser fcRESULTS;
   private final FileExtensionChooser fcBedFile;
+  private final FileExtensionChooser fcQCParam;
   private final FileExtensionChooser fcExclusion;
   private final SessionPanel sessionPanel;
   private final Client client;
@@ -68,6 +77,7 @@ public class ClientWindow extends JFrame {
     this.sessionPanel = new SessionPanel(this.client.getSession(), this);
     this.loggingPanel = new LoggingPanel();
     this.client.addLogListener(loggingPanel);
+    this.applyQCToVCF = new JMenuItem(GUI.CW_MI_APPLY_QC_VCF);
     this.loadVCF = new JMenuItem(GUI.CW_MI_LOAD_VCF);
     this.loadGenotype = new JMenuItem(GUI.CW_MI_LOAD_GENO);
     this.loadSession = new JMenuItem(GUI.CW_MI_LOAD_SSS);
@@ -76,15 +86,18 @@ public class ClientWindow extends JFrame {
     this.quit = new JMenuItem(GUI.CW_MI_QUIT);
     this.connect = new JMenuItem(GUI.CW_MI_CONNECT);
     this.startSession = new JMenuItem(GUI.CW_MI_NEW_SSS);
+    this.showTPSLog = new JMenuItem(GUI.CW_MI_SHOW_TPS);
     this.getResults = new JMenuItem(GUI.CW_MI_GET_RESULTS);
     this.connectionPane = new ConnectionPane();
     this.criteriaPane = new CriteriaPane(this);
     this.resultsPane = new ResultsPane(this);
+    this.tpsLogWindow = new TPSLogWindow();
     this.fcVCF = new FileExtensionChooser(FileFormat.FILE_VCF_EXTENSION, true, startDir);
     this.fcGenotypes = new FileExtensionChooser(FileFormat.FILE_GENO_EXTENSION, true, startDir);
     this.fcPRIVG = new FileExtensionChooser(FileFormat.FILE_SESSION_EXTENSION, false, startDir);
     this.fcRESULTS = new FileExtensionChooser(FileFormat.FILE_RESULTS_EXTENSION, false, startDir);
     this.fcBedFile = new FileExtensionChooser(FileFormat.FILE_BED_EXTENSION, true, startDir);
+    this.fcQCParam = new FileExtensionChooser(FileFormat.FILE_QC_PARAM_EXTENSION, true, startDir);
     this.fcExclusion = new FileExtensionChooser(FileFormat.FILE_EXCLUSION_EXTENSION, true, startDir);
     this.init();
     this.pack();
@@ -100,6 +113,7 @@ public class ClientWindow extends JFrame {
     final JMenuBar bar = new JMenuBar();
     final JMenu file = new JMenu(GUI.CW_MN_FILE);
     final JMenu rpp = new JMenu(GUI.CW_MN_SERVER);
+    file.add(applyQCToVCF);
     file.add(this.loadVCF);
     file.add(this.loadGenotype);
     file.add(this.loadSession);
@@ -109,10 +123,12 @@ public class ClientWindow extends JFrame {
     bar.add(file);
     rpp.add(this.connect);
     rpp.add(this.startSession);
+    rpp.add(this.showTPSLog);
     rpp.add(this.getResults);
     bar.add(rpp);
 
-    this.loadVCF.addActionListener(e -> loadVCF());
+    this.applyQCToVCF.addActionListener(e -> applyQCToVCF());
+    this.loadVCF.addActionListener(e -> loadQCedVCF());
     this.loadGenotype.addActionListener(e -> loadGenotypes());
     this.loadSession.addActionListener(e -> loadSession());
     this.saveSession.addActionListener(e -> saveSession());
@@ -120,6 +136,7 @@ public class ClientWindow extends JFrame {
     this.quit.addActionListener(e -> quit());
     this.connect.addActionListener(e -> connect());
     this.startSession.addActionListener(e -> askSession());
+    this.showTPSLog.addActionListener(e -> showTPSLog());
     this.getResults.addActionListener(e -> getResults());
 
     this.getContentPane().setLayout(new BorderLayout());
@@ -199,9 +216,41 @@ public class ClientWindow extends JFrame {
         return;
     }
 
-    int result = this.criteriaPane.display();
-    if (result == JOptionPane.OK_OPTION)
-      this.waitForSession();
+    boolean run = true;
+    while (run && (JOptionPane.OK_OPTION == this.criteriaPane.display())) {
+      int checkBed = this.criteriaPane.checkBed();
+      int checkQC = this.criteriaPane.checkQC();
+      int checkExcl = this.criteriaPane.checkExcludedVariants();
+
+      if(checkBed == CHECK_OK && checkQC == CHECK_OK && checkExcl == CHECK_OK) {
+        this.waitForSession();
+        run = false;
+      }
+      else {
+        if(checkQC != CHECK_OK){
+          String message = GUI.CRIT_MSG_EMPTY_QC;
+          if(checkQC == CHECK_NOT_FOUND){
+            message = GUI.CRIT_MSG_NOT_FOUND_QC(this.criteriaPane.getQCParamFilename());
+          }
+          JOptionPane.showMessageDialog(this, message, GUI.CRIT_TIT_EMPTY_QC, JOptionPane.ERROR_MESSAGE);
+        } else if(checkExcl != CHECK_OK) {
+          String message = GUI.CRIT_MSG_EMPTY_EXCL;
+          if(checkExcl == CHECK_NOT_FOUND){
+            message = GUI.CRIT_MSG_NOT_FOUND_EXCL(this.criteriaPane.getExcludedVariantsFilename());
+          }
+          JOptionPane.showMessageDialog(this, message, GUI.CRIT_TIT_EMPTY_EXCL, JOptionPane.ERROR_MESSAGE);
+        } else {
+          String message = GUI.CRIT_MSG_EMPTY_BED;
+          if(checkBed == CHECK_NOT_FOUND){
+            message = GUI.CRIT_MSG_NOT_FOUND_BED(this.criteriaPane.getBedFileName());
+          }
+          if(JOptionPane.OK_OPTION == JOptionPane.showConfirmDialog(this, message, GUI.CRIT_TIT_EMPTY_BED, JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE)){
+            this.waitForSession();
+            run = false;
+          }
+        }
+      }
+    }
   }
 
   ProgressDialog newSessionPD;
@@ -213,7 +262,7 @@ public class ClientWindow extends JFrame {
       protected Object doInBackground() {
         try {
           client.setAlgorithm(criteriaPane.getAlgorithm());
-          client.communicationAskSession(criteriaPane.getDataset(), criteriaPane.getMAF(), criteriaPane.getMAFNFE(), criteriaPane.getCsq(), criteriaPane.getLimitToSNVs(), criteriaPane.getBedFileName(), criteriaPane.getExcludedVariantsFilename());
+          client.communicationAskSession(criteriaPane.getDataset(), criteriaPane.getMAF(), criteriaPane.getMAFNFE(), criteriaPane.getCsq(), criteriaPane.getLimitToSNVs(), criteriaPane.getBedFileName(), criteriaPane.getExcludedVariantsFilename(), criteriaPane.getQCParamFilename());
           newSessionPD.done();
           setTitle(GUI.CW_TITLE(client.getSessionId()));
           JOptionPane.showMessageDialog(ClientWindow.this, MSG.cat(GUI.CW_DG_NEW_SESSION, client.getSessionId()), GUI.CW_DG_OK_SESSION, JOptionPane.INFORMATION_MESSAGE);
@@ -232,31 +281,100 @@ public class ClientWindow extends JFrame {
   }
 
   /**
+   * Opens a Dialog to Apply QC
+   */
+  private void applyQCToVCF() {
+    //Get Filenames
+    ApplyQCPane applyQCParam = new ApplyQCPane(fcVCF, fcQCParam);
+    int choice = JOptionPane.showConfirmDialog(this, applyQCParam, GUI.APQC_TITLE, JOptionPane.OK_CANCEL_OPTION);
+    if(choice != JOptionPane.OK_OPTION)
+      return;
+    //ApplyQC
+    String inputVCF = applyQCParam.getInputVCFFilename();
+    String qcParamFilename = applyQCParam.getQCParamFilename();
+    if(inputVCF == null || inputVCF.isEmpty()){
+      JOptionPane.showMessageDialog(this, GUI.APQC_MSG_VCF_NULL, GUI.APQC_TIT_VCF_NULL, JOptionPane.ERROR_MESSAGE);
+      return;
+    }
+
+    if(!FileUtils.exists(inputVCF)){
+      JOptionPane.showMessageDialog(this, GUI.APQC_MSG_VCF_MISSING(inputVCF), GUI.APQC_TIT_VCF_MISSING, JOptionPane.ERROR_MESSAGE);
+      return;
+    }
+
+    if(qcParamFilename == null || qcParamFilename.isEmpty()){
+      JOptionPane.showMessageDialog(this, GUI.APQC_MSG_QC_NULL, GUI.APQC_TIT_QC_NULL, JOptionPane.ERROR_MESSAGE);
+      return;
+    }
+
+    if(!FileUtils.exists(qcParamFilename)){
+      JOptionPane.showMessageDialog(this, GUI.APQC_MSG_QC_MISSING(qcParamFilename), GUI.APQC_TIT_QC_MISSING, JOptionPane.ERROR_MESSAGE);
+      return;
+    }
+
+    QCParam qcParam;
+    try {
+      qcParam = new QCParam(qcParamFilename);
+    } catch(IOException | QualityControl.QCException e) {
+      //TODO Fail POPUP / LOG
+      return;
+    }
+
+    final ProgressDialog pd = new ProgressDialog(this, GUI.CW_APPLYING_QC_TITLE, GUI.CW_APPLYING_QC_NORTH, GUI.CW_APPLYING_QC_SOUTH);
+    pd.setWorker(new SwingWorker() {
+      @Override
+      protected Object doInBackground() {
+        //dlg.setVisible(true);
+        boolean success = client.applyQC(inputVCF, qcParamFilename);
+        if (success)
+          JOptionPane.showMessageDialog(ClientWindow.this, GUI.CW_DG_MSG_OK_QC, GUI.CW_DG_OK_QC, JOptionPane.INFORMATION_MESSAGE);
+        else
+          JOptionPane.showMessageDialog(ClientWindow.this, MSG.cat(GUI.CW_DG_MSG_KO_QC, client.getLastError()), GUI.CW_DG_KO_QC, JOptionPane.ERROR_MESSAGE);
+        pd.done();
+        return null;
+      }
+
+      @Override
+      protected void done() {
+        //Extract as genotype File
+        loadQCedVCF(FileUtils.getQCVCFFilename(inputVCF, qcParam));
+      }
+    });
+
+  }
+
+  /** load a VCF File
+   *
+   */
+  private void loadQCedVCF(String vcfFilename){
+    /*if (JOptionPane.OK_OPTION != JOptionPane.showConfirmDialog(this, GUI.CW_DG_MSG_CONVERT(vcfFilename), GUI.CW_DG_CONVERT, JOptionPane.ERROR_MESSAGE))
+      return;
+    */
+
+    final ProgressDialog pd = new ProgressDialog(this, GUI.CW_CONVERTING_TITLE, GUI.CW_CONVERTING_NORTH, GUI.CW_CONVERTING_SOUTH);
+    pd.setWorker(new SwingWorker() {
+      @Override
+      protected Object doInBackground() {
+        //dlg.setVisible(true);
+        String genotypeFilename = client.convert(vcfFilename);
+        pd.done();
+        if (genotypeFilename != null) {
+          setQCCriteria(new File(genotypeFilename));
+          JOptionPane.showMessageDialog(ClientWindow.this, GUI.CW_DG_MSG_OK_CONVERT, GUI.CW_DG_OK_CONVERT, JOptionPane.INFORMATION_MESSAGE);
+        } else
+          JOptionPane.showMessageDialog(ClientWindow.this, MSG.cat(GUI.CW_DG_MSG_KO_CONVERT, client.getLastError()), GUI.CW_DG_KO_CONVERT, JOptionPane.ERROR_MESSAGE);
+        return null;
+      }
+      });
+  }
+
+  /**
    * Opens a JFileChooser to load a VCF File
    */
-  private void loadVCF() {
-    int returnVal = this.fcVCF.showOpenDialog(this);
-
-    if (returnVal == JFileChooser.APPROVE_OPTION) {
-      File vcfFile = this.fcVCF.getSelectedFile();
-      int doConvert = JOptionPane.showConfirmDialog(this, GUI.CW_DG_MSG_CONVERT(vcfFile.getAbsolutePath()), GUI.CW_DG_CONVERT, JOptionPane.ERROR_MESSAGE);
-      if (doConvert == JOptionPane.OK_OPTION) {
-        final ProgressDialog pd = new ProgressDialog(this, GUI.CW_CONVERTING_TITLE, GUI.CW_CONVERTING_NORTH, GUI.CW_CONVERTING_SOUTH);
-        pd.setWorker(new SwingWorker() {
-          @Override
-          protected Object doInBackground() {
-            //dlg.setVisible(true);
-            boolean success = client.convert(vcfFile.getAbsolutePath());
-            pd.done();
-            if (success)
-              JOptionPane.showMessageDialog(ClientWindow.this, GUI.CW_DG_MSG_OK_CONVERT, GUI.CW_DG_OK_CONVERT, JOptionPane.INFORMATION_MESSAGE);
-            else
-              JOptionPane.showMessageDialog(ClientWindow.this, MSG.cat(GUI.CW_DG_MSG_KO_CONVERT, client.getLastError()), GUI.CW_DG_KO_CONVERT, JOptionPane.ERROR_MESSAGE);
-            return null;
-          }
-        });
-      }
-    }
+  private void loadQCedVCF() {
+    if (JFileChooser.APPROVE_OPTION != this.fcVCF.showOpenDialog(this))
+      return;
+    loadQCedVCF(this.fcVCF.getSelectedFile().getAbsolutePath());
   }
 
   /**
@@ -266,19 +384,39 @@ public class ClientWindow extends JFrame {
     int returnVal = this.fcGenotypes.showOpenDialog(this);
 
     if (returnVal == JFileChooser.APPROVE_OPTION) {
-      File Genotype = this.fcGenotypes.getSelectedFile();
+      File genotype = this.fcGenotypes.getSelectedFile();
 
       final ProgressDialog pd = new ProgressDialog(this, GUI.CW_LOADING_TITLE, GUI.CW_LOADING_NORTH, GUI.CW_LOADING_SOUTH);
       pd.setWorker(new SwingWorker() {
         @Override
         protected Object doInBackground() throws Exception {
-          client.setGenotypeFilename(Genotype.getAbsolutePath());
+          client.setGenotypeFilename(genotype.getAbsolutePath());
+          setQCCriteria(genotype);
           Thread.sleep(Parameters.LOAD_GENOTYPE_DELAY);
           pd.done();
           criteriaPane.setNbVariants(client.getGenotypeFileSize());
           return null;
         }
       });
+    }
+  }
+
+  private void setQCCriteria(File genotypeFile){
+    System.err.println("Trying to set "+genotypeFile);
+    if(FileUtils.isQCFile(genotypeFile)) {
+      String filename = genotypeFile.getAbsolutePath();
+      criteriaPane.setExcludedVariantsFilename(FileUtils.getExcludedVariantFilename(filename, FileFormat.FILE_GENO_EXTENSION));
+      String directory = FileUtils.getDirectory(genotypeFile);
+      String paramFile = FileUtils.getBasename(filename, FileFormat.FILE_GENO_EXTENSION);
+      paramFile = paramFile.split("\\.")[0]+"."+FileFormat.FILE_QC_PARAM_EXTENSION;
+      File genoDir = new File(directory + File.separator + paramFile);
+      if(genoDir.exists() && !genoDir.isDirectory())
+        criteriaPane.setQCParam(genoDir.getAbsolutePath());
+      else {
+        File defaultDir = new File(MSG.GUI_DEFAULT_DIRECTORY + File.separator + paramFile);
+        if(defaultDir.exists() && !defaultDir.isDirectory())
+          criteriaPane.setQCParam(defaultDir.getAbsolutePath());
+      }
     }
   }
 
@@ -321,6 +459,10 @@ public class ClientWindow extends JFrame {
 
   public void alertInfo(String title, String message){
     JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
+  }
+
+  void showTPSLog(){
+    this.tpsLogWindow.display();
   }
 
   /**
@@ -383,6 +525,10 @@ public class ClientWindow extends JFrame {
     }
   }
 
+  public void postTPStatus(TPStatus tpStatus){
+    this.tpsLogWindow.add(tpStatus);
+  }
+
   /**
    * Sends the Data to the RPP. As the transfert might take time, a ProgressDialog is opened
    */
@@ -442,9 +588,9 @@ public class ClientWindow extends JFrame {
     return this.fcBedFile;
   }
 
-  FileExtensionChooser getExclusionDialog() {
-    return this.fcExclusion;
-  }
+  FileExtensionChooser getQCParametersDialog() { return this.fcQCParam; }
+
+  FileExtensionChooser getExclusionDialog() { return this.fcExclusion; }
 
   /**
    * Quits the Window and the Program

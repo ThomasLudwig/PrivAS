@@ -6,6 +6,7 @@ plugins {
 group 'fr.inserm.u1078'
 version Version.getVersion()
 
+
 class Version{
     Version(){
 
@@ -40,5 +41,6 @@ task ensureDirectory {
         mkdir "build/libs"
     }
 }
+
 
 

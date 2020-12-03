@@ -4,13 +4,10 @@ import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
 import fr.inserm.u1078.tludwig.privas.gui.ClientWindow;
 import fr.inserm.u1078.tludwig.privas.messages.*;
-import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
-import fr.inserm.u1078.tludwig.privas.utils.Crypto;
+import fr.inserm.u1078.tludwig.privas.utils.*;
+import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler.GenotypeFileException;
 import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler.HashAndPosition;
 import fr.inserm.u1078.tludwig.privas.listener.ProgressListener;
-import fr.inserm.u1078.tludwig.privas.utils.BedFile;
-import fr.inserm.u1078.tludwig.privas.utils.BedRegion;
-import fr.inserm.u1078.tludwig.privas.utils.VariantExclusionSet;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -108,19 +105,44 @@ public class Client extends Instance {
    * @param vcfFilename the name of the VCF File to convert
    * @return TRUE - if the VCF File was successfully converted
    */
-  public boolean convert(String vcfFilename) {
+  public String convert(String vcfFilename) {
     try {
       this.session.setClientGenotypeFile(null);
-      String outf = GenotypesFileHandler.vcfFilename2GenotypesFilename(vcfFilename);
+      String outFilename = GenotypesFileHandler.vcfFilename2GenotypesFilename(vcfFilename);
       logInfo(MSG.action(MSG.CL_CONVERT_GENO, vcfFilename));
-      GenotypesFileHandler.convertVCF2Genotypes(vcfFilename, outf);
+      GenotypesFileHandler.convertVCF2Genotypes(vcfFilename, outFilename);
       logSuccess(MSG.done(MSG.CL_OK_CONVERT_GENO, getGenotypeFileSize() + ""));
-      this.setGenotypeFilename(outf);
+      this.setGenotypeFilename(outFilename);
 
-      return true;
-    } catch (GenotypesFileHandler.GenotypeFileException | IOException e) {
+      return outFilename;
+    } catch (GenotypeFileException | IOException e) {
       this.lastError = e.getMessage();
       logError(MSG.done(MSG.CL_KO_CONVERT_GENO, vcfFilename, e));
+      logError(e);
+    }
+    return null;
+  }
+
+  /**
+   * Apply a QC Filer on a VCF File
+   * @param inputVCF the input VCF File
+   * @param qcParamFilename the name of the file containing the QC parameters
+   * @return TRUE -if the QC was successful
+   */
+  public boolean applyQC(String inputVCF, String qcParamFilename){
+    String outputVCF = "undefined";
+    try{
+      String message =
+              MSG.cat("input VCF ", inputVCF) +
+              MSG.cat(" QC Param ", qcParamFilename);
+      logInfo(MSG.action(MSG.CL_APPLY_QC, message));
+      QCParam qcParam = new QCParam(qcParamFilename);
+      QualityControl.applyQC(inputVCF, qcParam);
+      outputVCF = FileUtils.getQCVCFFilename(inputVCF, qcParam);
+      logSuccess(MSG.done(MSG.Cl_QC_APPLIED, outputVCF));
+      return true;
+    } catch (QualityControl.QCException | IOException e) {
+      logError(MSG.done(MSG.CL_KO_QC, outputVCF, e));
       logError(e);
     }
     return false;
@@ -305,12 +327,12 @@ public class Client extends Instance {
     }
 
     //Then check is non error message is of the expected type
-    if (!expected.isInstance(reply)) {
+   /* if (!expected.isInstance(reply)) {
       String error = MSG.CL_MSG_EXPECTED_TYPE(reply, expected);
       logError(error);
       this.lastError = error;
       throw new MessageException(error);
-    }
+    }*/
 
     //At last, handle message according to type
     if (reply instanceof AckClientData) {
@@ -324,10 +346,18 @@ public class Client extends Instance {
       return;
     }
 
-    if (reply instanceof SendStatus) {
-      SendStatus status = (SendStatus) reply;
+    if (reply instanceof SendRPPStatus) {
+      SendRPPStatus status = (SendRPPStatus) reply;
       if (this.getSessionId().equals(status.getSession()))
         Client.this.session.setLastRPPStatus(status.getStatus());
+      return;
+    }
+
+    if(reply instanceof SendTPSStatus) {
+      SendTPSStatus status = (SendTPSStatus) reply;
+      if (this.getSessionId().equals(status.getSession()))
+
+        Client.this.window.postTPStatus(status.getStatus());
       return;
     }
 
@@ -407,9 +437,10 @@ public class Client extends Instance {
    * @throws fr.inserm.u1078.tludwig.privas.instances.MessageException
    *
    */
-  public void communicationAskSession(String dataset, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, String bedFilename, String excludedVariantsFileName) throws MessageException {
+  public void communicationAskSession(String dataset, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, String bedFilename, String excludedVariantsFileName, String qcParamFilename) throws MessageException {
     this.excludedVariantsFileName = excludedVariantsFileName;
     BedFile bed;
+    QCParam qcParam;
     this.logDebug("Reading [" + bedFilename + "]");
     try {
       bed = new BedFile(bedFilename);
@@ -421,17 +452,29 @@ public class Client extends Instance {
       throw new MessageException(error, e);
     }
 
+    try {
+      qcParam = new QCParam(qcParamFilename);
+    } catch(IOException | QualityControl.QCException e) {
+      String error = "Unable to Read QC Parameter File File [" + qcParamFilename + "]";
+      logError(error);
+      logError(e);
+      this.lastError = error;
+      throw new MessageException(error, e);
+    }
+
+
     this.logDebug("Asking Session");
     this.session.setSelectedDataset(dataset);
     this.session.setMaxMAF(maxMAF);
     this.session.setMaxMAFNFE(maxMAFNFE);
     this.session.setLeastSevereConsequence(minCSQ);
     this.session.setLimitToSNVs(limitToSNVs);
+    this.session.setQCParam(qcParam);
     this.session.setBedFile(bed);
     logInfo(MSG.action(MSG.CL_NEW_SESSION(dataset, maxMAF, minCSQ, bedFilename, excludedVariantsFileName)));
 
     try {
-      Message reply = this.sendMessage(new AskSession(this.getPublicKeyString(), dataset, maxMAF, maxMAFNFE, minCSQ.split("\\.")[1], limitToSNVs, bed));
+      Message reply = this.sendMessage(new AskSession(this.getPublicKeyString(), dataset, maxMAF, maxMAFNFE, minCSQ.split("\\.")[1], limitToSNVs, bed, qcParam));
       this.logDebug("Reply received");
       this.handleMessage(reply, SendSession.class);
     } catch (MessageException | Message.EmptyParameterException | IOException e) {
@@ -704,7 +747,7 @@ public class Client extends Instance {
             ms = new MessageSocket(rpp, port);
             ms.writeMessage(msg, null);
           }
-          handleMessage(ms.readMessage(), SendStatus.class);
+          handleMessage(ms.readMessage(), SendRPPStatus.class);
           if (first) {
             logSuccess(MSG.done(MSG.cat(MSG.CL_OK_MONITOR, sessionId)));
             first = false;
@@ -719,6 +762,11 @@ public class Client extends Instance {
             ok = false;
             logError(MSG.CL_KO_MONITOR);
             window.reconnect(ok);
+            try {
+              new AskMonitor(sessionId);
+            } catch (Message.EmptyParameterException e) {
+              //ignore
+            }
           }
           try {
             ms = null;

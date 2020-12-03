@@ -3,13 +3,11 @@ package fr.inserm.u1078.tludwig.privas;
 import fr.inserm.u1078.tludwig.privas.algorithms.WSS;
 import fr.inserm.u1078.tludwig.privas.algorithms.WSSHandler;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
+import fr.inserm.u1078.tludwig.privas.documentation.TPSDocumentation;
 import fr.inserm.u1078.tludwig.privas.instances.ThirdPartyServer;
 import fr.inserm.u1078.tludwig.privas.listener.StandardErrorLogger;
 
-import java.io.BufferedReader;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.Random;
 
 /**
@@ -43,6 +41,9 @@ public class TPSRun {
         case MSG.ARG_DEBUG:
           debugTPServer(args);
           break;
+        case MSG.ARG_DOC:
+          doc(args);
+          break;
         case MSG.ARG_KEYGEN:
           generateTPSKeyPair(args);
           break;
@@ -72,6 +73,13 @@ public class TPSRun {
     usageKeygen(false);
     usageComputeWSS(false);
     usageComputeRanksum(false);
+  }
+
+  public static void doc(String[] args) throws Exception {
+    String outFile = "TPS.rst";
+    PrintWriter out = new PrintWriter(new FileWriter(outFile));
+    out.println(TPSDocumentation.getDocumentation());
+    out.close();
   }
 
   /**
@@ -115,7 +123,7 @@ public class TPSRun {
       tps.start(nbCore);
     } catch (Exception e) {
       try {
-        tps.error(MSG.MSG_FAIL_TPS + e.getMessage());
+        tps.statusError(MSG.MSG_FAIL_TPS + e.getMessage());
       } catch (IOException ex) {
         //Ignore
       }
@@ -148,7 +156,7 @@ public class TPSRun {
       tps.debug(nbCore);
     } catch (Exception e) {
       try {
-        tps.error(MSG.MSG_FAIL_TPS + e.getMessage());
+        tps.statusError(MSG.MSG_FAIL_TPS + e.getMessage());
       } catch (IOException ex) {
         //Ignore
       }

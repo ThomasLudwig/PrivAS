@@ -1,7 +1,11 @@
 package fr.inserm.u1078.tludwig.privas;
 
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
+import fr.inserm.u1078.tludwig.privas.documentation.RPPDocumentation;
 import fr.inserm.u1078.tludwig.privas.instances.RPP;
+
+import java.io.FileWriter;
+import java.io.PrintWriter;
 
 
 /**
@@ -33,7 +37,16 @@ public class RPPRun {
     if(args[0].startsWith("-")){
       switch (args[0].toLowerCase()) {
         case MSG.ARG_CONVERT_VCF:
-          Main.convertVCF(args);
+          Main.convertVCF(args, false);
+          break;
+        case MSG.ARG_DOC:
+          doc(args);
+          break;
+        case MSG.ARG_QC:
+          Main.qc(args, false);
+          break;
+        case MSG.ARG_QC_CONV:
+          Main.qcAndConvert(args, false);
           break;
         default:
           usage();
@@ -46,13 +59,28 @@ public class RPPRun {
   /**
    * Prints the various usages of this program
    */
-  private static void usage() { //TODO limit to RPP operations
-    System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_INSTANCES);
-    usageRPP(false);
-    System.err.println();
-    System.err.println(MSG.MSG_TOOLS);
-    Main.usageConvertVCF(false);
+  public static String getUsage() {
+    StringBuilder ret = new StringBuilder();
+    ret.append(MSG.MSG_USAGE).append("\n");
+    ret.append(MSG.MSG_INSTANCES).append("\n");
+    ret.append(usageRPP(false)).append("\n");
+    ret.append("\n");
+    ret.append(MSG.MSG_QC).append("\n");
+    ret.append(Main.usageQualityControl(false, false)).append("\n");
+    ret.append(MSG.MSG_TOOLS).append("\n");
+    ret.append(Main.usageConvertVCF(false, false));
+    return ret.toString();
+  }
+
+  public static void doc(String[] args) throws Exception {
+    String outFile = "RPP.rst";
+    PrintWriter out = new PrintWriter(new FileWriter(outFile));
+    out.println(RPPDocumentation.getDocumentation());
+    out.close();
+  }
+
+  private static void usage() {
+    System.err.println(getUsage());
   }
 
   /**
@@ -60,13 +88,15 @@ public class RPPRun {
    *
    * @param prefix - should print the "Usage :" prefix ?
    */
-  private static void usageRPP(boolean prefix) {
+  private static String usageRPP(boolean prefix) {
+    StringBuilder ret = new StringBuilder();
     if (prefix)
-      System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_DESC_RPP);
-    System.err.println(MSG.MSG_CMD_RPP);
+      ret.append(MSG.MSG_USAGE).append("\n");
+    ret.append(MSG.MSG_DESC_RPP).append("\n");
+    ret.append(MSG.MSG_CMD_RPP).append("\n");
     if (prefix)
-      System.err.println(MSG.MSG_EXTRA_RPP);
+      ret.append(MSG.MSG_EXTRA_RPP);
+    return ret.toString();
   }
 
   /**
