@@ -1,15 +1,11 @@
 package fr.inserm.u1078.tludwig.privas.documentation;
 
-import fr.inserm.u1078.tludwig.privas.Main;
-import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
-
 /**
  * Generates an Up-to-date documentation for the TPS
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-11-28
- * Checked for release on XXXX-XX-XX
- * Unit Test defined on   XXXX-XX-XX
+ * Checked for release on 2020-11-28
  */
 public class TPSDocumentation extends Documentation {
   public static String getDocumentation() {
@@ -75,7 +71,7 @@ public class TPSDocumentation extends Documentation {
                     "jar=/path/to/PrivAS.TPS.VERSION.jar",
                     "core=24",
                     "seed=\"random\" #random seed for Production",
-                    "#seed=\"123456789\" #fixed seed for Debuging",
+                    "#seed=\"123456789\" #fixed seed for Debugging",
                     "d=`date +\"%Y-%m-%d\"`;",
                     "log=$installDir/log/$d.log",
                     "mkdir -p $installDir/sessions/$session;",

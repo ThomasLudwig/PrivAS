@@ -1,8 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.gui;
 
-import fr.inserm.u1078.tludwig.privas.constants.GUI;
-import fr.inserm.u1078.tludwig.privas.utils.QCParam;
-import fr.inserm.u1078.tludwig.privas.utils.QualityControl;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import javax.swing.*;
 import java.awt.*;

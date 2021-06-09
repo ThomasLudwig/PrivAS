@@ -5,6 +5,7 @@ import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.utils.*;
 import fr.inserm.u1078.tludwig.privas.listener.SessionListener;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -156,7 +157,7 @@ public class ClientSession {
   }
 
   /**
-   * Registers a Session Listner, which will be alerted if some Session's parameters change<p>
+   * Registers a Session Listener, which will be alerted if some Session's parameters change<p>
    * Mainly used to update GUI in real time
    *
    * @param sessionListener

@@ -37,7 +37,7 @@ public abstract class Instance {
   }
 
   /**
-   * Logs a successfull operation message
+   * Logs a successful operation message
    *
    * @param message
    */

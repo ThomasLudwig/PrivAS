@@ -3,8 +3,9 @@ package fr.inserm.u1078.tludwig.privas;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.utils.FileUtils;
 import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
-import fr.inserm.u1078.tludwig.privas.utils.QCParam;
-import fr.inserm.u1078.tludwig.privas.utils.QualityControl;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QualityControl;
 
 import java.io.*;
 
@@ -105,7 +106,7 @@ public final class Main {
       String qcParamFile = args[2];
       QCParam qcParam = new QCParam(qcParamFile);
       QualityControl.applyQC(inVCF, qcParam);
-    } catch (QualityControl.QCException | IOException | ArrayIndexOutOfBoundsException e) {
+    } catch (QCException | IOException | ArrayIndexOutOfBoundsException e) {
       System.err.println(MSG.MSG_FAIL_QC + e.getClass() + " " + e.getMessage());
       usageQualityControl(true, client);
     }

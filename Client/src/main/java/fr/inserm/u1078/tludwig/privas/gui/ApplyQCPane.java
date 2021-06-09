@@ -35,7 +35,7 @@ public class ApplyQCPane extends JPanel {
     JButton inputVCFButton = new JButton(GUI.CHOOSE);
     JButton qcParamButton = new JButton(GUI.CHOOSE);
     JButton qcParamCreateButton = new JButton(GUI.CREATE);
-    JButton outputVCFButton = new JButton(GUI.CHOOSE);
+    //JButton outputVCFButton = new JButton(GUI.CHOOSE);
 
     inputVCFButton.addActionListener(e -> chooseInputVCF());
     qcParamButton.addActionListener(e -> chooseQCParam());

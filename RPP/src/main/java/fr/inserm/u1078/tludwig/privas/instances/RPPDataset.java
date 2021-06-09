@@ -1,7 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.instances;
 
-import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.utils.*;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,14 +19,12 @@ import java.security.NoSuchAlgorithmException;
 public class RPPDataset {
   private final String name;
   private final String vcfFilename;
-  private final int vcfSize;
   private final String bedFilename;
 
 
-  private RPPDataset(String name, String vcfFilename, int vcfSize, String bedFilename) {
+  private RPPDataset(String name, String vcfFilename, String bedFilename) {
     this.name = name;
     this.vcfFilename = vcfFilename;
-    this.vcfSize = vcfSize;
     this.bedFilename = bedFilename;
   }
 
@@ -44,17 +42,17 @@ public class RPPDataset {
     String vcfFilename = f[1];
     checkFile(vcfFilename, "VCF File");
     //vcf size
-    int vcfSize;
+   /* int vcfSize;
     try{
       vcfSize = Integer.parseInt(f[2]);
     } catch(NumberFormatException e){
       throw new RPP.ConfigFileParsingException("Could not read VCF size ["+f[2]+"].", e);
-    }
+    }*/
     //bed file
     String bedFilename = f[3];
     checkFile(bedFilename, "Bed File");
 
-    return new RPPDataset(f[0], f[1], Integer.parseInt(f[2]), f[3]);
+    return new RPPDataset(name, vcfFilename, bedFilename);
   }
 
   public static void checkFile(String filename, String type) throws RPP.ConfigFileParsingException {
@@ -75,7 +73,7 @@ public class RPPDataset {
   }
 
   public VariantExclusionSet getVariantExclusionSet(String sessionHash, int qcHashCode) throws NoSuchAlgorithmException, InvalidKeyException, IOException {
-    return new VariantExclusionSet(this.getExcludedVariantFilename(qcHashCode), sessionHash); //TODO move RPPDataset?
+    return new VariantExclusionSet(this.getExcludedVariantFilename(qcHashCode), sessionHash);
   }
 
   public BedFile getBedFile() throws IOException, BedRegion.BedRegionException {

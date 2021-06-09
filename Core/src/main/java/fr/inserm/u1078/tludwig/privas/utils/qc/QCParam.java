@@ -1,6 +1,5 @@
-package fr.inserm.u1078.tludwig.privas.utils;
+package fr.inserm.u1078.tludwig.privas.utils.qc;
 
-import javax.swing.*;
 import java.io.*;
 import java.util.Objects;
 
@@ -55,7 +54,7 @@ public class QCParam {
   public static final String KEY_MAX_DP              = "MAX_DP";
   public static final String KEY_MIN_CALLRATE        = "MIN_CALLRATE";
   //public static final String KEY_MIN_HQ_RATIO        = "MIN_HQ_RATIO";
-  //public static final String KEY_MIN_ALT_HQ          = "MIN_ALT_HQ"; //TODO not implementable in a distributed QC
+  //public static final String KEY_MIN_ALT_HQ          = "MIN_ALT_HQ"; //not implementable in a distributed QC
   public static final String KEY_MIN_FISHER_CALLRATE = "MIN_FISHER_CALLRATE";
 
   public static final double DEF_MIN_QD = 2;
@@ -109,7 +108,7 @@ public class QCParam {
 
   }
 
-  public QCParam(String filename) throws IOException, QualityControl.QCException{
+  public QCParam(String filename) throws IOException, QCException{
     BufferedReader in = new BufferedReader(new FileReader(filename));
     String line;
     while((line = in.readLine()) != null){
@@ -118,7 +117,7 @@ public class QCParam {
     in.close();
   }
 
-  public void process(String line) throws QualityControl.QCException {
+  public void process(String line) throws QCException {
     if(line == null)
       return;
     if(line.isEmpty())
@@ -202,7 +201,7 @@ public class QCParam {
     return sb.toString();
   }
 
-  public static QCParam deserialize(String content) throws QualityControl.QCException {
+  public static QCParam deserialize(String content) throws QCException {
     QCParam qcParam = new QCParam();
     for(String s : content.split(FIELD_SEP)){
       String[] kv = s.split(KV_SEP);
@@ -214,12 +213,12 @@ public class QCParam {
   public void unsafeSetValue(String key, String asString){
     try {
       this.setValue(key, asString);
-    } catch (QualityControl.QCException ignore) {
+    } catch (QCException ignore) {
       //Ignore
     }
   }
 
-  public void setValue(String key, String asString) throws QualityControl.QCException {
+  public void setValue(String key, String asString) throws QCException {
     double value = parse(asString);
     switch(key){
       case KEY_MIN_QD :
@@ -283,7 +282,7 @@ public class QCParam {
         this.setMinFisherCallrate(value);
         break;
       default :
-        throw new QualityControl.QCException("Unexpected key ["+key+"] value {"+asString+"}");
+        throw new QCException("Unexpected key ["+key+"] value {"+asString+"}");
     }
   }
 

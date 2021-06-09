@@ -15,7 +15,7 @@ import java.net.Socket;
 import java.util.HashMap;
 
 /**
- * Socket between two instances (Client and RPP) that serves to transfert Message object between both parties
+ * Socket between two instances (Client and RPP) that serves to transfer Message object between both parties
  * There should be one instance of MessageSocket per Message, except for Monitoring Messages that will keep the socket open
  *
  * @author Thomas E. Ludwig (INSERM - U1078) 2019-02-01
@@ -40,7 +40,7 @@ public class MessageSocket {
   /**
    * Actual Constructor
    *
-   * @param socket the embeded socket
+   * @param socket the embedded socket
    * @throws IOException
    */
   private MessageSocket(Socket socket) throws IOException {
@@ -98,7 +98,7 @@ public class MessageSocket {
   }
 
   /**
-   * Updates the task progression on a optionnal ProgressDialog
+   * Updates the task progression on a optional ProgressDialog
    *
    * @param progressListener the ProgressListener to update
    * @param percent          the Progression in percent
@@ -112,7 +112,7 @@ public class MessageSocket {
    * Writes a Message to the Socket
    *
    * @param message          the message
-   * @param progressListener an optionnal ProgressListener to keep updated of the writting progression
+   * @param progressListener an optional ProgressListener to keep updated of the writing progression
    * @throws IOException
    */
   public void writeMessage(Message message, ProgressListener progressListener) throws IOException {
@@ -159,10 +159,11 @@ public class MessageSocket {
    * @throws MessageException
    */
   public Message readMessage() throws IOException, MessageException {
-    String type = is.readUTF();
-    HashMap<String, String> kv = new HashMap<>();
-    String keyList = is.readUTF();
     try {
+      String type = is.readUTF();
+      HashMap<String, String> kv = new HashMap<>();
+      String keyList = is.readUTF();
+
       if (keyList.length() > 1) {
         String[] keys = keyList.split(",");
         int[] blocks = new int[keys.length];

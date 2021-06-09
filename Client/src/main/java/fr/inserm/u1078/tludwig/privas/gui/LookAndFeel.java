@@ -1,9 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.gui;
 
-import com.jtattoo.plaf.DecorationHelper;
 import com.jtattoo.plaf.hifi.HiFiLookAndFeel;
 import java.awt.Color;
-import java.util.HashMap;
 import java.util.Properties;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;

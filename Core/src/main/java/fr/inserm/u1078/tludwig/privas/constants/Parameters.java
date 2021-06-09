@@ -21,7 +21,7 @@ public class Parameters {
   public static final int RPP_TP_TO_CLIENT_REFRESH_DELAY = 40;
 
   /**
-   * Delay in ms when RPP checks completion of writting of Client Data (received by another thread)
+   * Delay in ms when RPP checks completion of writing of Client Data (received by another thread)
    */
   public static final int RPP_RECEIVER_REFRESH_DELAY = 1000;
   
@@ -31,12 +31,12 @@ public class Parameters {
   public static final int CLIENT_RECONNECT_DELAY = 1000;
 
   /**
-   * Delay in ms when RPP checks completion of writting of Results File (through ssh)
+   * Delay in ms when RPP checks completion of writing of Results File (through ssh)
    */
   public static final int SP_RESULT_GETTER_REFRESH_DELAY = 1000;
 
   /**
-   * Delay in ms when RPP sends the Client its first RRPStatus (as a Message). Allows for the socket to be registred
+   * Delay in ms when RPP sends the Client its first RRPStatus (as a Message). Allows for the socket to be registered
    */
   public static final int RPP_MONITOR_FIRST_DELAY = 2000;
   
@@ -76,7 +76,7 @@ public class Parameters {
   /**
    * The default RPP Server's address
    */
-  public static final String RPP_DEFAULT_ADDRESS = "alanine.univ-brest.fr";
+  public static final String RPP_DEFAULT_ADDRESS = "lysine.univ-brest.fr";
   /**
    * The default RPP Server's port
    */

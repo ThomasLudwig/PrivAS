@@ -2,7 +2,7 @@ package fr.inserm.u1078.tludwig.privas.instances;
 
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 import fr.inserm.u1078.tludwig.privas.utils.Crypto;
-import fr.inserm.u1078.tludwig.privas.algorithms.WSSHandler;
+import fr.inserm.u1078.tludwig.privas.algorithms.wss.WSSHandler;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
@@ -40,6 +40,10 @@ import java.util.HashMap;
  * Javadoc complete on 2019-08-06
  */
 public class ThirdPartyServer extends Instance {
+
+  public static final int IDX_VARIANT = 0;
+  public static final int IDX_GENE = 1;
+  public static final int IDX_GENOTYPE = 2;
 
   /**
    * The directory containing the session's file
@@ -191,9 +195,6 @@ public class ThirdPartyServer extends Instance {
         }
         if (permutation != -1) {
           HashMap<String, ArrayList<String>> genotypes = prepareWSSData(frqThreshold);
-          
-          
-          
           WSSHandler wssHandler = new WSSHandler(permutation, nbThreads, randomSeed);
           wssHandler.setThirdPartyServer(this);
           if (genotypes == null) {
@@ -368,8 +369,7 @@ public class ThirdPartyServer extends Instance {
     VariantExclusionSet clientExcludedVariants = VariantExclusionSet.deserialize(Crypto.decryptAES(aesKey, in.readLine()));
     in.close();
     rppExcludedVariants.add(clientExcludedVariants);
-    //VariantExclusionSet clientExcludedVariants = VariantExclusionSet.deserialize(clientEx.filename);    
-    
+
     HashMap<String, ArrayList<String>> clientData = readClientData(rppExcludedVariants);
     HashMap<String, ArrayList<String>> rppData = readRPPData(rppExcludedVariants);
     int clientGenes = clientData.keySet().size();
@@ -381,33 +381,40 @@ public class ThirdPartyServer extends Instance {
     
     statusStarted(MSG.cat(MSG.WSS_RPP_VARIANTS, rppVariants), false);
     statusStarted(MSG.cat(MSG.WSS_RPP_GENES, rppGenes), false);
+
+    //Here we limit the tests to common genes (genes with at least 1 variant in both sets)
     ArrayList<String> genes = getCommonGenes(clientData, rppData);
     statusStarted(MSG.cat(MSG.WSS_COMMON_GENES, genes.size()), false);
 
     if (genes.size() > 0) {
+      //here we get the number of affected/unaffected samples
+      //and create a line of missing genotypes
       nbAffected = clientData.get(genes.get(0)).get(0).split("\t").length - 2;
       nbUnaffected = rppData.get(genes.get(0)).get(0).split("\t").length - 2;
-      String missingCases = missingLine(nbAffected);
-      String missingControl = missingLine(nbUnaffected);
-      HashMap<String, ArrayList<String>> genotypes = new HashMap<>();
+      final String missingCases = missingLine(nbAffected);
+      final String missingControl = missingLine(nbUnaffected);
 
+      //here we populate the genotypes for each variant in each gene
+      HashMap<String, ArrayList<String>> genotypes = new HashMap<>();
       statusStarted(MSG.WSS_OK_PARSE, true);
-      int filtered = 0;
+      int pooledFrequencyFiltered = 0;
       failedFisher = 0;
       for (String gene : genes) {
+        //key=variant, value=tab delimited genotypes
         HashMap<String, String> variantLineCase = extractVariantLines(clientData.get(gene));
         HashMap<String, String> variantLineControl = extractVariantLines(rppData.get(gene));
+
         ArrayList<String> merge = merge(variantLineCase, variantLineControl, missingCases, missingControl);
-        
-        filtered += removeAlleleFrequency(merge, nbAffected, frqThreshold);
+        pooledFrequencyFiltered += removeAlleleFrequency(merge, frqThreshold);
 
         if(!merge.isEmpty())
           genotypes.put(gene, merge);
       }
-      statusStarted(MSG.cat(MSG.WSS_FILTERED_FREQUENCY, filtered), false);
+      statusStarted(MSG.cat(MSG.WSS_FILTERED_FREQUENCY, pooledFrequencyFiltered), false);
       statusStarted(MSG.cat(MSG.WSS_FILTERED_FISHER, failedFisher), false);
       statusStarted(MSG.WSS_OK_FILTER, true);
-      //TODO debug export input data !
+
+      //debug export input data !
       export(genotypes);
       
       return genotypes;
@@ -415,25 +422,28 @@ public class ThirdPartyServer extends Instance {
     statusRunning(MSG.WSS_NO_DATA, false);
     return null;
   }
-  
-  private int removeAlleleFrequency(ArrayList<String> lines, int nbAffected, double frq){
-    ArrayList<String> filtered = new ArrayList<>();
-    for(String line : lines){
-      String[] f=  line.split("\t");
-      double an = 0;
-      double ac = 0;
-      //for(int i = nbAffected; i < f.length; i++){
-        //String g = f[i];
-      for(String g : f){
-        int v = new Integer(g);
-        if(v != -1){
-          an += 2;
-          ac += v;
-        }
+
+  private boolean filterPooledFrequency(String line, double frq){
+    String[] f=  line.split("\t");
+    double an = 0;
+    double ac = 0;
+
+    for(String g : f){
+      int v = new Integer(g);
+      if(v != -1){
+        an += 2;
+        ac += v;
       }
-      if(ac/an > frq)
-        filtered.add(line);
     }
+    return ac/an > frq;
+  }
+
+  private int removeAlleleFrequency(ArrayList<String> lines, double frq){
+    ArrayList<String> filtered = new ArrayList<>();
+    for(String line : lines)
+      if(filterPooledFrequency(line, frq))
+        filtered.add(line);
+
     lines.removeAll(filtered);
     return filtered.size();
   }
@@ -471,13 +481,13 @@ public class ThirdPartyServer extends Instance {
   private ArrayList<String> merge(HashMap<String, String> vAffected, HashMap<String, String> vUnaffected, String missingAffected, String missingUnaffected) {
     ArrayList<String> merge = new ArrayList<>();
     FisherExactTest fet = null;
-    for (String variant : vAffected.keySet()) {
+
+    for (String variant : vAffected.keySet()) { //process all client variants
       String lCase = vAffected.get(variant);
       String lControl = vUnaffected.get(variant);
-      if (lControl == null)
+      if (lControl == null) //add if only on the client's side
         merge.add(lCase + "\t" + missingUnaffected);
-        //lControl = missingUnaffected;
-      else { 
+      else {  // if variant is common to both groups, perform a fisher test
         if(fet == null)
           fet = new FisherExactTest(lCase.split("\t").length + lControl.split("\t").length);
         if(checkCallrate(fet, lCase, lControl))
@@ -486,7 +496,8 @@ public class ThirdPartyServer extends Instance {
           failedFisher++;
       }
     }
-    for (String variant : vUnaffected.keySet()) 
+
+    for (String variant : vUnaffected.keySet()) //process rpp variants that aren't common to client
       if (vAffected.get(variant) == null) 
         merge.add(missingAffected + "\t" + vUnaffected.get(variant));      
     
@@ -525,7 +536,7 @@ public class ThirdPartyServer extends Instance {
   }
 
   /**
-   * Builds a Map associationg a genomic region (gene) as Key to as line of genotypes as value
+   * Builds a Map associating a genomic region (gene) as Key to as line of genotypes as value
    *
    * @param lines lines from a Genotype File
    * @return
@@ -535,11 +546,9 @@ public class ThirdPartyServer extends Instance {
     for (String line : lines) {
       String[] f = line.split("\t");
       StringBuilder sb = new StringBuilder();
-      for (int j = 2; j < f.length; j++) {
-        sb.append("\t");
-        sb.append(f[j]);
-      }
-      map.put(f[0], sb.substring(1));
+      for (int j = IDX_GENOTYPE; j < f.length; j++)
+        sb.append("\t").append(f[j]);
+      map.put(f[IDX_VARIANT], sb.substring(1));
     }
     return map;
   }
@@ -556,13 +565,13 @@ public class ThirdPartyServer extends Instance {
     UniversalReader in = new UniversalReader(this.rppFilename);
     while ((line = in.readLine()) != null) {
       String[] f = line.split("\t");
-      if(!excluded.contains(f[0])){
-        ArrayList<String> lines = map.containsKey(f[1])
-                ? map.get(f[1])
+      if(!excluded.contains(f[IDX_VARIANT])){
+        ArrayList<String> lines = map.containsKey(f[IDX_GENE])
+                ? map.get(f[IDX_GENE])
                 : new ArrayList<>();
 
         lines.add(line);
-        map.put(f[1], lines);
+        map.put(f[IDX_GENE], lines);
       }
     }
     in.close();
@@ -582,12 +591,12 @@ public class ThirdPartyServer extends Instance {
     HashMap<String, ArrayList<String>> map = new HashMap<>();
     for (String line : Crypto.decryptAES(aesKey, in.readLine()).split("\n")) {
       String[] f = line.split("\t");
-      if(!excluded.contains(f[0])){
-        ArrayList<String> lines = map.containsKey(f[1])
-                ? map.get(f[1])
+      if(!excluded.contains(f[IDX_VARIANT])){
+        ArrayList<String> lines = map.containsKey(f[IDX_GENE])
+                ? map.get(f[IDX_GENE])
                 : new ArrayList<>();
         lines.add(line);
-        map.put(f[1], lines);
+        map.put(f[IDX_GENE], lines);
       }
     }
     return map;

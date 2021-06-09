@@ -59,6 +59,12 @@ public class MSG {
   public static final String RPP_DESC_TPS_LAUNCH_COMMAND = "Third-Party Server Launch_command";
   public static final String RPP_DESC_TPS_GETKEY_COMMAND = "Third-Party Server Get_Key_command";
   public static final String RPP_DESC_TPS_SESSION_DIR = "Third-Party Server session directory";
+  public static final String RPP_DESC_CONNECTION_LOG = "File containing the connection log";
+  public static final String RPP_DESC_BACKLIST = "List of blacklisted addresses or ranges";
+  public static final String RPP_DESC_WHITELIST = "List of whitelisted addresses or ranges";
+  public static final String RPP_DESC_MAX_PER_DAY = "Maximum number of connections per day from the same address";
+  public static final String RPP_DESC_MAX_PER_WEEK = "Maximum number of connections per week from the same address";
+  public static final String RPP_DESC_MAX_PER_MONTH = "Maximum number of connections per month from the same address";
 
   public static final String RPP_SYNTAX_PORT = FileFormat.RPP_TAG_PORT + "<TAB>Integer";
   public static final String RPP_SYNTAX_DATA = FileFormat.RPP_TAG_DATA + "<TAB>Name1:datafile1(.gz),Name2:datafile2(.gz),...,NameN:datafileN(.gz)";
@@ -70,6 +76,12 @@ public class MSG {
   public static final String RPP_SYNTAX_TPS_LAUNCH_COMMAND = FileFormat.RPP_TAG_TPS_LAUNCH_COMMAND + "<TAB>launch_command_or_path_to_script";
   public static final String RPP_SYNTAX_TPS_GETKEY_COMMAND = FileFormat.RPP_TAG_TPS_GETKEY_COMMAND + "<TAB>get_rsa_public_key_command_or_path_to_script";
   public static final String RPP_SYNTAX_TPS_SESSION_DIR = FileFormat.RPP_TAG_TPS_SESSION_DIR + "<TAB>path_to_directory";
+  public static final String RPP_SYNTAX_CONNECTION_LOG = FileFormat.RPP_TAG_CONNECTION_LOG + "<TAB>path_to_file";
+  public static final String RPP_SYNTAX_BLACKLIST = FileFormat.RPP_TAG_BLACKLIST + "<TAB>comma-separated_addresses_or_ranges";
+  public static final String RPP_SYNTAX_WHITELIST = FileFormat.RPP_TAG_WHITELIST + "<TAB>comma-separated_addresses_or_ranges";
+  public static final String RPP_SYNTAX_MAX_PER_DAY = FileFormat.RPP_TAG_MAX_PER_DAY + "<TAB>number_of_connections (0 for unlimited)";
+  public static final String RPP_SYNTAX_MAX_PER_WEEK = FileFormat.RPP_TAG_MAX_PER_WEEK + "<TAB>number_of_connections (0 for unlimited)";
+  public static final String RPP_SYNTAX_MAX_PER_MONTH = FileFormat.RPP_TAG_MAX_PER_MONTH + "<TAB>number_of_connections (0 for unlimited)";
 
   public static final String RPP_ERR_CONFIG = "Unable to read Configuration File";
   public static final String RPP_ERR_DELETE = "Failed to delete";
@@ -137,9 +149,9 @@ public class MSG {
   public static final String CL_KO_RESULTS = "Failed to received result";
 
   public static final String CL_SEND_EMPTY = "Can't send empty data";
-  public static final String CL_SEND = "Transfering data to RPP";
+  public static final String CL_SEND = "Transferring data to RPP";
   public static final String CL_OK_SEND = "Data received by the RPP";
-  public static final String CL_KO_SEND = "Data transfert failed";
+  public static final String CL_KO_SEND = "Data transfer failed";
 
   public static final String CL_EXTRACT = "Extracting and Hashing Data";
   public static final String CL_OK_EXTRACT = "Extraction complete";
@@ -272,7 +284,7 @@ public class MSG {
   public static final String WH_START= "Start Association Tests";
   
   public static final String WH_END= "Computation complete. All genes have been processed in";
-  public static final String WH_END(long start, long end) {
+  public static String WH_END(long start, long end) {
     return WH_END + " " + (end-start)/1000D + "s";
   }
   
@@ -417,9 +429,9 @@ public class MSG {
   public static final String MSG_CMD_QC_CONV_CLIENT = T + MSG_CMD_JAVA_CLIENT + " " + MSG.ARG_QC_CONV + " input.vcf(.gz)";
   public static final String MSG_CMD_QC_CONV_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_QC_CONV + " input.vcf(.gz)";
 
-  public static final String MSG_DESC_WSS = "- Compute a WSS Association Test (localy):";
+  public static final String MSG_DESC_WSS = "- Compute a WSS Association Test (locally):";
   public static final String MSG_CMD_WSS = T + MSG_CMD_JAVA_TPS + MSG.ARG_WSSKEY
-          + " genetype_files.lst"
+          + " genotype_files.lst"
           + " phenotypes.tsv"
           + " NB_CORES"
           + " RANDOM_SEED"

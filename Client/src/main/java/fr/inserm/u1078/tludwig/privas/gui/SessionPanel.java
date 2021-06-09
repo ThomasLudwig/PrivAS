@@ -26,7 +26,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 /**
- * Main Panel of the Client GUI Window. Displays all the informations relative to a Session
+ * Main Panel of the Client GUI Window. Displays all the information relative to a Session
  * @author Thomas E. Ludwig (INSERM - U1078) 2019-02-11
  */
 public class SessionPanel extends JPanel implements SessionListener {
@@ -137,14 +137,14 @@ public class SessionPanel extends JPanel implements SessionListener {
    */
   public SessionPanel(ClientSession session, ClientWindow clientWindow) {
     super();
-    final int nbrow = 3;
-    final int nbcol = 98;
+    final int nbRow = 3;
+    final int nbCol = 98;
     
     this.clientWindow = clientWindow;
     this.sessionID = new JTextField();
     this.hashKey = new JTextField();
-    this.publicKey = new JTextArea(nbrow, nbcol);
-    this.privateKey = new JTextArea(nbrow, nbcol);
+    this.publicKey = new JTextArea(nbRow, nbCol);
+    this.privateKey = new JTextArea(nbRow, nbCol);
     this.aes = new JTextField();
     this.dataset = new JTextField();
     this.maf = new JTextField();
@@ -153,7 +153,7 @@ public class SessionPanel extends JPanel implements SessionListener {
     this.limitToSNVs = new JCheckBox("", true);
     this.rpp = new JTextField();
     this.tpsName = new JTextField();
-    this.thirdParty = new JTextArea(nbrow, nbcol);
+    this.thirdParty = new JTextArea(nbRow, nbCol);
     this.algorithm = new JTextField();
     this.rppStatus = new JTextField();
     this.genotypeFile = new JTextField();
@@ -214,8 +214,8 @@ public class SessionPanel extends JPanel implements SessionListener {
     JScrollPane publicKeySP = new JScrollPane();
     JScrollPane privateKeySP = new JScrollPane();
     JScrollPane thirdPartySP = new JScrollPane();
-    genotypeFile.setBackground(LookAndFeel.TEXT_BG_COLOR); //TODO don't understand with it isn't already done be L&F
-    publicKey.setBackground(LookAndFeel.TEXT_BG_COLOR); //TODO don't understand with it isn't already done be L&F
+    genotypeFile.setBackground(LookAndFeel.TEXT_BG_COLOR); //don't understand why it isn't already done by L&F
+    publicKey.setBackground(LookAndFeel.TEXT_BG_COLOR); //don't understand why it isn't already done by L&F
     publicKeySP.setViewportView(publicKey);
     privateKey.setBackground(LookAndFeel.TEXT_BG_COLOR);
     privateKeySP.setViewportView(privateKey);
@@ -298,7 +298,7 @@ public class SessionPanel extends JPanel implements SessionListener {
   }
 
   /**
-   * Sets a ToolTipText to a component and all its chidren components
+   * Sets a ToolTipText to a component and all its children components
    * @param c - the component to affect
    * @param text the Tool Tip Text
    */
@@ -313,7 +313,7 @@ public class SessionPanel extends JPanel implements SessionListener {
   /**
    * <ol>
    * <li>Adds a Component to a JPanel
-   * <li>Surrend the component with a TitledBorder
+   * <li>Surround the component with a TitledBorder
    * <li>Affect the Component with a Tool Tip Text
    * </ol>
    * @param panel the parent JPanel

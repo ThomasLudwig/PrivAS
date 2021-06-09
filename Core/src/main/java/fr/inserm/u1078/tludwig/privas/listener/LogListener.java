@@ -36,7 +36,7 @@ public interface LogListener {
   void logError(String message);
 
   /**
-   * Logs a successfull operation message
+   * Logs a successful operation message
    *
    * @param message the message to log
    */

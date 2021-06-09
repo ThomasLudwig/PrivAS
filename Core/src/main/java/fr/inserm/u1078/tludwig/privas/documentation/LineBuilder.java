@@ -44,10 +44,10 @@ public class LineBuilder {
   public static String getIndent(int n){
     if(n == TAB_INDENT)
       return T;
-    String r = "";
+    StringBuilder r = new StringBuilder();
     for(int i = 0 ; i < n; i++)
-      r += " ";
-    return r;
+      r.append(" ");
+    return r.toString();
   }
 
   public LineBuilder newLine(){
@@ -107,7 +107,7 @@ public class LineBuilder {
   }
 
   public LineBuilder openHTML(String tag){
-    return openHTML(tag, (String)null, new String[][]{});
+    return openHTML(tag, null, new String[][]{});
   }
 
   public LineBuilder openHTML(String tag, String clas){
@@ -115,7 +115,7 @@ public class LineBuilder {
   }
 
   public LineBuilder openHTML(String tag, String[]... extra){
-    return openHTML(tag, (String)null, extra);
+    return openHTML(tag, null, extra);
   }
 
   public LineBuilder openHTML(String tag, String clas, String[]... extra){
@@ -129,7 +129,7 @@ public class LineBuilder {
   }
 
   public LineBuilder openCloseHTML(String tag){
-    return openCloseHTML(tag, (String)null, new String[][]{});
+    return openCloseHTML(tag, null, new String[][]{});
   }
 
   public LineBuilder openCloseHTML(String tag, String clas){
@@ -137,7 +137,7 @@ public class LineBuilder {
   }
 
   public LineBuilder openCloseHTML(String tag, String[]... extra){
-    return openCloseHTML(tag, (String)null, extra);
+    return openCloseHTML(tag, null, extra);
   }
 
   public LineBuilder openCloseHTML(String tag, String clas, String[]... extra){
@@ -249,12 +249,11 @@ public class LineBuilder {
     for(int line = 0; line < multiLines.length; line++){
       String[][] sameHeight = sameHeight(multiLines[line]);
       int nbLines = sameHeight[0].length;
-      int nbCols = sameHeight.length;
       for(int l = 0 ; l < nbLines; l++) {
         this.append("|");
-        for (int col = 0; col < nbCols; col++) {
+        for (String[] strings : sameHeight) {
           this.append(" ");
-          this.append(sameHeight[col][l]);
+          this.append(strings[l]);
           this.append(" |");
         }
         this.newLine();
@@ -323,21 +322,19 @@ public class LineBuilder {
   }
 
   public static ArrayList<String>[][] trimAndPad(ArrayList<String>[][] t){
-    ArrayList<String>[][] ret = new ArrayList[t.length][t[0].length];
+    ArrayList<String>[][] ret = t.clone();
     int[] width = new int[t[0].length];
-    for(int row = 0 ; row < t.length; row++)
-      for(int col = 0 ; col < t[row].length; col++){
-        for(String s : t[row][col]){
-          width[col] = Math.max(width[col], s.trim().length());
-        }
-      }
+    for (ArrayList<String>[] arrayLists : t)
+      for (int col = 0; col < arrayLists.length; col++)
+        for (String row : arrayLists[col])
+          width[col] = Math.max(width[col], row.trim().length());
+
 
     for(int row = 0 ; row < t.length; row++)
       for(int col = 0 ; col < t[row].length; col++){
         ret[row][col] = new ArrayList<>();
-        for(String s : t[row][col]){
+        for(String s : t[row][col])
           ret[row][col].add(pad(s.trim(), width[col]));
-        }
       }
 
     return ret;
@@ -359,10 +356,10 @@ public class LineBuilder {
   }
 
   public static String pad(String s, int width){
-    String ret = s;
+    StringBuilder ret = new StringBuilder(s);
     while(ret.length() < width)
-      ret += " ";
-    return ret;
+      ret.append(" ");
+    return ret.toString();
   }
 
   public LineBuilder rstColumns(String... columns){
@@ -459,7 +456,7 @@ public class LineBuilder {
     return this.substring(0, l-n);
   }
 
-  //simulate inheritant from StringBuilder
+  //simulate inheritance from StringBuilder
   public LineBuilder append(boolean b){	stringBuilder.append(b); return this;}
   public LineBuilder append(char c){	stringBuilder.append(c); return this;}
   public LineBuilder append(char[] str){	stringBuilder.append(str); return this;}

@@ -1,6 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.utils;
 
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import java.io.File;
 

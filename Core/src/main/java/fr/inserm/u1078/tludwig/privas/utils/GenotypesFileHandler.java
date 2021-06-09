@@ -9,6 +9,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.zip.GZIPOutputStream;
+
+import fr.inserm.u1078.tludwig.privas.instances.Instance;
 import fr.inserm.u1078.tludwig.privas.listener.ProgressListener;
 
 import java.nio.charset.StandardCharsets;
@@ -17,13 +19,13 @@ import java.util.Random;
 /**
  * Class to Handle Genotype Files
  * Genotype File have the following structure :
- * One line per variant/gene (if a variant affectes several genes, there is one line for the variant for each affected gene
+ * One line per variant/gene (if a variant affects several genes, there is one line for the variant for each affected gene
  * Each line is composed of the following columns :
  * 1. Variant in canonical notation : chr:pos+length.allele (as described in the documentation)
  * 2. Allele Frequency (in GnomAD)
  * 3. Consequence of the Variant on the gene (from variant effect predictor)
  * 4. Affected gene
- * This is followed by one column for each sample. Those columns containg the number of time this allele is present for the given individual (0, 1 or 2; -1 for
+ * This is followed by one column for each sample. Those columns contain the number of time this allele is present for the given individual (0, 1 or 2; -1 for
  * missing data)
  *
  * @author Thomas E. Ludwig (INSERM - U1078) 2019-01-30
@@ -43,7 +45,42 @@ public class GenotypesFileHandler {
   private static final String VEP_MAX = "gnomAD_AF";
   private static final String VEP_MAX_NFE = "gnomAD_NFE_AF";
   private static final String VEP_ALLELE_NUM = "ALLELE_NUM";
-  private static final String[] VEP_CONSEQUENCES = {"intergenic_variant", "feature_truncation", "regulatory_region_variant", "feature_elongation", "regulatory_region_amplification", "regulatory_region_ablation", "TF_binding_site_variant", "TFBS_amplification", "TFBS_ablation", "downstream_gene_variant", "upstream_gene_variant", "non_coding_transcript_variant", "NMD_transcript_variant", "intron_variant", "non_coding_transcript_exon_variant", "3_prime_UTR_variant", "5_prime_UTR_variant", "mature_miRNA_variant", "coding_sequence_variant", "synonymous_variant", "stop_retained_variant", "incomplete_terminal_codon_variant", "splice_region_variant", "protein_altering_variant", "missense_variant", "inframe_deletion", "inframe_insertion", "transcript_amplification", "start_lost", "stop_lost", "frameshift_variant", "stop_gained", "splice_donor_variant", "splice_acceptor_variant", "transcript_ablation"};
+  private static final String[] VEP_CONSEQUENCES = {
+          "intergenic_variant",
+          "feature_truncation",
+          "regulatory_region_variant",
+          "feature_elongation",
+          "regulatory_region_amplification",
+          "regulatory_region_ablation",
+          "TF_binding_site_variant",
+          "TFBS_amplification",
+          "TFBS_ablation",
+          "downstream_gene_variant",
+          "upstream_gene_variant",
+          "non_coding_transcript_variant",
+          "NMD_transcript_variant",
+          "intron_variant",
+          "non_coding_transcript_exon_variant",
+          "3_prime_UTR_variant",
+          "5_prime_UTR_variant",
+          "mature_miRNA_variant",
+          "coding_sequence_variant",
+          "synonymous_variant",
+          "stop_retained_variant",
+          "incomplete_terminal_codon_variant",
+          "splice_region_variant",
+          "protein_altering_variant",
+          "missense_variant",
+          "inframe_deletion",
+          "inframe_insertion",
+          "transcript_amplification",
+          "start_lost",
+          "stop_lost",
+          "frameshift_variant",
+          "stop_gained",
+          "splice_donor_variant",
+          "splice_acceptor_variant",
+          "transcript_ablation"};
   
   private static final int GENO_VARIANT = 0;
   private static final int GENO_GNOMAD = 1;
@@ -111,6 +148,7 @@ public class GenotypesFileHandler {
           int idx = line.lastIndexOf(' ');
           String[] f = line.substring(idx, line.length() - 2).split("\\|", -1);
           for (int i = 0; i < f.length; i++) {
+            System.err.println(i+" --> "+f[i]);
             if (VEP_CSQ.equals(f[i]))
               idxCsq = i;
             if (VEP_GENE.equals(f[i]))
@@ -151,7 +189,7 @@ public class GenotypesFileHandler {
   }
 
   /**
-   * Write the convertion of a VCF line to a Genotype File
+   * Write the conversion of a VCF line to a Genotype File
    *
    * @param line    the VCF line to convert
    * @param idxCsq  index of the Consequence value in the vep annotations
@@ -204,7 +242,7 @@ public class GenotypesFileHandler {
   /**
    * Converts a VCF Genotype Block into a Array of integer (number of variant allele for each individual :0, 1 pr 2; -1 for missing data)
    *
-   * @param a the number of the alternate allele to considere
+   * @param a the number of the alternate allele to consider
    * @param f the Genotype Block from the VCF File columns after FORMAT
    * @return
    */
@@ -439,12 +477,13 @@ public class GenotypesFileHandler {
    * @param limitToSNVs       is the extraction limited to SNVs ?
    * @param bed               list of all well covered positions
    * @param hash              the hash salt   
-   * @param progress          he ProgressListener to update during the extraction
+   * @param progress          the ProgressListener to update during the extraction
    * @return                  all the extracted and hashed line as a single String (containing \n)
    * @throws Exception
    */
-  public static String extractGenotypes(String genotypeFilename, int totalLines, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed, String hash, ProgressListener progress) throws Exception {
-    ArrayList<String> lines = extractGenotypesAsList(genotypeFilename, totalLines, maxMAF, maxMAFNFE, minCSQ, limitToSNVs, bed, hash, progress);
+  public static String extractGenotypes(String genotypeFilename, int totalLines, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed, String hash, Instance instance, ProgressListener progress) throws Exception {
+    ArrayList<String> lines = extractGenotypesAsList(genotypeFilename, totalLines, maxMAF, maxMAFNFE, minCSQ, limitToSNVs, bed, hash, instance, progress);
+    instance.logInfo("Extracted Lines : ["+lines.size()+"]");
     StringBuilder res = new StringBuilder();
     progress(progress, 99);
     for (String line : lines) {
@@ -476,8 +515,8 @@ public class GenotypesFileHandler {
    * @throws GenotypesFileHandler.GenotypeFileException
    * return number of lines written
    */
-  public static int extractGenotypesToFile(String genotypeFilename, String outFilename, int totalLines, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed, String hash, ProgressListener progress) throws IOException, NoSuchAlgorithmException, InvalidKeyException, GenotypeFileException {
-    ArrayList<String> lines = extractGenotypesAsList(genotypeFilename, totalLines, maxMAF, maxMAFNFE, minCSQ, limitToSNVs, bed, hash, progress);
+  public static int extractGenotypesToFile(String genotypeFilename, String outFilename, int totalLines, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed, String hash, Instance instance, ProgressListener progress) throws IOException, NoSuchAlgorithmException, InvalidKeyException, GenotypeFileException {
+    ArrayList<String> lines = extractGenotypesAsList(genotypeFilename, totalLines, maxMAF, maxMAFNFE, minCSQ, limitToSNVs, bed, hash, instance, progress);
     progress(progress, 99);
     PrintWriter out = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outFilename)), StandardCharsets.UTF_8));
     for (String line : lines)
@@ -506,7 +545,7 @@ public class GenotypesFileHandler {
    * @throws NoSuchAlgorithmException
    * @throws InvalidKeyException
    */
-  private static ArrayList<String> extractGenotypesAsList(String genotypeFilename, int totalLines, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed, String hash, ProgressListener progress) throws IOException, NoSuchAlgorithmException, InvalidKeyException, GenotypeFileException {
+  private static ArrayList<String> extractGenotypesAsList(String genotypeFilename, int totalLines, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, BedFile bed, String hash, Instance instance, ProgressListener progress) throws IOException, NoSuchAlgorithmException, InvalidKeyException, GenotypeFileException {
     Random random = new Random(681074832L);
     int minCSQIdx = getCSQIndex(minCSQ);
     int read = 0;
@@ -532,15 +571,17 @@ public class GenotypesFileHandler {
         columnOrder = new ArrayList<>();
         for (int n = GENO_GENOTYPES; n < line.split(T).length; n++){
           //columnOrder.add(n);//
-          addAtRandomPosition(columnOrder, n, random); //DONE scramble data, the scrambbling isn't always the same, even with a static seed. Corrected
+          addAtRandomPosition(columnOrder, n, random); //DONE scramble data, the scrambling isn't always the same, even with a static seed. Corrected
         }          
       }
       String extracted = extractLine(line, maxMAF, maxMAFNFE, minCSQIdx, hash, columnOrder, limitToSNVs, bed);
       if (extracted != null) 
         addAtRandomPosition(output, extracted, random);
-      
     }
     in.close();
+
+    instance.logInfo("Extraction of file ["+genotypeFilename+"] complete. Lines kept ["+output.size()+"/"+read+"]");
+
     return output;
   }
   
@@ -557,7 +598,7 @@ public class GenotypesFileHandler {
    * @param object  the object to add 
    * @param random  the random generator
    */
-  private static void addAtRandomPosition(ArrayList list, Object object, Random random){
+  private static <E> void addAtRandomPosition(ArrayList<E> list, E object, Random random){
     list.add(random.nextInt(list.size() + 1), object);
   }
   
@@ -590,7 +631,7 @@ public class GenotypesFileHandler {
     String[] f = line.split(T);
     if(limitToSNVs && !isSNV(f[GENO_VARIANT]))
       return null;
-    
+
     //DONE pass excluded list to TPS has hashed. And ignore there, so as not to leak data
     //1) Client does not fetch exclusion list from server
     //2) Client send AES(list(hash(excludedClient))) with the data
@@ -598,27 +639,32 @@ public class GenotypesFileHandler {
     //4) TPS merges list(excludedClient)+list(excludedRPP)
     //5) TPS ignores variants that belong in the list
 
+
     if(!bed.isEmpty() && !bed.overlaps(f[GENO_VARIANT]))//DONE overlaps or contains ? maybe the whole position must be contained ? -> overlaps should be enough, for indels it would be to complicated ... also if bed is empty every position is kept
       return null;
-    
+
+    double maf = 0;
+    double mafNFE = 0;
+    int csq = -1;
     try {
-      double maf = new Double(f[GENO_GNOMAD]);
-      double mafNFE = new Double(f[GENO_GNOMAD_NFE]); //TODO replace NFE with a selectable population
-      int csq = new Integer(f[GENO_CSQ]);
-      if ((maf <= maxMAF || mafNFE <= maxMAFNFE) && csq >= minCSQ) {
-        StringBuilder res = new StringBuilder();
-        res.append(Crypto.hashSHA256(hash, f[GENO_VARIANT]));
-        String hashedGene = Crypto.hashSHA256(hash, f[GENO_GENE]);
-        res.append(T);
-        res.append(hashedGene);
-        for (Integer i : order) {
-          res.append(T);
-          res.append(f[i]);
-        }
-        return res.toString();
-      }
+      maf = Double.parseDouble(f[GENO_GNOMAD]);
+      mafNFE = Double.parseDouble(f[GENO_GNOMAD_NFE]); //TODO replace NFE with a selectable population
+      csq = Integer.parseInt(f[GENO_CSQ]);
     } catch (NumberFormatException e) {
       //Nothing
+    }
+
+    if ((maf <= maxMAF || mafNFE <= maxMAFNFE) && csq >= minCSQ) {
+      StringBuilder res = new StringBuilder();
+      res.append(Crypto.hashSHA256(hash, f[GENO_VARIANT]));
+      String hashedGene = Crypto.hashSHA256(hash, f[GENO_GENE]);
+      res.append(T);
+      res.append(hashedGene);
+      for (Integer i : order) {
+        res.append(T);
+        res.append(f[i]);
+      }
+      return res.toString();
     }
     return null;
   }
@@ -652,56 +698,7 @@ public class GenotypesFileHandler {
   }
 
   /**
-   * Class containing two dictionnaries
-   * From the hashed value to the genomic region (gene) clear text name
-   * From the genomic region (gene) to the position of it's first variant
-   */
-  public static class HashAndPosition {
-
-    private final HashMap<String, String> hash2gene;
-    private final HashMap<String, String> gene2position;
-
-    /**
-     * Empty Constructor
-     */
-    private HashAndPosition() {
-      hash2gene = new HashMap<>();
-      gene2position = new HashMap<>();
-    }
-
-    /**
-     * Adds values to the dictionnary
-     *
-     * @param gene    the genomic region name
-     * @param hashed  the hashed value for the genomic region
-     * @param variant the first variant in the genomic region
-     */
-    void add(String gene, String hashed, String variant) {
-      this.hash2gene.put(hashed, gene);
-      this.gene2position.put(gene, variant.split("\\+")[0]);
-    }
-
-    /**
-     * Gets the dictionnary from the hashed value to the genomic region (gene) clear text name
-     *
-     * @return
-     */
-    public HashMap<String, String> getHash2gene() {
-      return hash2gene;
-    }
-
-    /**
-     * Gets the dictionnary from the genomic region (gene) to the position of the first variant (chr:pos)
-     *
-     * @return
-     */
-    public HashMap<String, String> getGene2position() {
-      return gene2position;
-    }
-  }
-
-  /**
-   * Excpetion throws when the VCF to convert is not the the expected format
+   * Exception throws when the VCF to convert is not the the expected format
    */
   public static class GenotypeFileException extends Exception {
 

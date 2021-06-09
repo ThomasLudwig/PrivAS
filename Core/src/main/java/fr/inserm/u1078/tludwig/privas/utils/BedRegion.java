@@ -4,7 +4,7 @@ package fr.inserm.u1078.tludwig.privas.utils;
  *
  * @author Thomas E. Ludwig (INSERM - U1078) 2019-12-10
  */
-public class BedRegion implements Comparable {
+public class BedRegion implements Comparable<BedRegion> {
 
   /**
    * Start of the Region (in base 0)
@@ -73,10 +73,7 @@ public class BedRegion implements Comparable {
   }
 
   @Override
-  public int compareTo(Object o) {
-    if(!(o instanceof BedRegion))
-      return -1;
-    BedRegion r = (BedRegion)o;
+  public int compareTo(BedRegion r) {
     int cmp = this.start - r.start;
     return cmp == 0 ? this.end - r.end : cmp;
   }

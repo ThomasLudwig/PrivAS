@@ -6,8 +6,10 @@ import fr.inserm.u1078.tludwig.privas.gui.ClientWindow;
 import fr.inserm.u1078.tludwig.privas.messages.*;
 import fr.inserm.u1078.tludwig.privas.utils.*;
 import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler.GenotypeFileException;
-import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler.HashAndPosition;
 import fr.inserm.u1078.tludwig.privas.listener.ProgressListener;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QualityControl;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -110,8 +112,8 @@ public class Client extends Instance {
       this.session.setClientGenotypeFile(null);
       String outFilename = GenotypesFileHandler.vcfFilename2GenotypesFilename(vcfFilename);
       logInfo(MSG.action(MSG.CL_CONVERT_GENO, vcfFilename));
-      GenotypesFileHandler.convertVCF2Genotypes(vcfFilename, outFilename);
-      logSuccess(MSG.done(MSG.CL_OK_CONVERT_GENO, getGenotypeFileSize() + ""));
+      int size = GenotypesFileHandler.convertVCF2Genotypes(vcfFilename, outFilename);
+      logSuccess(MSG.done(MSG.CL_OK_CONVERT_GENO, getGenotypeFileSize() + " ("+size+")"));
       this.setGenotypeFilename(outFilename);
 
       return outFilename;
@@ -141,7 +143,7 @@ public class Client extends Instance {
       outputVCF = FileUtils.getQCVCFFilename(inputVCF, qcParam);
       logSuccess(MSG.done(MSG.Cl_QC_APPLIED, outputVCF));
       return true;
-    } catch (QualityControl.QCException | IOException e) {
+    } catch (QCException | IOException e) {
       logError(MSG.done(MSG.CL_KO_QC, outputVCF, e));
       logError(e);
     }
@@ -174,7 +176,7 @@ public class Client extends Instance {
    * Sends a Message to the RPP
    *
    * @param msg the Message to send
-   * @param pd  that will be notified of the transfert progression
+   * @param pd  that will be notified of the transfer progression
    * @return the RPP's Response
    * @throws IOException
    * @throws MessageException
@@ -304,9 +306,8 @@ public class Client extends Instance {
    * Method in charge of handling Messages (replies)
    *
    * @param reply    the Message
-   * @param expected the Class (type) of Message expected as a reply
    */
-  private void handleMessage(Message reply, Class expected) throws MessageException {
+  private void handleMessage(Message reply) throws MessageException {
     //logDebug("Message type ["+reply.getType()+"] expected ["+expected.getName()+"]");
 
     //is reply null ? 
@@ -381,7 +382,7 @@ public class Client extends Instance {
     }
 
     if( reply instanceof SessionStarted) {
-      SessionStarted sessionStarted = (SessionStarted) reply;
+      //SessionStarted sessionStarted = (SessionStarted) reply;
       try{
         HashAndPosition hashPos = GenotypesFileHandler.buildHashDictionaryAndPosition(this.session.getClientGenotypeFilename(), this.session.getHash());
         this.session.setGeneHashDictionary(hashPos.getHash2gene());
@@ -454,14 +455,13 @@ public class Client extends Instance {
 
     try {
       qcParam = new QCParam(qcParamFilename);
-    } catch(IOException | QualityControl.QCException e) {
+    } catch(IOException | QCException e) {
       String error = "Unable to Read QC Parameter File File [" + qcParamFilename + "]";
       logError(error);
       logError(e);
       this.lastError = error;
       throw new MessageException(error, e);
     }
-
 
     this.logDebug("Asking Session");
     this.session.setSelectedDataset(dataset);
@@ -476,9 +476,9 @@ public class Client extends Instance {
     try {
       Message reply = this.sendMessage(new AskSession(this.getPublicKeyString(), dataset, maxMAF, maxMAFNFE, minCSQ.split("\\.")[1], limitToSNVs, bed, qcParam));
       this.logDebug("Reply received");
-      this.handleMessage(reply, SendSession.class);
+      this.handleMessage(reply);
     } catch (MessageException | Message.EmptyParameterException | IOException e) {
-      String error = MSG.done(MSG.CL_KO_NEW_SESSION, e);
+      String error = MSG.done(MSG.CL_KO_NEW_SESSION, e.getMessage());
       logError(error);
       logError(e);
       this.lastError = error;
@@ -491,7 +491,7 @@ public class Client extends Instance {
     try {
       Message reply = this.sendMessage(new StartSession(session));
       this.logDebug("Reply received : "+reply);
-      this.handleMessage(reply, SessionStarted.class);
+      this.handleMessage(reply);
     } catch (Message.EmptyParameterException | IOException e){
       String error = MSG.done(MSG.CL_KO_START_SESSION, e);
       logError(error);
@@ -521,7 +521,7 @@ public class Client extends Instance {
     try {
       Message reply = this.sendMessage(new AskResults(this.getSessionId()));
       this.saveFilename = saveFilename;
-      this.handleMessage(reply, SendResults.class);
+      this.handleMessage(reply);
       logSuccess(MSG.done(MSG.CL_OK_RESULTS, this.session.getId()));
     } catch (MessageException | Message.EmptyParameterException | IOException e) {
       String error = (MSG.done(MSG.CL_KO_RESULTS, this.session.getId(), e));
@@ -535,7 +535,7 @@ public class Client extends Instance {
   /**
    * Sends the Data to the RPP
    *
-   * @param pd the ProgressListener that will be notified of the transfert progression
+   * @param pd the ProgressListener that will be notified of the transfer progression
    * @throws fr.inserm.u1078.tludwig.privas.instances.MessageException
    */
   public void communicationSendData(ProgressListener pd) throws MessageException {
@@ -552,7 +552,7 @@ public class Client extends Instance {
       String encryptedExcludedVariants = this.encryptAES(getExcludedVariants().serialize());
       logInfo(MSG.action(MSG.CL_SEND));
       Message reply = this.sendMessage(new SendClientData(this.getSessionId(), encryptedAESKey, encryptedData, encryptedExcludedVariants, session.getAlgorithm()), pd);
-      this.handleMessage(reply, AckClientData.class);
+      this.handleMessage(reply);
       logSuccess(MSG.done(MSG.CL_OK_SEND));
     } catch (Exception e) {
       String error = MSG.done(MSG.cat(MSG.CL_KO_SEND, e));
@@ -607,7 +607,7 @@ public class Client extends Instance {
   public boolean extractData(ProgressListener pd) {
     try {
       logInfo(MSG.action(MSG.CL_EXTRACT));
-      data = GenotypesFileHandler.extractGenotypes(this.session.getClientGenotypeFilename(), this.session.getClientGenotypeFileSize(), this.session.getMaxMAF(), this.session.getMaxMAFNFE(), this.session.getLeastSevereConsequence().split("\\.")[1], this.session.getLimitToSNVs(), this.session.getBedFile(), this.session.getHash(), pd);
+      data = GenotypesFileHandler.extractGenotypes(this.session.getClientGenotypeFilename(), this.session.getClientGenotypeFileSize(), this.session.getMaxMAF(), this.session.getMaxMAFNFE(), this.session.getLeastSevereConsequence().split("\\.")[1], this.session.getLimitToSNVs(), this.session.getBedFile(), this.session.getHash(), this, pd);
       
       logSuccess(MSG.done(MSG.CL_OK_EXTRACT));
       return true;
@@ -747,7 +747,7 @@ public class Client extends Instance {
             ms = new MessageSocket(rpp, port);
             ms.writeMessage(msg, null);
           }
-          handleMessage(ms.readMessage(), SendRPPStatus.class);
+          handleMessage(ms.readMessage());
           if (first) {
             logSuccess(MSG.done(MSG.cat(MSG.CL_OK_MONITOR, sessionId)));
             first = false;

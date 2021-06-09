@@ -1,7 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.documentation;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Class to generate the project's documentation
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-11-28
@@ -36,10 +36,10 @@ public class Documentation {
   }
 
   public static String pad(String string, int pad){
-    String ret = string;
+    StringBuilder ret = new StringBuilder(string);
     while(ret.length() < pad)
-      ret += " ";
-    return ret;
+      ret.append(" ");
+    return ret.toString();
   }
 
   public static int getMax(String... strings){
@@ -50,31 +50,31 @@ public class Documentation {
   }
 
   public static String code(String[] strings, String language, boolean numbered){
-    String ret = "```";
+    StringBuilder ret = new StringBuilder("```");
     if(language != null)
-      ret+= language;
+      ret.append(language);
     if(numbered)
-      ret += "=";
-    ret += "\n";
+      ret.append("=");
+    ret.append("\n");
     for(String string : strings)
-      ret += string + "\n";
-    ret += "```\n\n";
-    return ret;
+      ret.append(string).append("\n");
+    ret.append("```\n\n");
+    return ret.toString();
   }
 
   public static String table(String[] titles, String[][] rows){
-    String ret = "|";
+    StringBuilder ret = new StringBuilder("|");
     for(String title: titles)
-      ret += " "+title+" |";
-    ret += "\n|";
+      ret.append(" ").append(title).append(" |");
+    ret.append("\n|");
     for(String title: titles)
-      ret += " --- |";
+      ret.append(" --- |");
     for(String[] row : rows){
-      ret += "\n|";
+      ret.append("\n|");
       for(String cell : row)
-        ret += " "+cell+" |";
+        ret.append(" ").append(cell).append(" |");
     }
-    return ret;
+    return ret.toString();
   }
 
   public static String hr(){
@@ -86,7 +86,7 @@ public class Documentation {
   }
 
   public static String image(String address, String altText){
-    String url = address.startsWith("http") ? address : "https://lysine.univ-brest.fr/privas/screenshots/"+address;
+    String url = address.startsWith("http") ? address : "http://lysine.univ-brest.fr/privas/screenshots/"+address;
     return "\n!["+altText+"]("+url+")\n";
   }
 
@@ -103,30 +103,32 @@ public class Documentation {
   }
 
   public static String orderedList(String[] strings, int start){
-    String ret = "";
+    StringBuilder ret = new StringBuilder();
     for(int i = 0; i < strings.length; i++)
-      ret += orderedList(strings[i], i+start);
-    return ret;
+      ret.append(orderedList(strings[i], i+start));
+    return ret.toString();
   }
 
   public static String unorderedList(String string, int level){
-    String pad = "";
+    StringBuilder pad = new StringBuilder();
     for(int i = 0 ; i < level; i++)
-      pad += "\t";
-    return pad+"- "+string+"\n";
+      pad.append("\t");
+    pad.append("- ").append(string).append("\n");
+    return pad.toString();
   }
 
   public static String unorderedList(String[] strings, int level){
-    String ret = "";
-    for(int i = 0; i < strings.length; i++)
-      ret += unorderedList(strings[i], level);
-    return ret;
+    StringBuilder ret = new StringBuilder();
+    for (String string : strings)
+      ret.append(unorderedList(string, level));
+    return ret.toString();
   }
 
   public static String htmlUnorderedList(String... strings){
-    String ret = "<ul>";
+    StringBuilder ret = new StringBuilder("<ul>");
     for(String string : strings)
-      ret += "<li>"+string+"</li>";
-    return ret+"</ul>";
+      ret.append("<li>").append(string).append("</li>");
+    ret.append("</ul>");
+    return ret.toString();
   }
 }

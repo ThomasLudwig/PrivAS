@@ -9,7 +9,7 @@ import java.io.PrintWriter;
 
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Executable class for RPP
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-10-01
@@ -23,7 +23,7 @@ public class RPPRun {
   }
 
   /**
-   * Parses the command line arguments and starts the approriate command
+   * Parses the command line arguments and starts the appropriate command
    *
    * @param args the command line arguments
    */
@@ -60,14 +60,15 @@ public class RPPRun {
    * Prints the various usages of this program
    */
   public static String getUsage() {
-    StringBuilder ret = new StringBuilder();
-    ret.append(MSG.MSG_USAGE).append("\n");
-    ret.append(MSG.MSG_INSTANCES).append("\n");
-    ret.append(usageRPP(false)).append("\n");
-    ret.append("\n");
-    ret.append(MSG.MSG_QC).append("\n");
-    ret.append(Main.usageQualityControl(false, false)).append("\n");
-    ret.append(MSG.MSG_TOOLS).append("\n");
+    char N = '\n';
+    StringBuilder ret = new StringBuilder(MSG.MSG_USAGE).append(N);
+    ret.append(MSG.MSG_INSTANCES).append(N);
+    ret.append(usageRPP(false)).append(N);
+    ret.append(N);
+    ret.append(MSG.MSG_QC).append(N);
+    ret.append(Main.usageQualityControl(false, false)).append(N);
+    ret.append(MSG.MSG_TOOLS).append(N);
+    ret.append(N);
     ret.append(Main.usageConvertVCF(false, false));
     return ret.toString();
   }

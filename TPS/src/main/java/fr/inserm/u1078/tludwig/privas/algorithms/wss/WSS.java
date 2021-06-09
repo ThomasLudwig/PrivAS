@@ -1,4 +1,4 @@
-package fr.inserm.u1078.tludwig.privas.algorithms;
+package fr.inserm.u1078.tludwig.privas.algorithms.wss;
 
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
@@ -36,18 +36,23 @@ public class WSS {
    */
   private int totalVariants;
   /**
-   * Number of variants shared accross the datasets
+   * Number of variants shared across the datasets
    */
   private int sharedVariants;
 
-  //currentvalues
+  /**
+   * The most frequent genotype (REF or ALT)
+   */
+  private int mostFrequentGenotype;
+
+  //current values
   /**
    * ranksum for the actual status
    */
   private double ranksum;
 
   /**
-   * Number of permutations with ranksum at least as extrem as unscrambled data
+   * Number of permutations with ranksum at least as extreme as unscrambled data
    */
   private final AtomicInteger k0 = new AtomicInteger(0);
 
@@ -56,11 +61,13 @@ public class WSS {
    */
   private final AtomicInteger k = new AtomicInteger(0);
 
+  private double factor; //1/(2*unaffected + 2)
+
   /**
    * Builds a WSS from a file
    *
    * @param gene             name of the genomic region
-   * @param affected         status of the sample (true when affeted)
+   * @param affected         status of the sample (true when affected)
    * @param genotypeFilename name of the file containing the genotypes
    * @throws IOException
    */
@@ -73,7 +80,7 @@ public class WSS {
    * Builds a WSS from a list of lines
    *
    * @param gene     name of the genomic region
-   * @param affected status of the sample (true when affeted)
+   * @param affected status of the sample (true when affected)
    * @param lines    lines of genotypes (one column per sample with integer values from -1 to 2)
    */
   public WSS(String gene, boolean[] affected, ArrayList<String> lines) {
@@ -84,7 +91,7 @@ public class WSS {
   /**
    * Loads the real phenotypes (sample status) and reads the genotypes from a file
    *
-   * @param affected         status of the sample (true when affeted)
+   * @param affected         status of the sample (true when affected)
    * @param genotypeFilename name of the file containing the genotypes
    * @throws IOException
    */
@@ -100,69 +107,80 @@ public class WSS {
   /**
    * Loads the real phenotypes (sample status) and reads the genotypes from a list of lines from a file
    *
-   * @param affected status of the sample (true when affeted)
-   * @param lines    lines of genotypes (one column per sample with integer values from -1 to 2)
+   * @param status status of the sample (true when affected)
+   * @param lines lines of genotypes (one column per sample with integer values from -1 to 2)
    */
-  private void load(boolean[] affected, ArrayList<String> lines) {
+  private void load(boolean[] status, ArrayList<String> lines) {
+    int nbAffected = 0;
+    for(boolean s : status)
+      if(s)
+        nbAffected++;
+    int nbUnaffected = status.length - nbAffected;
+    this.factor = 0.5/(nbUnaffected+1);
+
     this.totalVariants = lines.size();
     this.sharedVariants = 0;
-    genotypes = new int[lines.size()][affected.length];
+    this.genotypes = new int[lines.size()][status.length];
     for (int i = 0; i < lines.size(); i++) {
-      boolean hasCase = false;
-      boolean hasControl = false;
+      boolean hasAffected = false;
+      boolean hasUnaffected = false;
       String[] f = lines.get(i).split("\\s+");
-      f = replaceMissingWithMostFrequent(f);
-      int[] geno = new int[f.length];
+      int[] geno = replaceMissingWithMostFrequent(f); // No missing
       for (int j = 0; j < f.length; j++) {
-        geno[j] = new Integer(f[j]);
-        if (geno[j] != Constants.GENO_MISSING)
-          if (affected[j])
-            hasCase = true;
+        if (geno[j] != mostFrequentGenotype)
+          if (status[j])
+            hasAffected = true;
           else
-            hasControl = true;
+            hasUnaffected = true;
       }
       genotypes[i] = geno;
-      if (hasCase && hasControl)
+      if (hasAffected && hasUnaffected)
         this.sharedVariants++;
     }
-    if (totalVariants < 1) 
-      System.err.println("Unexcepted : 0 variants for gene ["+this.gene+"]");
+    if (totalVariants < 1)
+      System.err.println("Unexpected : 0 variant for gene ["+this.gene+"]");
   }
-  
-  public String[] replaceMissingWithMostFrequent(String[] f){
-    String[] ret = new String[f.length];
+
+  /**
+   * Replaces missing genotypes with the most frequent non missing genotype between 0 (REF) and 2 (ALT)
+   * @param f the original genotype array
+   * @return the new genotype array
+   */
+  public int[] replaceMissingWithMostFrequent(String[] f){
+    int[] ret = new int[f.length];
     int[] count = new int[3];
-    
+
+    //first loop steps missing to REF
+    //if ALT > REF, second loop resets missing to ALT
+    //this is more efficient than 1st loop count, 2nd loop sets
+    //as (almost) everytime REF>ALT
+
     for(int i = 0 ; i < f.length; i++){
-      int v = new Integer(f[i]);
-      if(v > -1){
-        count[v]++;
-        ret[i] = f[i];
+      int g = new Integer(f[i]);
+      if(g > Constants.GENO_MISSING){
+        count[g]++;
+        ret[i] = g;
       } else
-        ret[i] = 0+"";
+        ret[i] = Constants.GENO_REF;
     }
-    
-    int max = 0;
-    if(count[1] > count[0])
-      max= 1;
-    if(count[2] > count[max])
-      max = 2;
-    if(max > 0)
-      for(int i = 0 ; i < f.length; i++){
-        if(f[i].equals("-1"))
-          ret[i] = max+"";
-      }
-    return ret;    
+    this.mostFrequentGenotype = Constants.GENO_REF;
+    if(count[Constants.GENO_ALT] > count[Constants.GENO_REF]) {
+      this.mostFrequentGenotype = Constants.GENO_ALT;
+      for (int i = 0; i < f.length; i++)
+        if (f[i].equals("" + Constants.GENO_MISSING))
+          ret[i] = Constants.GENO_ALT;
+    }
+    return ret;
   }
 
   /**
    * Compute the real ranksum
    *
-   * @param affected status of the sample (true when affeted)
+   * @param affected status of the sample (true when affected)
    * @return the computed ranksum
    */
   public double start(boolean[] affected) {
-    ranksum = x(affected);
+    ranksum = xOptimizedNoMissing(affected);
     return ranksum;
   }
 
@@ -199,7 +217,7 @@ public class WSS {
    */
   private void doPermutation(final boolean[] shuffled) {
     k.incrementAndGet();
-    if (x(shuffled) >= ranksum)
+    if (xOptimizedNoMissing(shuffled) >= ranksum)
       k0.incrementAndGet();
   }
 
@@ -221,12 +239,9 @@ public class WSS {
   public boolean isStopReached(final int minK0, final long maxK, final double rejectionPValue, final double minPValueMinusLog) {
     if (k0.get() >= minK0)
       return true;
-
     if (k.get() >= maxK)
       return true;
-
     double pvalue = getPValue();
-
     if (pvalue > rejectionPValue)
       return true;
     return (k0.get() >= 1 + minPValueMinusLog + Math.log10(pvalue));
@@ -235,10 +250,10 @@ public class WSS {
   /**
    * sum of the ranks (on the genetic score) for affected individuals
    *
-   * @param affected status of the sample (true when affected)
+   * @param status status of the sample (true when affected)
    * @return
    */
-  private double x(boolean[] affected) {
+  private double xOriginal(boolean[] status) {
     //weight of the variant v
     final double[] w = new double[this.totalVariants];
 
@@ -251,21 +266,21 @@ public class WSS {
       //number of genotyped individuals (affected + unaffected)
       int n = 0;
 
-      for (int i = 0; i < affected.length; i++)
+      for (int i = 0; i < status.length; i++)
         if (genotypes[v][i] != Constants.GENO_MISSING){
           n++;
-          if (!affected[i]) {
+          if (!status[i]) {
             nu++;
             mu += genotypes[v][i];
           }
         }
       //mutant_unaffected + 1 / 2*genotyped_unaffected + 2 for variant v
       double q = (mu + 1.0) / (2 * nu + 2.0);
-      w[v] = Math.sqrt(n * q * (1 - q)); //w == 0 if :n == 0 or q == 0 or q == 1 
+      w[v] = Math.sqrt(n * q * (1 - q)); //w == 0 if :n == 0 or q == 0 or q == 1
       //q == 0 -> impossible
-      //n == 0 -> all samples are missing //TODO check if this is filtered
-      //q == 1 -> all genotyped unaffected individual are 2 //TODO check
-      
+      //n == 0 -> all samples are missing
+      //q == 1 -> all genotyped unaffected individual are 2
+
       //System.err.println("q : "+q+" = ("+mu+" + 1) / (2 * "+nu+" + 2)");
       //System.err.println("Weight : "+w[v]+" = sqrt("+n+" x "+q+" x "+(1-q)+")"+")");
     }
@@ -276,36 +291,65 @@ public class WSS {
 
     //genetic scores for individuals
 //    HashMap<String, Integer> debug = new HashMap<>();
-    for (int i = 0; i < affected.length; i++) {
+    for (int i = 0; i < status.length; i++) {
 //      int nbMissing = 0;
- //     StringBuilder sb = new StringBuilder(i).append(" ").append(affected[i]);
+      //     StringBuilder sb = new StringBuilder(i).append(" ").append(affected[i]);
       double gamma = 0.0;
       for (int v = 0; v < this.totalVariants; v++)
         if (genotypes[v][i] != Constants.GENO_MISSING){
           gamma += genotypes[v][i] / w[v]; //in assotestR, one missing genotype set the whole gamma (genetic score) to 0 for the individual
-          
-          
-          
-  //        sb.append(" + ").append(genotypes[v][i]).append("/").append(w[v]);
+          //        sb.append(" + ").append(genotypes[v][i]).append("/").append(w[v]);
         } else{
- //         sb.append(" + 0");
- //         nbMissing++;
+          System.err.println("There are missing genotypes, how could this be ?");
+          //         sb.append(" + 0");
+          //         nbMissing++;
         }
-      
 //      sb.append(" -> gamma=").append(gamma);
-      int count = 1;
 //      if(debug.containsKey(sb.toString()))
 //        count += debug.get(sb.toString());
 //      debug.put(sb.toString(), count);
-      gammaList.add(gamma, affected[i]/*, nbMissing*/);
+      gammaList.add(gamma, status[i]/*, nbMissing*/);
     }
 /*    for(String key : debug.keySet())
       System.err.println("["+debug.get(key)+"] -> "+key);
-    
     for(Gamma gamma : gammaList.gammas)
       System.err.println("Gamma : "+gamma.gamma+" ["+gamma.nbMissing+"] "+gamma.nbAffected+"/"+gamma.size());
-    
     System.err.println("Ranking "+gammaList.getRanking());*/
+    return gammaList.getRanking();
+  }
+
+  /**
+   * sum of the ranks (on the genetic score) for affected individuals<br>/
+   * this is an optimized version, that assumes no missing genotype (as missing are replaced with the most frequent homo genotypes
+   * @param status status of the sample (true when affected)
+   * @return
+   */
+  private double xOptimizedNoMissing(boolean[] status) {
+    //weight of the variant v
+    final double[] w = new double[this.totalVariants];
+    //compute mu,nu,n,q and w
+    for (int v = 0; v < this.totalVariants; v++) {
+      //number of mutant alleles observed for variant i in the unaffected individuals
+      int mu = 1; //optimized, was mu = 0;
+      for (int i = 0; i < status.length; i++)
+        if (!status[i])
+          mu += genotypes[v][i];
+      //mutant_unaffected + 1 / 2*genotyped_unaffected + 2 for variant v
+      double q = factor * mu; // optimised, was double q = (mu + 1.0) / (2 * nu + 2.0) with nu=0 et mu=0 at start
+      w[v] = Math.sqrt(status.length * q * (1 - q)); //w == 0 if :n == 0 or q == 0 or q == 1
+      //q == 0 -> impossible
+      //q == 1 -> all genotyped unaffected individual are 2
+    }
+    //compute gamma for affected and unaffected and add to sort
+    //Arrays to sort/rank gammas
+    RankedGammaList gammaList = new RankedGammaList();
+    //genetic scores for individuals
+    for (int i = 0; i < status.length; i++) {
+      double gamma = 0.0;
+      for (int v = 0; v < this.totalVariants; v++)
+        gamma += genotypes[v][i] / w[v];
+      gammaList.add(gamma, status[i]);
+    }
     return gammaList.getRanking();
   }
 
@@ -315,7 +359,7 @@ public class WSS {
    * @return (k0-1)/(k-1)
    */
   double getPValue() {
-    return (k0.get() + 1) / (double) (k.get() + 1);//k0+1 / k+1 From Madsen Browning , to avoid pvalue=0
+    return (k0.get() + 1.0) / (k.get() + 1.0);//k0+1 / k+1 From Madsen Browning , to avoid pvalue=0
   }
 
   /**
@@ -336,187 +380,6 @@ public class WSS {
    */
   private static double duration(long start) {
     long ms = (new Date().getTime() - start);
-    return ms / 1000d;
-  }
-
-  /**
-   * A list of Gamma object, that automatically sorts elements on insertion (via insertion sort algorithm)
-   * After benchmark, it is faster to do an insertion sort on insertion :
-   * QuickSort and Parallel sort are in theory faster, but the list size is small and the overhead is bigger via these sorting strategies
-   */
-  private static class RankedGammaList {
-
-    /**
-     * The sorted gamma values
-     */
-    final ArrayList<Gamma> gammas;
-
-    /**
-     * Constructs a new RankedGammaList
-     */
-    private RankedGammaList() {
-      this.gammas = new ArrayList<>();
-    }
-
-    /**
-     * Inserts the double at the appropriate place in the list and increment the boolean counter
-     *
-     * @param d the gamma value
-     * @param s is the individual affected ?
-     */
-    private void add(double d, boolean s/*, int nbMissing*/) {
-      if (this.gammas.isEmpty()) {
-        Gamma g = new Gamma(d, s/*, nbMissing*/);
-        this.gammas.add(g);
-        return;
-      }
-      Gamma tmp = new Gamma(d, s/*, nbMissing*/);
-      
-      int min = 0;
-      int max = this.gammas.size() - 1;
-      
-      while (max - min > 1) {
-        int c = (min + max) / 2;
-        Gamma g = this.gammas.get(c);
-        int compare = g.compare(tmp);
-        if(compare == 0){//if (g.gamma == d) {
-          g.add(s);
-          return;
-        }
-
-        if(compare < 0)//if (g.gamma < d)
-          min = c;
-        else
-          max = c;
-      }
-      
-      int compareMin = tmp.compare(this.gammas.get(min));
-      //before min
-      if(compareMin < 0){
-        this.gammas.add(min, tmp);
-        return;
-      }
-      
-      //equals min
-      if(compareMin == 0){
-        this.gammas.get(min).add(s);
-        return;
-      }
-      
-      int compareMax = tmp.compare(this.gammas.get(max));
-      //between min and max
-      if(compareMax < 0) {
-        this.gammas.add(max, tmp);
-        return;
-      }
-
-      //equals max
-      if (compareMax == 0) {
-        this.gammas.get(max).add(s);
-        return;
-      }
-
-      //after max
-      max++;
-      this.gammas.add(max, tmp);
-      /*
-      this.gammas.add(max, new Gamma(d, s));
-      */
-    }
-
-    /**
-     * summing the rank done like in wilcoxon :
-     * first is 1
-     * when there are ex aequo, each is ranked as the mean of the ranks
-     *
-     * @return the rank sum
-     */
-    private double getRanking() {
-      double x = 0;
-      int size = 1;
-      for (Gamma gamma : gammas) {
-        //System.err.println("X="+x+" size="+size);
-        x += gamma.getSum(size);
-        size += gamma.size();
-      }
-      return x;
-    }
-  }
-
-  /**
-   * Object that stores a gamma value (double) and a counter of affected/unaffected individuals with this gamma value
-   */
-  static class Gamma {
-
-    private final double gamma;
-    private int nbAffected;
-    private int nbUnaffected;
-
-    /**
-     * Constructor for Gamma object
-     *
-     * @param gamma  the gamma value
-     * @param status is the first individual presenting this value affected ?
-     */
-    private Gamma(double gamma, boolean status) {
-      this.gamma = gamma;
-      if (status) {
-        this.nbAffected = 1;
-        this.nbUnaffected = 0;
-      } else {
-        this.nbAffected = 0;
-        this.nbUnaffected = 1;
-      }      
-    }
-    
-    int compare(Gamma g){
-      double compare = this.gamma - g.gamma;
-      if(compare < 0)
-        return -1;
-      if(compare > 0)
-        return 1;
-      return 0;
-    }
-    
-    /**
-     * adding an individual for this value
-     *
-     * @param status is the individual affected ?
-     */
-    private void add(boolean status) {
-      if (status)
-        this.nbAffected++;
-      else
-        this.nbUnaffected++;
-    }
-
-    /**
-     * Number of individuals with this gamma value
-     *
-     * @return sum of affected and unaffected individuals
-     */
-    private int size() {
-      return this.nbAffected + this.nbUnaffected;
-    }
-
-    /**
-     * The rank of the individuals presenting this value
-     *
-     * @param start the rank of the first individual, if he was alone
-     * @return
-     */
-    private double getRanking(int start) {
-      return start + (size() - 1) * .5;
-    }
-
-    /**
-     * the partial ranking sum
-     *
-     * @param start the rank of the first individual presenting this gamma
-     * @return number of affected individual * getRanking(start)
-     */
-    private double getSum(int start) {
-      return this.nbAffected * this.getRanking(start);
-    }
+    return ms * 0.001;
   }
 }

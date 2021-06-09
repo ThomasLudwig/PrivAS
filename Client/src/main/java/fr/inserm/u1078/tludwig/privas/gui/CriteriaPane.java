@@ -91,7 +91,7 @@ public class CriteriaPane extends JPanel {
   private final JTextField permutationJTF;
   
   /**
-   * To chosse the maximum frequency of alleles over pooled data
+   * To choose the maximum frequency of alleles over pooled data
    */
   private final JTextField frqThresholdJTF;
   /**
@@ -104,7 +104,7 @@ public class CriteriaPane extends JPanel {
   private final JLabel durationLabel;
 
   /**
-   * Defaults nymber of variants in the client's Genotype File (so as not the divide by 0 on creation)
+   * Defaults number of variants in the client's Genotype File (so as not the divide by 0 on creation)
    */
   private double nbVariants = 65000;
   /**

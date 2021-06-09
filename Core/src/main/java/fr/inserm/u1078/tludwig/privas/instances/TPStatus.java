@@ -20,7 +20,7 @@ public class TPStatus {
    */
   private final State state;
   /**
-   * Optionnal details associated to the status
+   * Optional details associated to the status
    */
   private final String details;
 
@@ -37,7 +37,7 @@ public class TPStatus {
     if(details == null)
       this.details = "";
     else
-      this.details = details.replace("\n", Constants.RET).replace("\t",Constants.TAB);;
+      this.details = details.replace("\n", Constants.RET).replace("\t",Constants.TAB);
   }
 
   public TPStatus(String serialized){
@@ -77,7 +77,7 @@ public class TPStatus {
   }
 
   /**
-   * Gets the optionnal details associated to the TPSStatus
+   * Gets the optional details associated to the TPSStatus
    *
    * @return
    */

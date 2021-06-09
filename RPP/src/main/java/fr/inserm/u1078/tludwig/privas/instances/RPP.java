@@ -4,6 +4,8 @@ import fr.inserm.u1078.tludwig.privas.constants.*;
 import fr.inserm.u1078.tludwig.privas.listener.StandardErrorLogger;
 import fr.inserm.u1078.tludwig.privas.messages.*;
 import fr.inserm.u1078.tludwig.privas.utils.*;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,6 +19,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.text.ParseException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -39,15 +43,18 @@ import javax.crypto.NoSuchPaddingException;
  */
 public class RPP extends Instance implements Runnable {
 
-  //DONE?, when there is a problem with RPP, Client isn't always aware : (ex : from wss filename in the config file leads to filenotfound)
+  //DONE?, when there is a problem with RPP, Client isn't always aware : (ex : from wss filename in the config file leads to FileNotFound)
   private final ArrayList<String> sessions;
   private final RPPThirdPartyConnector thirdPartyConnector;
   private final ArrayList<String> orderedDatasets;
   private final HashMap<String, RPPDataset> rppDatasets;
+  private final ArrayList<String> whitelist;
+  private final ArrayList<String> blacklist;
+  private final String connectionLog;
+  private final int maxPerDay;//default 5
+  private final int maxPerWeek;//default 10
+  private final int maxPerMonth;//default 30
 
-  //private final HashMap<String, String> vcfFilenames;
-  //private final HashMap<String, String> bedfileNames;
-  //private final HashMap<String, String> excludedVariantsFilenames;
   private final HashMap<String, String> datasetsBySession;
   private final HashMap<String, QCParam> qcParamsBySession;
   private final HashMap<String, String> hashesBySession;
@@ -66,7 +73,7 @@ public class RPP extends Instance implements Runnable {
   private final ScheduledExecutorService repeatingTasks;
   
 
-  //TODO  qsub on datarmor prints the job.id, it is then possible to get the job status, before the job start / tps has a third script getStatus(sessionid) if job is not started, display queue, else tps.status
+  //TODO  qsub on datarmor prints the job.id, it is then possible to get the job status, before the job start / tps has a third script getStatus(sessionId) if job is not started, display queue, else tps.status
   /**
    * Creates and runs a new Instance of RPP from a Configuration File
    *
@@ -79,14 +86,16 @@ public class RPP extends Instance implements Runnable {
     
     int port = -1;
     this.addLogListener(new StandardErrorLogger());
-    //HashMap<String, String> rppData = null;
-    //HashMap<String, String> bedFileNames = null;
-    //HashMap<String, String> excludedVFilenames = null;
     orderedDatasets = new ArrayList<>();
     rppDatasets = new HashMap<>();
     datasetsBySession = new HashMap<>();
     qcParamsBySession = new HashMap<>();
     hashesBySession = new HashMap<>();
+    whitelist = new ArrayList<>();
+    blacklist = new ArrayList<>();
+    boolean hasWhitelistTag = false;
+    boolean hasBlacklistTag = false;
+    String tmpConnectionLog = null;
     String sessionDir = null;
     String expiredList = null;
     String tpName = null;
@@ -94,7 +103,11 @@ public class RPP extends Instance implements Runnable {
     String tpsUser = null;
     String tpsLaunchCommand = null;
     String tpsGetKeyCommand = null;
-    String tpsSessiondir = null;
+    String tpsSessionDir = null;
+    int unknown = -495837;
+    int maxPDay = unknown;
+    int maxPWeek = unknown;
+    int maxPMonth = unknown;
 
     try {
       UniversalReader in = new UniversalReader(configFile);
@@ -107,9 +120,6 @@ public class RPP extends Instance implements Runnable {
               port = new Integer(f[1]);
               break;
             case FileFormat.RPP_TAG_DATA:
-              //rppData = new HashMap<>();
-              //bedFileNames = new HashMap<>();
-              //excludedVFilenames = new HashMap<>();
               for (String dataset : f[1].split(",")) {
                 RPPDataset rppDataset = RPPDataset.parse(dataset);
                 String name = rppDataset.getName();
@@ -117,10 +127,6 @@ public class RPP extends Instance implements Runnable {
                   throw new RPP.ConfigFileParsingException("Duplicate dataset name ["+name+"], will be ignored");
                 orderedDatasets.add(name);
                 rppDatasets.put(name, rppDataset);
-                /*String[] ds = dataset.split(":");
-                rppData.put(ds[0], ds[1]);
-                bedFileNames.put(ds[0], ds[2]);
-                excludedVFilenames.put(ds[0], ds[3]);*/
               }
               break;
             case FileFormat.RPP_TAG_RPP_SESSION_DIR:
@@ -145,7 +151,60 @@ public class RPP extends Instance implements Runnable {
               tpsGetKeyCommand = f[1];
               break;
             case FileFormat.RPP_TAG_TPS_SESSION_DIR:
-              tpsSessiondir = f[1];
+              tpsSessionDir = f[1];
+              break;
+            case FileFormat.RPP_TAG_CONNECTION_LOG:
+              tmpConnectionLog = f[1];
+              break;
+            case FileFormat.RPP_TAG_BLACKLIST:
+              hasBlacklistTag = true;
+              for(String address : f[1].split(",")){
+                try{
+                  blacklist.add(address);
+                } catch (Exception e){
+                  logWarning("Unable to parse IP ["+address+"]");
+                }
+              }
+              break;
+            case FileFormat.RPP_TAG_WHITELIST:
+              hasWhitelistTag = true;
+              for(String address : f[1].split(",")){
+                try{
+                  whitelist.add(address);
+                } catch (Exception e){
+                  logWarning("Unable to parse IP ["+address+"]");
+                }
+              }
+              break;
+            case FileFormat.RPP_TAG_MAX_PER_DAY:
+              try{
+                int val = Integer.parseInt(f[1]);
+                if(val < 1)
+                  val = Integer.MAX_VALUE;
+                maxPDay = val;
+              } catch(Exception e) {
+                logWarning("Unable to parse line ["+line+"]");
+              }
+              break;
+            case FileFormat.RPP_TAG_MAX_PER_WEEK:
+              try{
+                int val = Integer.parseInt(f[1]);
+                if(val < 1)
+                  val = Integer.MAX_VALUE;
+                maxPWeek = val;
+              } catch(Exception e) {
+                logWarning("Unable to parse line ["+line+"]");//Nothing
+              }
+              break;
+            case FileFormat.RPP_TAG_MAX_PER_MONTH:
+              try{
+                int val = Integer.parseInt(f[1]);
+                if(val < 1)
+                  val = Integer.MAX_VALUE;
+                maxPMonth = val;
+              } catch(Exception e) {
+                logWarning("Unable to parse line ["+line+"]");//Nothing
+              }
               break;
           }
         } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
@@ -155,6 +214,8 @@ public class RPP extends Instance implements Runnable {
     } catch (IOException e) {
       throw new ConfigFileParsingException(MSG.cat(MSG.RPP_ERR_CONFIG, configFile), e);
     }
+
+    connectionLog = tmpConnectionLog;
 
     if (port == -1)
       throw missingParameters(MSG.RPP_DESC_PORT, configFile, MSG.RPP_SYNTAX_PORT);
@@ -175,31 +236,183 @@ public class RPP extends Instance implements Runnable {
       throw missingParameters(MSG.RPP_DESC_TPS_LAUNCH_COMMAND, configFile, MSG.RPP_SYNTAX_TPS_LAUNCH_COMMAND);
     if (tpsGetKeyCommand == null)
       throw missingParameters(MSG.RPP_DESC_TPS_GETKEY_COMMAND, configFile, MSG.RPP_SYNTAX_TPS_GETKEY_COMMAND);
-    if (tpsSessiondir == null)
+    if (tpsSessionDir == null)
       throw missingParameters(MSG.RPP_DESC_TPS_SESSION_DIR, configFile, MSG.RPP_SYNTAX_TPS_SESSION_DIR);
+    if (connectionLog == null)
+      throw missingParameters(MSG.RPP_DESC_CONNECTION_LOG, configFile, MSG.RPP_SYNTAX_CONNECTION_LOG);
+    if(!hasBlacklistTag)
+      throw missingParameters(MSG.RPP_DESC_BACKLIST, configFile, MSG.RPP_SYNTAX_BLACKLIST);
+    if(!hasWhitelistTag)
+      throw missingParameters(MSG.RPP_DESC_WHITELIST, configFile, MSG.RPP_SYNTAX_WHITELIST);
+    if(maxPDay == unknown)
+      throw missingParameters(MSG.RPP_DESC_MAX_PER_DAY, configFile, MSG.RPP_SYNTAX_MAX_PER_DAY);
+    if(maxPWeek == unknown)
+      throw missingParameters(MSG.RPP_DESC_MAX_PER_WEEK, configFile, MSG.RPP_SYNTAX_MAX_PER_WEEK);
+    if(maxPMonth == unknown)
+      throw missingParameters(MSG.RPP_DESC_MAX_PER_MONTH, configFile, MSG.RPP_SYNTAX_MAX_PER_MONTH);
 
     this.tpsName = tpName;
     this.rppMonitors = new HashMap<>();
-    this.thirdPartyConnector = new RPPThirdPartyConnector(this, tpsAddress, tpsUser, tpsLaunchCommand, tpsGetKeyCommand, tpsSessiondir);
-    //this.vcfFilenames = rppData;
-    //this.bedfileNames = bedFileNames;
-    //this.excludedVariantsFilenames = excludedVFilenames;
+    this.thirdPartyConnector = new RPPThirdPartyConnector(this, tpsAddress, tpsUser, tpsLaunchCommand, tpsGetKeyCommand, tpsSessionDir);
     this.sessionDirectory = sessionDir;
     this.expiredSessionList = expiredList;
+    this.maxPerDay = maxPDay;
+    this.maxPerWeek = maxPWeek;
+    this.maxPerMonth = maxPMonth;
     this.sessions = new ArrayList<>();
 
     init(port);
-    System.err.println("RPP server listening on port : " + port);
-    System.err.println("Session directory : " + sessionDir);
-    System.err.println("Expired Session list : " + expiredList);
-    System.err.println("Available Datasets :");
-    //for (String key : rppData.keySet())
-    //  System.err.println("\t" + key + " : " + rppData.get(key));
+    logInfo("RPP server listening on port : " + port);
+    logInfo("Session directory : " + sessionDir);
+    logInfo("Expired Session list : " + expiredList);
+    logInfo("Available Datasets :");
     for (String key : orderedDatasets)
-      System.err.println("\t" + key + " : " + rppDatasets.get(key));
-    System.err.println("TPS : " + tpName + "(" + tpsUser + "@" + tpsAddress + ":" + tpsSessiondir + ")");
-    System.err.println("TPS Launch : " + tpsLaunchCommand);
-    System.err.println("TPS Get : " + tpsGetKeyCommand);
+      logInfo("\t" + key + " : " + rppDatasets.get(key));
+    logInfo("Connection log : "+ connectionLog);
+    logInfo("Maximum number of connections per day/week/month : "+maxPDay+"/"+maxPWeek+"/"+maxPMonth);
+    logInfo("Blacklisted addresses");
+    for(String bl : blacklist)
+      logInfo("\t" + bl);
+    logInfo("Whitelisted addresses");
+    for(String wh : whitelist)
+      logInfo("\t" + wh);
+    logInfo("TPS : " + tpName + "(" + tpsUser + "@" + tpsAddress + ":" + tpsSessionDir + ")");
+    logInfo("TPS Launch : " + tpsLaunchCommand);
+    logInfo("TPS Get : " + tpsGetKeyCommand);
+  }
+
+  /**
+   * check is CI is authorized for connection
+   */
+
+  public static String getIP(String address){
+    String[] f = address.split(":")[0].split("/",-1);
+    if(f.length > 1)
+      return f[1];
+    return f[0];
+  }
+
+  public void tryToConnect(String address) throws UnauthorizedConnectionException {
+    logDebug("Trying to connect from "+address);
+
+    if (isWhitelisted(address))
+      return;
+    logDebug("No whitelist "+address);
+    if (isBlacklisted(address))
+      throw new UnauthorizedConnectionException("Your address has been blacklisted. Contact the administrator for more information");
+    logDebug("No blacklist "+address);
+    Instant now = Instant.now();
+    logDebug("Now "+now);
+    Instant day = now.minus(1, ChronoUnit.DAYS);
+    logDebug("last day "+day);
+    Instant week = now.minus(7, ChronoUnit.DAYS);//ChronoUnit.WEEKS not supported by minus
+    logDebug("last week "+week);
+    Instant month = now.minus(31, ChronoUnit.DAYS);//ChronoUnit.MONTHS not supported by minus
+    logDebug("last month "+month);
+    int nDay = 0;
+    int nWeek = 0;
+    int nMonth = 0;
+    try {
+      logDebug("will get connections "+address);
+      for (Instant connect : getConnections(address)) {
+        logDebug("found ["+connect+"] "+address);
+        if (connect.isAfter(day))
+          nDay++;
+        if (connect.isAfter(week))
+          nWeek++;
+        if (connect.isAfter(month))
+          nMonth++;
+        if (nDay >= this.maxPerDay)
+          throw new UnauthorizedConnectionException("You cannot connect to this server more than " + maxPerDay + " times per day");
+        if (nWeek >= this.maxPerWeek)
+          throw new UnauthorizedConnectionException("You cannot connect to this server more than " + maxPerWeek + " times per week");
+        if (nMonth >= this.maxPerMonth)
+          throw new UnauthorizedConnectionException("You cannot connect to this server more than " + maxPerMonth + " times per month");
+      }
+    } catch (IOException e) {
+      logError("Could not check / write connection log");
+      logError(e);
+    }
+  }
+
+  private boolean isWhitelisted(String address){
+    return ipAddressMatch(address, whitelist);
+  }
+
+
+  private boolean isBlacklisted(String address){
+    return ipAddressMatch(address, blacklist);
+  }
+
+  private void addConnection(String address) {
+    try {
+      PrintWriter out = new PrintWriter(new FileWriter(connectionLog, true));//Append mode
+      out.println(address + "\t" + new Date().getTime());
+      out.close();
+    } catch (IOException e){
+      logWarning("Could not log Session in connection log");
+      logWarning(e);
+    }
+  }
+
+  private ArrayList<Instant> getConnections(String address) throws IOException {
+    ArrayList<Instant> ret = new ArrayList<>();
+    UniversalReader in = new UniversalReader(connectionLog);
+    String line;
+    while((line = in.readLine()) != null){
+      String[] f = line.split("\t");
+      if(ipAddressMatch(address, f[0]))
+        ret.add(Instant.ofEpochMilli(Long.parseLong(f[1])));
+    }
+    in.close();
+    return ret;
+  }
+
+  public static boolean ipAddressMatch(String address, ArrayList<String> list){
+    for(String address2 : list)
+      if(ipAddressMatch(address, address2))
+        return true;
+    return false;
+  }
+
+  public static boolean ipAddressMatch(String address1, String address2){
+    //Addresses format:
+    // *
+    // *.*
+    // *.*.*
+    // *.*.*.*
+    // 125.123
+    // 125.123.*
+    // 125.123.41.*
+    // 125.123.41.17
+    // 125.123.41.17-52
+    String[] ip1 = address1.split("\\.");
+    String[] ip2 = address2.split("\\.");
+    for(int i = 0; i < ip1.length && i< ip2.length; i++){
+      String p1 = ip1[i];
+      String p2 = ip2[i];
+
+      //wildcards always match
+      if("0".equals(p1) || "*".equals(p1))
+        continue;
+      if("0".equals(p2) || "*".equals(p2))
+        continue;
+      if(!p1.equals(p2))
+        return false;
+      String[] sp1 = p1.split("-");
+      String[] sp2 = p2.split("-");
+      int min1 = Integer.parseInt(sp1[0]);
+      int max1 = min1;
+      int min2 = Integer.parseInt(sp2[0]);
+      int max2 = min2;
+      if(sp1.length > 1)
+        max1 = Integer.parseInt(sp1[1]);
+      if(sp2.length > 1)
+        max2 = Integer.parseInt(sp2[1]);
+      if(max1 < min2 || max2 < min1)
+        return false;
+    }
+    return true;
   }
 
   /**
@@ -350,7 +563,7 @@ public class RPP extends Instance implements Runnable {
     try {
       RPPSessionProcessor sp = new RPPSessionProcessor(this, session);
       sp.init();
-    } catch (BedRegion.BedRegionException | IOException | NumberFormatException | QualityControl.QCException e) {
+    } catch (BedRegion.BedRegionException | IOException | NumberFormatException | QCException e) {
       logError("Unable to restore saved session ["+session+"]");
       logError(e);
     }
@@ -378,7 +591,7 @@ public class RPP extends Instance implements Runnable {
    * Gets the path to a file
    *
    * @param session     the Session ID
-   * @param fileContent the code of the file being requestest
+   * @param fileContent the code of the file being requested
    * @return
    */
   public String getFilenameFor(String session, String fileContent) {
@@ -555,7 +768,6 @@ public class RPP extends Instance implements Runnable {
     out = new PrintWriter(new FileWriter(this.getFilenameFor(session, FileFormat.FILE_CLIENT_DATA_OK)));
     out.println(Constants.OK);
     out.close();
-
   }
 
   /**
@@ -610,8 +822,7 @@ public class RPP extends Instance implements Runnable {
     } catch (IOException e) {
       return false;
     }
-    //TODO check if line.equals("0");
-    return true;
+    return line.charAt(0) == '0';
   }
   
   public void stopThread(){
@@ -678,8 +889,7 @@ public class RPP extends Instance implements Runnable {
    * @return
    */
   public List<TPStatus> getThirdPartyStatuses(String sessionId, int last) throws Exception {
-    List<TPStatus> tpStatus = this.thirdPartyConnector.getStatuses(sessionId, last);
-    return tpStatus;
+    return this.thirdPartyConnector.getStatuses(sessionId, last);
   }
 
   /**
@@ -713,15 +923,25 @@ public class RPP extends Instance implements Runnable {
     public void run() {
       Message request = null;
       Message reply;
+
       try {
+        request = socket.readMessage();
+        reply = this.getReply(request);
+      } catch(IOException se) {
+        logWarning("Socket Disconnected");
         try {
-          request = socket.readMessage();
-          reply = this.getReply(request);
-        } catch (MessageException | Message.EmptyParameterException | IOException e) {
-          String errorMessage = MSG.cat(MSG.RPP_ERR_SOCKET, e);
-          reply = new SendError(errorMessage);
-          logWarning(e);
+          socket.close();
+        } catch(Exception ignore) {
+          //nothing
         }
+        return;
+      }catch (MessageException | Message.EmptyParameterException e) {
+        String errorMessage = MSG.cat(MSG.RPP_ERR_SOCKET, e);
+        reply = new SendError(errorMessage);
+        logWarning(e);
+      }
+
+      try {
         socket.writeMessage(reply);
         //If the message is of the Request/1-Reply format, close the socket
         //Monitor is in the format Request/n-Reply, the socket must remain open for further updates
@@ -793,7 +1013,7 @@ public class RPP extends Instance implements Runnable {
      * @return
      * @throws fr.inserm.u1078.tludwig.privas.messages.Message.EmptyParameterException
      */
-    private Message receiveData(SendClientData sendClientData) throws Message.EmptyParameterException {
+    private Message receiveData(SendClientData sendClientData) {
       try {
         String session = sendClientData.getSession();
         writeClientData(session, sendClientData.getEncryptedAESKey(), sendClientData.getEncryptedClientData(), sendClientData.getEncryptedClientExcludedVariants(), sendClientData.getAlgorithm());
@@ -842,6 +1062,8 @@ public class RPP extends Instance implements Runnable {
      */
     private Message sessionAsked(AskSession askSession) {
       try {
+        tryToConnect(getIP(socket.getClientIP()));
+        logDebug("Connection allowed");
         double maxMaf = askSession.getMaxAF();
         double maxMafNFE = askSession.getMaxAFNFE();
         String minCsq = askSession.getMinCSQ();
@@ -870,7 +1092,11 @@ public class RPP extends Instance implements Runnable {
         SendSession sendSession = new SendSession(session, encryptedKHash, thirdPartyPublicPem, bed2);
         processSession(session, datasetName, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed2, qcParam, kHash);
         return sendSession;
-      } catch (Message.EmptyParameterException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | IOException | BedRegion.BedRegionException | QualityControl.QCException e) {
+      } catch (UnauthorizedConnectionException f) {
+        String msg = f.getMessage();
+        logWarning(msg);
+        return new SendError(msg);
+      } catch (Message.EmptyParameterException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | IOException | BedRegion.BedRegionException | QCException e) {
         String errorMessage = MSG.cat(MSG.RPP_ERR_NEW_SESSION, e);
         logWarning(errorMessage);
         logWarning(e);
@@ -880,6 +1106,7 @@ public class RPP extends Instance implements Runnable {
 
     private Message startSession(StartSession startSession) {
       try {
+        addConnection(getIP(socket.getClientIP()));
         String session = startSession.getSession();
         RPPSessionProcessor sp = RPP.this.rppSessionProcessors.get(session);
         sp.init();
@@ -913,5 +1140,17 @@ public class RPP extends Instance implements Runnable {
     ConfigFileParsingException(String message, Throwable cause) {
       super(message, cause);
     }
+  }
+
+  public static class UnauthorizedConnectionException extends Exception {
+
+    UnauthorizedConnectionException(String message) {
+      super(message);
+    }
+
+    UnauthorizedConnectionException(String message, Throwable cause) {
+      super(message, cause);
+    }
+
   }
 }

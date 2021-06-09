@@ -65,13 +65,13 @@ public class BedFile implements Cloneable {
 
     //1) add region
     int idx = add(chromosome, r);
-    //2) if intersect next, applyintersection to current and remove next
+    //2) if intersect next, applyIntersection to current and remove next
     if (idx < chromosome.size() - 1) {
       BedRegion next = chromosome.get(idx + 1);
       if (r.overlap(next))
         r.applyUnion(chromosome.remove(idx + 1));
     }
-    //3) if intersect prev, applyintersection to previous and remove current
+    //3) if intersect prev, applyIntersection to previous and remove current
     if (idx > 0) {
       BedRegion prev = chromosome.get(idx - 1);
       if (prev.overlap(r))
@@ -189,7 +189,7 @@ public class BedFile implements Cloneable {
   }
 
   /**
-   * Produces the intersection between two bed files. If one bed file is completly empty, and returns the other one.
+   * Produces the intersection between two bed files. If one bed file is completely empty, and returns the other one.
    * @param bedA  first bed file
    * @param bedB  second bed file
    * @return
@@ -203,7 +203,7 @@ public class BedFile implements Cloneable {
       return bedA.copy();
     
     for (int chr : bedA.regions.keySet())
-      if (bedB.regions.keySet().contains(chr)) {
+      if (bedB.regions.containsKey(chr)) {
         ArrayList<BedRegion> rsA = bedA.regions.get(chr);
         ArrayList<BedRegion> rsB = bedB.regions.get(chr);
         //for each rA in rsA, we look for every rBs in rsB that overlap rA

@@ -7,7 +7,6 @@ import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -71,7 +70,7 @@ public class RPPThirdPartyConnector {
   }
 
   /**
-   * Gets the Third Party Server's Publc RSA key as a one-line pem String (through ssh)
+   * Gets the Third Party Server's Public RSA key as a one-line pem String (through ssh)
    *
    * @param sessionId the Session ID
    * @return
@@ -168,7 +167,7 @@ public class RPPThirdPartyConnector {
         } catch(IOException ignore){
           //don't care
         }
-   /*   } catch(FileNotFoundException ex) { //TODO this will completly mess yp the offset !!
+   /*   } catch(FileNotFoundException ex) { //TODO this will completely mess up the offset !!
         //The file doesn't yet exist on TPS
         statuses.add(new TPStatus(new Date().getTime(), TPStatus.State.PENDING, ""));
       } catch (IOException e) {

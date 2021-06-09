@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.ParseException;
 import java.util.Date;
-import java.util.List;
 
 /**
  * Status of an RPP Instance
@@ -26,7 +25,7 @@ public class RPPStatus {
    */
   private final State state;
   /**
-   * Optionnal details associated to the status
+   * Optional details associated to the status
    */
   private final String details; //TODO force TPS message, the whole log is a single string
   /**
@@ -146,7 +145,7 @@ public class RPPStatus {
    * Creates a new RPPStatus :
    * The launched Job is running on the Third Party Server
    *
-   * @param details Additionnal information from the Third Party Server
+   * @param details Additional information from the Third Party Server
    * @return
    */
   public static RPPStatus running(String details) {

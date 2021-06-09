@@ -1,16 +1,12 @@
 package test;
 
 import fr.inserm.u1078.tludwig.privas.utils.FileUtils;
-import fr.inserm.u1078.tludwig.privas.utils.QCParam;
-import fr.inserm.u1078.tludwig.privas.utils.QCVariant;
-import fr.inserm.u1078.tludwig.privas.utils.QualityControl;
 
-import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Sandbox class for small tests
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-11-17
@@ -19,7 +15,7 @@ import java.net.UnknownHostException;
  */
 public class Sandbox {
 
-  public static final void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     /*int a = 1024+512+8+4+2+1;
     for(int b = 1; b < 2048; b*=2){
       boolean c = (a&b) == b;

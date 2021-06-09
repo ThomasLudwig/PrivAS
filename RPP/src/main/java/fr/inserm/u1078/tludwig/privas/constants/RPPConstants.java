@@ -1,7 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.constants;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Constants used by RPP
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-10-02

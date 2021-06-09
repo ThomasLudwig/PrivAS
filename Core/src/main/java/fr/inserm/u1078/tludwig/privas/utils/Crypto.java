@@ -34,7 +34,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 
 /**
- * Class to perform all the Crytographic operations for this Program All methods and fields are static
+ * Class to perform all the Cryptographic operations for this Program All methods and fields are static
  *
  * SecureRandom might be unsupported on some JDK installation. It is disabled by default and one must copy a specific jar to activate it
  * 
@@ -61,7 +61,7 @@ public final class Crypto {
   private static final String RSA_PUBLIC_END = "-----END RSA PUBLIC KEY-----";
 
   private Crypto() {
-    //This class may not be instanciated
+    //This class may not be instantiated
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ public final class Crypto {
    *
    * @param key              the AES key
    * @param encryptedMessage the encrypted message
-   * @return the decrypted messsage
+   * @return the decrypted message
    * @throws NoSuchAlgorithmException
    * @throws NoSuchPaddingException
    * @throws InvalidKeyException
@@ -248,7 +248,7 @@ public final class Crypto {
    * Encrypts a message with RSA
    *
    * @param key     the RSA Encryption Key
-   * @param message the message to encryped
+   * @param message the message to encrypted
    * @return the encrypted message in bytes
    * @throws BadPaddingException
    * @throws IllegalBlockSizeException
@@ -266,7 +266,7 @@ public final class Crypto {
    * Encrypts a message with RSA
    *
    * @param key     the RSA Encryption Key
-   * @param message the message to encryped
+   * @param message the message to encrypted
    * @return the encrypted message as a String
    * @throws BadPaddingException
    * @throws IllegalBlockSizeException
@@ -357,7 +357,7 @@ public final class Crypto {
   /**
    * Gets the Public Key from an RSA Keypair as a one line pem String
    *
-   * @param kp the KeyPair contianing the public key
+   * @param kp the KeyPair containing the public key
    * @return
    */
   public static String getPublicRSAKeyAsString(KeyPair kp) {

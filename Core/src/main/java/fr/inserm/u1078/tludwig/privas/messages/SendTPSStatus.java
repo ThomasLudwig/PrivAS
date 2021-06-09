@@ -1,10 +1,9 @@
 package fr.inserm.u1078.tludwig.privas.messages;
 
-import fr.inserm.u1078.tludwig.privas.instances.RPPStatus;
 import fr.inserm.u1078.tludwig.privas.instances.TPStatus;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Message used by TPS to send its status
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-10-06
@@ -23,7 +22,7 @@ public class SendTPSStatus extends SessionMessage {
    *
    * @param sessionId the Session ID
    * @param status    the status of the RPP
-   * @throws EmptyParameterException if at least one of the paramters is null
+   * @throws EmptyParameterException if at least one of the parameters is null
    */
   public SendTPSStatus(String sessionId, TPStatus status) throws EmptyParameterException {
     super(sessionId);

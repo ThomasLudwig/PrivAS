@@ -22,7 +22,7 @@ public class SendRPPStatus extends SessionMessage {
    *
    * @param sessionId the Session ID
    * @param status    the status of the RPP
-   * @throws EmptyParameterException if at least one of the paramters is null
+   * @throws EmptyParameterException if at least one of the parameters is null
    */
   public SendRPPStatus(String sessionId, RPPStatus status) throws EmptyParameterException {
     super(sessionId);

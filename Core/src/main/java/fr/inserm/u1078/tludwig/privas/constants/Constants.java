@@ -45,7 +45,7 @@ public class Constants {
 
   /**
    * Formatted expected end of task Date/Time
-   * @param duration exstimated duration left (ms)
+   * @param duration estimated duration left (ms)
    * @return 
    */
   public static String formatEnd(long duration) {
@@ -89,7 +89,7 @@ public class Constants {
    */
   public static final String NA = "N/A";
   /**
-   * Thrid Party Server String
+   * Third Party Server String
    */
   public static final String TPS = "Third-Party Server";
   /**

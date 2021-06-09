@@ -3,7 +3,7 @@ package test;
 import fr.inserm.u1078.tludwig.privas.documentation.ClientDocumentation;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Testing Class to try the Client's documentation
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-11-29

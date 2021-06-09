@@ -5,6 +5,9 @@ import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
 import fr.inserm.u1078.tludwig.privas.listener.ProgressListener;
 import fr.inserm.u1078.tludwig.privas.utils.*;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QualityControl;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -131,7 +134,7 @@ public class RPPSessionProcessor {
     rpp.logDebug("SessionProcessor created");
   }
 
-  RPPSessionProcessor(RPP rpp, String session) throws IOException, BedRegion.BedRegionException, QualityControl.QCException, NumberFormatException {
+  RPPSessionProcessor(RPP rpp, String session) throws IOException, BedRegion.BedRegionException, QCException, NumberFormatException {
     this.rpp = rpp;
     this.session = session;
     UniversalReader in = new UniversalReader(rpp.getFilenameFor(session, FileFormat.FILE_SESSION_PARAMETERS));
@@ -176,7 +179,7 @@ public class RPPSessionProcessor {
     // is TPS currently active and needs monitoring ?
     boolean needTPSMonitoring = false;
     
-    switch (status.getState()) {//TODO restore works almost well, more test are need dans RPP crashes and TPS hasn't produces its first message
+    switch (status.getState()) {//TODO restore works almost well, more test are needed : RPP crashes and TPS hasn't produces its first message
       //maybe are a new TPS status, data received, job submitted
       case NEW_SESSION:
       case WAITING_BOTH:
@@ -333,7 +336,7 @@ public class RPPSessionProcessor {
 
 
       ProgressListener progress = percent -> rpp.setStatus(session, RPPStatus.extracting(rpp.getStatus(session), percent));
-      int nbRec = 0;
+      int nbRec;
       try {
         File d = new File(rpp.getFilenameFor(session, DIRECTORY));
         if (!d.exists() && !d.mkdirs())
@@ -345,7 +348,7 @@ public class RPPSessionProcessor {
           String outputVCFFilename = rppDataset.getQCVCFFilename(qcParam);
           //applyQC
           rpp.logInfo(MSG.action(MSG.SP_QC, session));
-          int nbAfterQC = QualityControl.applyQC(inputVCFFilename, this.qcParam, outputVCFFilename, excludedVariantFilename, false);
+          QualityControl.applyQC(inputVCFFilename, this.qcParam, outputVCFFilename, excludedVariantFilename, false);
           //convertToGenotype
           rpp.logInfo(MSG.action(MSG.SP_CONVERT, session));
           nbRec = GenotypesFileHandler.convertVCF2Genotypes(outputVCFFilename, genotypeFilename);
@@ -354,7 +357,7 @@ public class RPPSessionProcessor {
         }
         //Extract genotype
         rpp.logInfo(MSG.action(MSG.SP_RPP, session));
-        int nbLines = GenotypesFileHandler.extractGenotypesToFile(genotypeFilename, rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA), nbRec, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, kHash, progress);
+        int nbLines = GenotypesFileHandler.extractGenotypesToFile(genotypeFilename, rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA), nbRec, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, kHash, rpp, progress);
         PrintWriter out = new PrintWriter(new FileWriter(rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA_OK)));
         out.println(nbLines);
         out.close();
@@ -366,7 +369,7 @@ public class RPPSessionProcessor {
           rpp.setStatus(session, RPPStatus.rppDataExtracted(rpp.getStatus(session)));
         }
         rppExtracted = true;
-      } catch (GenotypesFileHandler.GenotypeFileException | IOException | InvalidKeyException | NoSuchAlgorithmException | QualityControl.QCException ex) {
+      } catch (GenotypesFileHandler.GenotypeFileException | IOException | InvalidKeyException | NoSuchAlgorithmException ex) {
         rpp.logError(MSG.done(MSG.SP_KO_RPP, ex));
         rpp.logError(ex);
         rppExtractionFailed = ex.getMessage();

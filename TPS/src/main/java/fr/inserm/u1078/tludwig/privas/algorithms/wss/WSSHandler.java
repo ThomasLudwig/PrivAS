@@ -1,24 +1,21 @@
-package fr.inserm.u1078.tludwig.privas.algorithms;
+package fr.inserm.u1078.tludwig.privas.algorithms.wss;
 
-import fr.inserm.u1078.tludwig.privas.Main;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
 import fr.inserm.u1078.tludwig.privas.instances.ThirdPartyServer;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 import java.io.ByteArrayOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Random;
 
 /**
  * Class that will parse the data and launch WSS in parallel on all the genes
- * Sometimes the parallelisation will be to sequentially launch WSS intances that are multithread
- * Sometimes the parallelisation will be to launch in parallel several intances of monothreaded WSS
+ * Sometimes the parallelization will be to sequentially launch WSS instances that are multi-threaded
+ * Sometimes the parallelization will be to launch in parallel several instances of mono-threaded WSS
  *
  * @author Thomas E. Ludwig (INSERM - U1078) 2019-04-18
  *
@@ -26,7 +23,6 @@ import java.util.Random;
  */
 public class WSSHandler {
   //parameters
-
   /**
    * maximum number of cores to use
    */
@@ -54,17 +50,17 @@ public class WSSHandler {
 
   //data
   /**
-   * status of the sample (true when affeted)
+   * status of the sample (true when affected)
    */
   private boolean[] statuses;
   /**
    * number of affected samples
    */
-  private int nbAff;
+  private int nbAffected;
   /**
    * number of unaffected samples
    */
-  private int nbUnaff;
+  private int nbUnaffected;
 
   /**
    * all the instances of the WSS objects, one per genomic region (gene)
@@ -138,7 +134,7 @@ public class WSSHandler {
    *                        unaffected
    * @param nbAffected      number of affected individuals
    * @param nbUnaffected    number of unaffected individuals
-   * 
+   *
    * @return the results of WSS. A result file, in clear text, stored in a byte array
    * @throws IOException
    */
@@ -212,20 +208,20 @@ public class WSSHandler {
     String[] f = in.readLine().split("\\s+");
     statuses = new boolean[f.length];
     try{
-    for (int i = 0; i < f.length; i++)
-      statuses[i] = Boolean.valueOf(f[i]);
+      for (int i = 0; i < f.length; i++)
+        statuses[i] = Boolean.parseBoolean(f[i]);
     } catch(NumberFormatException nfe){
       System.err.println("Unable to parse boolean is phenotype file.\n"+nfe.getMessage());
     }
     in.close();
 
     //number of affected individuals in the dataset
-    nbAff = 0;
+    nbAffected = 0;
     for (boolean b : statuses)
       if (b)
-        nbAff++;
+        nbAffected++;
     //number of unaffected individuals in the dataset
-    nbUnaff = statuses.length - nbAff;
+    nbUnaffected = statuses.length - nbAffected;
 
     //for each file in the genotypes list, create a wss object
     in = new UniversalReader(genotypeListFilename);
@@ -248,10 +244,12 @@ public class WSSHandler {
    * @param nbAffected      number of affected individuals
    * @param nbUnaffected    number of unaffected individuals
    */
-  private void loadData(HashMap<String, ArrayList<String>> mergedGenotypes, int nbAffected, int nbUnaffected) throws IOException {
-    
+  private void loadData(HashMap<String, ArrayList<String>> mergedGenotypes, int nbAffected, int nbUnaffected) {
+
     //TODO for debugging purpose only remove before release !
-   /* String id = "debug."+new Date().getTime();
+   /*
+
+   String id = "debug."+new Date().getTime();
     PrintWriter out = null;
     if(Main.DEBUG){
       out = new PrintWriter(new FileWriter("/PROJECTS/PrivGene/PrivAS/debug/"+id+".pheno"));
@@ -264,14 +262,14 @@ public class WSSHandler {
       out.close();
       out = new PrintWriter(new FileWriter("/PROJECTS/PrivGene/PrivAS/debug/"+id+".geno"));
     }*/
-    
+
     //number of affected individuals in the dataset
-    nbAff = nbAffected;
-    nbUnaff = nbUnaffected;
+    this.nbAffected = nbAffected;
+    this.nbUnaffected = nbUnaffected;
     //reading phenotype status
-    statuses = new boolean[nbAff + nbUnaff];
-    for (int i = 0; i < nbAff + nbUnaff; i++)
-      statuses[i] = i < nbAff;
+    statuses = new boolean[this.nbAffected + this.nbUnaffected];
+    for (int i = 0; i < this.nbAffected + this.nbUnaffected; i++)
+      statuses[i] = i < this.nbAffected;
     wss = new ArrayList<>();
     for (String gene : mergedGenotypes.keySet()) {
       ArrayList<String> genotypes = mergedGenotypes.get(gene);
@@ -296,14 +294,14 @@ public class WSSHandler {
    * Now we have rejected most of the genes (which are above the rejection p-value threshold)
    * we will iterate the genes sequentially, each gene will be processed on multiple threads
    * <p>
-   * 
+   *
    * @return the results of WSS. A result file, in clear text, stored in a byte array
    */
   private byte[] run() {
     long startComp = new Date().getTime();
     statusRunning(/*Constants.DF_TPS.format(new Date()) + */MSG.WH_START);
     //init
-    Shuffler shuffler = new Shuffler(nbUnaff, nbAff, randomSeed);
+    Shuffler shuffler = new Shuffler(nbUnaffected, nbAffected, randomSeed);
     final long start = new Date().getTime();
 
     //print results header
@@ -334,7 +332,7 @@ public class WSSHandler {
       else
         keep.add(w);
     }
-    
+
     wss = keep;
     out.flush();
     statusRunning(MSG.WH_PROGRESS(k, wss.size(), totalGenes));
@@ -382,66 +380,5 @@ public class WSSHandler {
     statusRunning(MSG.WH_DONE);
     out.close();
     return resultStream.toByteArray();
-  }
-
-  /**
-   * Provides shuffles of (un)Affected status
-   */
-  public static class Shuffler {
-
-    private final Random random;
-    private final int nbUnaffected;
-    private final int nbAffected;
-    //private final ArrayList<Long> generated;
-
-    /**
-     * Constructs a new Shuffler
-     *
-     * @param nbUnaffected number of unaffected individuals
-     * @param nbAffected   number of affected individuals
-     * @param seed         random seed
-     */
-    public Shuffler(int nbUnaffected, int nbAffected, long seed) {
-      this.nbUnaffected = nbUnaffected;
-      this.nbAffected = nbAffected;
-      this.random = new Random(seed);
-      //this.generated = new ArrayList<>();
-    }
-
-    /**
-     * produces SIZE random boolean arrays with nbUnaffected FALSE values and nbAffected TRUE values
-     *
-     * @param size number of arrays to generate
-     * @return
-     */
-    public boolean[][] getNext(int size) {
-      boolean[][] b = new boolean[size][];
-      for (int i = 0; i < size; i++)
-        b[i] = getNext();
-      return b;
-    }
-
-    /**
-     * produces a random boolean array with nbUnaffected FALSE values and nbAffected TRUE values
-     *
-     * @return
-     */
-    public boolean[] getNext() {
-      int nbFalse = this.nbUnaffected;
-      int nbTrue = this.nbAffected;
-      boolean[] shuffled = new boolean[nbFalse + nbTrue];
-      for (int i = 0; i < shuffled.length; i++) {
-        int r = random.nextInt(nbFalse + nbTrue) + 1;
-        if (r > nbFalse) {
-          shuffled[i] = true;
-          nbTrue--;
-        } else {
-          shuffled[i] = false;
-          nbFalse--;
-        }
-      }
-      //this.generated.add(value(shuffled));
-      return shuffled;
-    }
   }
 }

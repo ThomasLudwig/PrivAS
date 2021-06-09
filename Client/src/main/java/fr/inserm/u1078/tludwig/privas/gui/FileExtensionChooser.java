@@ -31,7 +31,7 @@ public class FileExtensionChooser extends JFileChooser {
   /**
    * A FileFilter to show only files of certain extensions
    */
-  private class FileExtensionFilter extends FileFilter {
+  private static class FileExtensionFilter extends FileFilter {
     private final String name;
     private final String extension;
     private final String gzExtension;

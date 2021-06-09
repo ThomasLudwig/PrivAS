@@ -1,4 +1,4 @@
-package fr.inserm.u1078.tludwig.privas.gui;
+package fr.inserm.u1078.tludwig.privas.gui.results;
 
 import fr.inserm.u1078.tludwig.privas.constants.GUI;
 import java.awt.Color;
@@ -215,13 +215,11 @@ public class Manhattan extends JPanel {
   }
 
   /**
-   * Computes the Offset (x-ccordinates) for non missing chromosomes<p>
+   * Computes the Offset (x-coordinates) for non missing chromosomes<p>
    * Use all available width, leave no gaps between chromosomes
    */
   private void computeNonMissingOffset() {
-    boolean[] found = new boolean[25];
-    for (int i = 0; i < found.length; i++)
-      found[i] = false;
+    boolean[] found = new boolean[25]; //initialized to false
 
     for (Gene gene : genes)
       found[gene.chrom - 1] = true;
@@ -308,7 +306,7 @@ public class Manhattan extends JPanel {
         dataset.addSeries(serie);
         renderer.setSeriesShape(last, new Ellipse2D.Double(-DOT, -DOT, 2 * DOT, 2 * DOT));
         renderer.setSeriesPaint(last, CHROM_COLORS[theme][last]);
-        renderer.setShapesFilled(Boolean.FALSE); //DONE use non filled points        
+        renderer.setSeriesShapesFilled(last, Boolean.FALSE); //DONE use non filled points
 
         //DONE  to center the points, convert boundaries from chart.coord to 2D.coord, adjust, convert back, create translated annotation
         final XYTextAnnotation mark = new XYTextAnnotation(name, nonMissingOffset[chr] + .5 * CHROM_LENGTH[chr] + offset, labelY);
@@ -371,7 +369,7 @@ public class Manhattan extends JPanel {
   /**
    * Class to customize TickUnit spaces and labels
    */
-  private class CustomTickUnit extends NumberTickUnit {
+  private static class CustomTickUnit extends NumberTickUnit {
     CustomTickUnit(double size) {
       super(size);
     }
@@ -392,7 +390,7 @@ public class Manhattan extends JPanel {
    * a p-value
    * </ul>
    */
-  private class Gene {
+  private static class Gene {
     private final int chrom;
     private final double x;
     private final double y;

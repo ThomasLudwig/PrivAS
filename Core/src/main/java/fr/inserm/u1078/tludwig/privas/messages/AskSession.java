@@ -2,8 +2,8 @@ package fr.inserm.u1078.tludwig.privas.messages;
 
 import fr.inserm.u1078.tludwig.privas.utils.BedFile;
 import fr.inserm.u1078.tludwig.privas.utils.BedRegion;
-import fr.inserm.u1078.tludwig.privas.utils.QCParam;
-import fr.inserm.u1078.tludwig.privas.utils.QualityControl;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 /**
  * Message from the Client to the RPP Asking to start a new Session with a set of parameters
@@ -40,7 +40,6 @@ public class AskSession extends Message {
     this.setMinCSQ(minCSQ);
     this.setLimitToSNVs(limitToSNVs);
     this.setBedFile(bed);
-    //TODO Excuded variants ?
     this.setQCParam(qcParam);
   }
 
@@ -110,7 +109,7 @@ public class AskSession extends Message {
    * @return
    */
   public final double getMaxAF() {
-    return Double.valueOf(this.getValue(Key.MAX_MAF));
+    return Double.parseDouble(this.getValue(Key.MAX_MAF));
   }
 
   /**
@@ -132,7 +131,7 @@ public class AskSession extends Message {
    * @return
    */
   public final double getMaxAFNFE() {
-    return Double.valueOf(this.getValue(Key.MAX_MAF_NFE));
+    return Double.parseDouble(this.getValue(Key.MAX_MAF_NFE));
   }
 
   /**
@@ -154,7 +153,7 @@ public class AskSession extends Message {
    * @return 
    */
   public final boolean getLimitToSNVs(){
-    return Boolean.valueOf(this.getValue(Key.LIMIT_TO_SNVS));
+    return Boolean.parseBoolean(this.getValue(Key.LIMIT_TO_SNVS));
   }
   
   /**
@@ -198,7 +197,7 @@ public class AskSession extends Message {
     }
   }
 
-  public QCParam getQCParam() throws QualityControl.QCException {
+  public QCParam getQCParam() throws QCException {
     return QCParam.deserialize(this.getValue(Key.QC_PARAM));
   }
 }

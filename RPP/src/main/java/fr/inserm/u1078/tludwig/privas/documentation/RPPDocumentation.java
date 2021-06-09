@@ -1,9 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.documentation;
 
-import fr.inserm.u1078.tludwig.privas.Main;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
-
-import java.nio.MappedByteBuffer;
 
 /**
  * Generates an Up-to-date documentation for the RPP
@@ -42,6 +39,7 @@ public class RPPDocumentation extends Documentation {
     String qc = "QC1352166484";
     String prefix = "my_precious_data";
     doc.rstSection("Run the default QC");
+    doc.append(paragraph("In order for the quality control to work optimally, it is recommended to split multiallelic variants."));
     doc.rstCode(BASH,
             "#Execute QC",
             "java -jar PrivAS.RPP.jar --defaultqc "+prefix+".vcf.gz "

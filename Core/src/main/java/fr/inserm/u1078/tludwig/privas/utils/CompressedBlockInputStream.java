@@ -107,7 +107,7 @@ public class CompressedBlockInputStream extends FilterInputStream {
       throw new IOException("Data format exception - " + dfe.getMessage());
     }
 
-    // Reset the inflator so we can re-use it for the
+    // Reset the inflater so we can re-use it for the
     // next block
     this.inflater.reset();
 

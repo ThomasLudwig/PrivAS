@@ -7,7 +7,7 @@ import fr.inserm.u1078.tludwig.privas.instances.TPStatus;
 import java.util.Date;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Testing Class to try the Client's GUI
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-11-03
@@ -16,7 +16,7 @@ import java.util.Date;
  */
 public class Testgui {
 
-  public static final void main(String[] args) throws Exception {
+  public static void main(String[] args) throws Exception {
     LookAndFeel.setup();
 
     TPSLogWindow logWindow = new TPSLogWindow();
@@ -34,18 +34,18 @@ public class Testgui {
 
   public static String getRandomMessage(){
     double newWord = .95;
-    String message = getRandomWord();
+    StringBuilder message = new StringBuilder(getRandomWord());
     while(Math.random() < newWord)
-      message += " " + getRandomWord();
-    return message;
+      message.append(" ").append(getRandomWord());
+    return message.toString();
   }
 
   public static String getRandomWord(){
     double newLetter = 0.65;
-    String word = ""+getRandomLetter();
+    StringBuilder word = new StringBuilder(getRandomLetter());
     while(Math.random()< newLetter)
-      word += getRandomLetter();
-    return word;
+      word.append(getRandomLetter());
+    return word.toString();
   }
 
   public static char getRandomLetter(){

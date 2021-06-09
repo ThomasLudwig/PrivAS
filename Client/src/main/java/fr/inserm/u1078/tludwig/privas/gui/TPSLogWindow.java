@@ -154,7 +154,7 @@ public class TPSLogWindow extends JFrame {
     }
   }
 
-  class TPStatusTableModel extends AbstractTableModel {
+  static class TPStatusTableModel extends AbstractTableModel {
     private final List<TPStatus> statuses;
 
     TPStatusTableModel(){

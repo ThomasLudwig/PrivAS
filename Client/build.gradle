@@ -1,34 +1,9 @@
-
 plugins {
     id 'java'
 }
 
 group 'fr.inserm.u1078'
-version Version.getVersion()
-
-
-class Version{
-    Version(){
-
-    }
-
-    static String getVersion(){
-        try {
-            BufferedReader br = new BufferedReader(new FileReader("Core/src/main/resources/CHANGELOG.md"))
-            String line
-            while((line = br.readLine()) != null) {
-                if(line.startsWith("## ")) {
-                    br.close()
-                    return line.split(" ")[1].split("\\(")[0]
-                }
-            }
-            br.close()
-        } catch(Exception ignored){
-            //ignore
-        }
-        return "unknown"
-    }
-}
+version rootProject.version
 
 repositories {
     mavenCentral()
@@ -55,11 +30,11 @@ task Deploy(type: Copy) {
     dependsOn 'Release'
     from "$buildDir/libs"
     into "$buildDir/libs"
-    include "/*-${version}.jar"
+    include "/${rootProject.name}.${project.name}-${version}.jar"
     rename { String fileName -> fileName.replace("-${version}", "") }
 }
 
-task Deliver(type: Copy) {
+task Deliver(type: Copy) { //cannot be called directly
     dependsOn 'Deploy'
     from "$buildDir/libs"
     into "../build/libs"

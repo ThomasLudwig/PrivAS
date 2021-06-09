@@ -31,7 +31,7 @@ public class LoggingPanel extends JPanel implements LogListener {
    */
   private final JTextPane jtp;
   /**
-   * The JScrollPane arounf the JTextPane
+   * The JScrollPane around the JTextPane
    */
   private final JScrollPane sp;
   /**
@@ -78,7 +78,7 @@ public class LoggingPanel extends JPanel implements LogListener {
   private final HashMap<String, SimpleAttributeSet> styles;
 
   /**
-   * Empty Constuctor
+   * Empty Constructor
    */
   public LoggingPanel() {
     this.jtp = new JTextPane();

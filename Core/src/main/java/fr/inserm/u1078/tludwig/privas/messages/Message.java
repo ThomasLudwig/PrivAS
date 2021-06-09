@@ -11,7 +11,7 @@ import java.util.HashMap;
 /**
  * Message passed between two Instances (Client / Server)
  * <p>
- * Messages are of a given type (String) and can carry parameters (wrapped as Strings and refered to by keys
+ * Messages are of a given type (String) and can carry parameters (wrapped as Strings and referred to by keys
  *
  * @author Thomas E. Ludwig (INSERM - U1078) 2019-01-30
  *
@@ -119,13 +119,13 @@ public abstract class Message implements Serializable {
   
     
   public static String INTERRUPT(Runnable r){
-    return "Thread "+r.toString()+" has been unexcpectedly interrupted";
+    return "Thread "+r.toString()+" has been unexpectedly interrupted";
   }
 
   /**
    * Exception thrown when trying to affect a null value to a parameter
    */
-  public class EmptyParameterException extends Exception {
+  public static class EmptyParameterException extends Exception {
 
     /**
      * Constructor

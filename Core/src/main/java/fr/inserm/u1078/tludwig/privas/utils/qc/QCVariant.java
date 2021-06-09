@@ -1,4 +1,4 @@
-package fr.inserm.u1078.tludwig.privas.utils;
+package fr.inserm.u1078.tludwig.privas.utils.qc;
 
 import java.util.HashMap;
 
@@ -10,7 +10,7 @@ import java.util.HashMap;
  * Checked for release on XXXX-XX-XX
  * Unit Test defined on   XXXX-XX-XX
  */
-public class QCVariant {
+class QCVariant {
   public static final String KEY_DP = "DP";
   public static final String KEY_AD = "AD";
   public static final String KEY_GQ = "GQ";
@@ -43,7 +43,7 @@ public class QCVariant {
   private final int iAD;
   private final Genotype[] genotypes;
 
-  public QCVariant(String line){
+  QCVariant(String line){
     String[] f = line.split("\t");
     String ref = f[3];
     String[] alt = f[4].split(",");
@@ -59,7 +59,7 @@ public class QCVariant {
 
     infos = new HashMap<>();
     for(String info : f[7].split(";")){
-      String kv[] = info.split("=");
+      String[] kv = info.split("=");
       if(kv.length == 1)
         infos.put(kv[0], ".");
       else
@@ -92,18 +92,6 @@ public class QCVariant {
     //printSummary();
   }
 
-  public void printSummary(){
-    System.out.println("*********************************");
-    /*System.out.println("Alleles "+this.alleleNumber);
-    System.out.println("snp "+this.hasSNP);
-    System.out.println("iAD "+this.iAD);
-    System.out.println("iDP "+this.iDP);
-    System.out.println("iGQ "+this.iGQ);
-    for(String key : this.infos.keySet())
-      if(!"CSQ".equals(key))
-        System.out.println(key+" = "+this.infos.get(key));*/
-  }
-
   static boolean isSNP(String ref, String alt){
     if (ref.length() != alt.length())
       return false;
@@ -127,7 +115,7 @@ public class QCVariant {
    * @param value the value from the variant
    * @return TRUE - if the variant should be filtered according to these values
    */
-  public boolean filterMinRejectMissing(double threshold, double value){
+  boolean filterMinRejectMissing(double threshold, double value){
     if(isEnabled(threshold)) {
       if (isMissing(value))
         return true;
@@ -143,7 +131,7 @@ public class QCVariant {
    * @param value the value from the variant
    * @return TRUE - if the variant should be filtered according to these values
    */
-  public boolean filterMaxRejectMissing(double threshold, double value){
+  boolean filterMaxRejectMissing(double threshold, double value){
     if(isEnabled(threshold)) {
       if (isMissing(value))
         return true;
@@ -159,7 +147,7 @@ public class QCVariant {
    * @param value the value from the variant
    * @return TRUE - if the variant should be filtered according to these values
    */
-  public boolean filterMinAllowMissing(double threshold, double value){
+  boolean filterMinAllowMissing(double threshold, double value){
     if(isEnabled(threshold)) {
       if (isMissing(value))
         return false;
@@ -175,7 +163,7 @@ public class QCVariant {
    * @param value the value from the variant
    * @return TRUE - if the variant should be filtered according to these values
    */
-  public boolean filterMaxAllowMissing(double threshold, double value){
+  boolean filterMaxAllowMissing(double threshold, double value){
     if(isEnabled(threshold)) {
       if (isMissing(value))
         return false;
@@ -185,35 +173,31 @@ public class QCVariant {
     return false;
   }
 
-  public boolean filterMinAllowMissing(double threshold, String key){
+  boolean filterMinAllowMissing(double threshold, String key){
     double val = getValue(key);
-    boolean filter = filterMinAllowMissing(threshold, getValue(key));
+    return filterMinAllowMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" < "+threshold+" ["+filter+"]");
-    return filter;
   }
-  public boolean filterMinRejectMissing(double threshold, String key){
+
+  boolean filterMinRejectMissing(double threshold, String key){
     double val = getValue(key);
-    boolean filter = filterMinRejectMissing(threshold, getValue(key));
+    return filterMinRejectMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" < "+threshold+" ["+filter+"]");
-    return filter;
   }
 
-  public boolean filterMaxAllowMissing(double threshold, String key){
+  boolean filterMaxAllowMissing(double threshold, String key){
     double val = getValue(key);
-    boolean filter = filterMaxAllowMissing(threshold, getValue(key));
+    return filterMaxAllowMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" > "+threshold+" ["+filter+"]");
-    return filter;
   }
-  public boolean filterMaxRejectMissing(double threshold, String key){
+
+  boolean filterMaxRejectMissing(double threshold, String key){
     double val = getValue(key);
-    boolean filter = filterMaxRejectMissing(threshold, getValue(key));
+    return filterMaxRejectMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" > "+threshold+" ["+filter+"]");
-    return filter;
   }
 
-
-
-  public int filter(QCParam qcParam){//TODO first split multiallelic ?
+  int filter(QCParam qcParam){//In doc, multiallelic variants should be split
     //Variant level filters
     int filter = 0;
     // QD
@@ -304,11 +288,11 @@ public class QCVariant {
     return filter;
   }
 
-  public static boolean isEnabled(double d){
+  static boolean isEnabled(double d){
     return !Double.isNaN(d);
   }
 
-  public static boolean isMissing(double d){
+  static boolean isMissing(double d){
     return Double.isNaN(d);
   }
 
@@ -361,7 +345,6 @@ public class QCVariant {
       }
       this.gq = tmp;
       //parse sumAD
-      tmp = Double.NaN;
       int[] tmpAD;
       try {
         tmp = 0;
@@ -417,6 +400,5 @@ public class QCVariant {
         return false;
       return gt0 != gt1;
     }
-
   }
 }

@@ -4,11 +4,12 @@ import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.GUI;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
+import fr.inserm.u1078.tludwig.privas.gui.results.ResultsPane;
 import fr.inserm.u1078.tludwig.privas.instances.*;
-import fr.inserm.u1078.tludwig.privas.gui.ResultsPane.ParsingException;
+import fr.inserm.u1078.tludwig.privas.gui.results.ResultsPane.ParsingException;
 import fr.inserm.u1078.tludwig.privas.utils.FileUtils;
-import fr.inserm.u1078.tludwig.privas.utils.QCParam;
-import fr.inserm.u1078.tludwig.privas.utils.QualityControl;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
+import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import java.awt.BorderLayout;
 import java.awt.Toolkit;
@@ -209,7 +210,7 @@ public class ClientWindow extends JFrame {
     }
 
     while (!this.client.isConnected()) {
-      int doConnect = JOptionPane.showConfirmDialog(this, GUI.CW_DG_MSG_NOT_CONNECTED, GUI.CW_DG_NOT_CONNECTED, JOptionPane.ERROR_MESSAGE);
+      int doConnect = JOptionPane.showConfirmDialog(this, GUI.CW_DG_MSG_NOT_CONNECTED, GUI.CW_DG_NOT_CONNECTED, JOptionPane.YES_NO_OPTION);
       if (doConnect == JOptionPane.OK_OPTION)
         this.connect();
       else
@@ -276,9 +277,10 @@ public class ClientWindow extends JFrame {
     });
   }
 
+  /*
   public void sessionOKKO() {
     newSessionPD.done();
-  }
+  }*/
 
   /**
    * Opens a Dialog to Apply QC
@@ -315,7 +317,7 @@ public class ClientWindow extends JFrame {
     QCParam qcParam;
     try {
       qcParam = new QCParam(qcParamFilename);
-    } catch(IOException | QualityControl.QCException e) {
+    } catch(IOException | QCException e) {
       //TODO Fail POPUP / LOG
       return;
     }
@@ -530,7 +532,7 @@ public class ClientWindow extends JFrame {
   }
 
   /**
-   * Sends the Data to the RPP. As the transfert might take time, a ProgressDialog is opened
+   * Sends the Data to the RPP. As the transfer might take time, a ProgressDialog is opened
    */
   void sendData() {
     final ProgressDialog pd = new ProgressDialog(this, GUI.CW_EXTRACTING_TITLE, GUI.CW_EXTRACTING_NORTH, GUI.CW_EXTRACTING_SOUTH);

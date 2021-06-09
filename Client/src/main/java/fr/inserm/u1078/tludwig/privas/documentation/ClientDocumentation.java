@@ -1,7 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.documentation;
 
 import fr.inserm.u1078.tludwig.privas.ClientRun;
-import fr.inserm.u1078.tludwig.privas.Main;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.GUI;
 
@@ -39,11 +38,10 @@ public class ClientDocumentation extends Documentation {
 
   public static void getPreamble(LineBuilder doc){
     doc.rstSection("Preamble");
-
+    doc.append(paragraph("In order for the quality control to work optimally, it is recommended to split multiallelic variants."));
     doc.append(paragraph("To compare similar variants during the Association Tests, " +
             "input VCF files need to be annotated with vep (to added the consequence on genes and GnomAD frequencies). " +
             "The command line to do this (after having installed vep) is:"));
-
     doc.rstCode(BASH,
             "/path/to/vep " +
             "--cache --merged --offline --dir [/path/to/cache] " +
@@ -179,9 +177,7 @@ public class ClientDocumentation extends Documentation {
     doc.rstSection("PrivAS Client's Command Lines");
     String[] lines = ClientRun.getUsage().split("\n");
     for(String line: lines){
-      if(line == null || line.isEmpty()){
-
-      } else {
+      if(line != null && !line.isEmpty()) {
         String theLine = line.trim();
         if(theLine.startsWith("java"))
           doc.rstCode(BASH, theLine).newLine();

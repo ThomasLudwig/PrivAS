@@ -1,7 +1,7 @@
 package fr.inserm.u1078.tludwig.privas;
 
-import fr.inserm.u1078.tludwig.privas.algorithms.WSS;
-import fr.inserm.u1078.tludwig.privas.algorithms.WSSHandler;
+import fr.inserm.u1078.tludwig.privas.algorithms.wss.WSS;
+import fr.inserm.u1078.tludwig.privas.algorithms.wss.WSSHandler;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.documentation.TPSDocumentation;
 import fr.inserm.u1078.tludwig.privas.instances.ThirdPartyServer;
@@ -11,7 +11,7 @@ import java.io.*;
 import java.util.Random;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Executable class for TPS
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-10-01
@@ -25,7 +25,7 @@ public class TPSRun {
   }
 
   /**
-   * Parses the command line arguments and starts the approriate command
+   * Parses the command line arguments and starts the appropriate command
    *
    * @param args the command line arguments
    */
@@ -213,7 +213,7 @@ public class TPSRun {
   }
 
   /**
-   * Compute a WSS association test (localy)
+   * Compute a WSS association test (locally)
    *
    * @param args
    */

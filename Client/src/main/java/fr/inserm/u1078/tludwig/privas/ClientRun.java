@@ -10,10 +10,9 @@ import fr.inserm.u1078.tludwig.privas.listener.StandardErrorLogger;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 
 /**
- * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Executable Class for the Client Module
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2020-10-01
@@ -27,12 +26,12 @@ public class ClientRun {
   }
 
   /**
-   * Parses the command line arguments and starts the approriate command
+   * Parses the command line arguments and starts the appropriate command
    *
    * @param args the command line arguments
    */
   public static void main(String[] args) throws Exception {
-    String devComputer = "DESKTOP-VRJB1QR";
+    //String devComputer = "DESKTOP-VRJB1QR";
     String dir = MSG.GUI_DEFAULT_DIRECTORY;
     String devDir = "C:\\Users\\user\\Documents\\Projet\\PrivGene\\privas";
     File file = new File(devDir);
@@ -76,14 +75,13 @@ public class ClientRun {
    * Prints the various usages of this program
    */
   public static String getUsage() {
-    StringBuilder ret = new StringBuilder();
-    ret.append(MSG.MSG_USAGE).append("\n");
-    ret.append(usageGUI(false)).append("\n");
-    ret.append(MSG.MSG_QC).append("\n");
-    ret.append(Main.usageQualityControl(false, true)).append("\n");
-    ret.append(MSG.MSG_TOOLS).append("\n");
+    char N = '\n';
+    StringBuilder ret = new StringBuilder(MSG.MSG_USAGE).append(N);
+    ret.append(usageGUI(false)).append(N);
+    ret.append(MSG.MSG_QC).append(N);
+    ret.append(Main.usageQualityControl(false, true)).append(N);
+    ret.append(MSG.MSG_TOOLS).append(N);
     ret.append(Main.usageConvertVCF(false, true));
-
     return ret.toString();
   }
 
@@ -99,9 +97,9 @@ public class ClientRun {
   private static String usageGUI(boolean prefix) {
     StringBuilder ret = new StringBuilder();
     if (prefix)
-      ret.append(MSG.MSG_USAGE).append("\n");;
-    ret.append(MSG.MSG_DESC_GUI).append("\n");;
-    ret.append(MSG.MSG_CMD_GUI).append("\n");;
+      ret.append(MSG.MSG_USAGE).append("\n");
+    ret.append(MSG.MSG_DESC_GUI).append("\n");
+    ret.append(MSG.MSG_CMD_GUI).append("\n");
     return ret.toString();
   }
 

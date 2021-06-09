@@ -37,7 +37,7 @@ public class FileFormat {
   /**
    * VCF File after QC, converted to genotype file
    */
-  public static final String FILE_RPP_GENOTYPE = "afer.qc.genotype.gz";
+  public static final String FILE_RPP_GENOTYPE = "after.qc.genotype.gz";
   /**
    * Tag that guarantees that the rpp data file was complete
    */
@@ -90,6 +90,10 @@ public class FileFormat {
    * Extension when receiving the results, writes the encrypted content in a file with this extension
    */
   public static final String FILE_ENCRYPTED_EXTENSION = ".aes";
+  /**
+   * Extension of the file logging CI connections. To prevent too frequent sessions
+   */
+  public static final String FILE_CONNECTION_LOG = ".cnnct";
   /**
    * Extension for Session files
    */
@@ -158,7 +162,7 @@ public class FileFormat {
    */
   public static final String RPP_TAG_TPS_NAME = "tps_name";
   /**
-   * Address of the Thid Party Server
+   * Address of the Third Party Server
    */
   public static final String RPP_TAG_TPS_ADDRESS = "tps_address";
   /**
@@ -177,6 +181,31 @@ public class FileFormat {
    * TAG for the directory where session directories will be stored on the Third Party Server
    */
   public static final String RPP_TAG_TPS_SESSION_DIR = "tps_session_dir";
+
+  /**
+   * TAG for the comma separated list of IP (addresses or blocks) that can always connect to the RPP
+   */
+  public static final String RPP_TAG_WHITELIST = "whitelist";
+  /**
+   * TAG for the comma separated list of IP (addresses or blocks) that can never connect to the RPP
+   */
+  public static final String RPP_TAG_BLACKLIST = "blacklist";
+  /**
+   * TAG for the filename containing the connection log
+   */
+  public static final String RPP_TAG_CONNECTION_LOG = "connection_log";
+  /**
+   * TAG for maximum number of connection from the same address in 1 day
+   */
+  public static final String RPP_TAG_MAX_PER_DAY = "max_per_day";
+  /**
+   * TAG for maximum number of connection from the same address in 1 week
+   */
+  public static final String RPP_TAG_MAX_PER_WEEK = "max_per_week";
+  /**
+   * TAG for maximum number of connection from the same address in 1 month
+   */
+  public static final String RPP_TAG_MAX_PER_MONTH = "max_per_month";
 
   //Format of Session file (.privas)
   /**
@@ -236,7 +265,7 @@ public class FileFormat {
    */
   public static final String SESSION_BEDFILE = "BEDFILE";
   /**
-   * the tag referring to the list of variants explicitely excluded (due to bad QC)
+   * the tag referring to the list of variants explicitly excluded (due to bad QC)
    */
   public static final String SESSION_EXCLUDED_VARIANTS = "EXCLUDED_VARIANTS";
   /**
@@ -252,7 +281,7 @@ public class FileFormat {
    */
   public static final String SESSION_AVAILABLE_DATASETS = "RPP_AVAILABLE_DATASETS";
   /**
-   * the tag referring to the Hash Dictionnary allowing to retreive gene names from hashes for the Session when saving to/loading from a file
+   * the tag referring to the Hash Dictionary allowing to retrieve gene names from hashes for the Session when saving to/loading from a file
    */
   public static final String SESSION_DICTIONARY = "HASH_DICTIONARY";
   /**

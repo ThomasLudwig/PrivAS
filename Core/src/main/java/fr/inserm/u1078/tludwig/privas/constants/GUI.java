@@ -77,7 +77,7 @@ public class GUI {
   public static final String RP_TT_HTML = "Export Formatted Data, in the current order, to an HTML File";
   public static final String RP_TT_PNG = "Export Manhattan Plot to a PNG File";
 
-  //ResultsPane defaut size
+  //ResultsPane default size
   public static final int RP_PNG_WIDTH = 1200;
   public static final int RP_PNG_HEIGHT = 800;
 
@@ -117,8 +117,8 @@ public class GUI {
   
   public static final String CRIT_RADIO_WSS = "Perform WSS ?";
   public static final String CRIT_LABEL_DATASET = "Available Datasets";
-  public static final String CRIT_LABEL_MAF = "Minor Alle Frequency Threshold (in GnomAD)";
-  public static final String CRIT_LABEL_MAF_NFE = "Minor Alle Frequency Threshold (in GnomAD_NFE)";
+  public static final String CRIT_LABEL_MAF = "Minor Allele Frequency Threshold (in GnomAD)";
+  public static final String CRIT_LABEL_MAF_NFE = "Minor Allele Frequency Threshold (in GnomAD_NFE)";
   public static final String CRIT_LABEL_CSQ = "Least Severe Consequence";
   public static final String CRIT_LABEL_BEDFILE = "Bed File of well covered positions";
   public static final String CRIT_LABEL_EXCLUDED_VARIANTS = "List of excluded Variants";
@@ -136,12 +136,9 @@ public class GUI {
   public static final String CRIT_MSG_EMPTY_BED = "You have not chosen a Bed file of well covered positions. Do you want to continue anyway?";
   public static final String CRIT_TIT_EMPTY_BED = "Missing Bed File";
 
-  public static final String CRIT_MSG_NOT_FOUND_QC(String filename){ return "The QC Parameters file ["+filename+"] does not exist.";}
-  public static final String CRIT_MSG_NOT_FOUND_EXCL(String filename){ return "The file containing the variants excluded by the QC ["+filename+"] does not exist.";}
-  public static final String CRIT_MSG_NOT_FOUND_BED(String filename){ return "The Bed file of well covered positions ["+filename+"] does not exist. Do you want to continue anyway?";}
-
-
-
+  public static String CRIT_MSG_NOT_FOUND_QC(String filename){ return "The QC Parameters file ["+filename+"] does not exist.";}
+  public static String CRIT_MSG_NOT_FOUND_EXCL(String filename){ return "The file containing the variants excluded by the QC ["+filename+"] does not exist.";}
+  public static String CRIT_MSG_NOT_FOUND_BED(String filename){ return "The Bed file of well covered positions ["+filename+"] does not exist. Do you want to continue anyway?";}
 
   //Apply QC Panel
   public static final String QC_EDITOR_TITLE = "QC Parameters Editor";
@@ -154,12 +151,9 @@ public class GUI {
   public static final String APQC_TIT_QC_MISSING = "QC Parameters File does not exist";
 
   public static final String APQC_MSG_VCF_NULL = "No VCF File specified";
-  public static final String APQC_MSG_VCF_MISSING(String inputVCF){ return "Specified VCF File ["+inputVCF+"] does not exist";};
+  public static String APQC_MSG_VCF_MISSING(String inputVCF){ return "Specified VCF File ["+inputVCF+"] does not exist";}
   public static final String APQC_MSG_QC_NULL = "No QC Parameters File specified";
-  public static final String APQC_MSG_QC_MISSING(String qcParamFilename) {return "Specified QC Parameters File ["+qcParamFilename+"] does not exist";}
-
-
-
+  public static String APQC_MSG_QC_MISSING(String qcParamFilename) {return "Specified QC Parameters File ["+qcParamFilename+"] does not exist";}
 
   //SessionPanel
   public static final String SP_LABEL_ID = "Session ID";
@@ -287,9 +281,9 @@ public class GUI {
   public static final String CW_APPLYING_QC_NORTH = "Applying QC to VCF File";
   public static final String CW_APPLYING_QC_SOUTH = "This may take some time";
 
-  public static final String CW_DG_OK_CONVERT = "Convertion Complete";
+  public static final String CW_DG_OK_CONVERT = "Conversion Complete";
   public static final String CW_DG_MSG_OK_CONVERT = "VCF File successfully converted to Genotype File";
-  public static final String CW_DG_KO_CONVERT = "Convertion Failed";
+  public static final String CW_DG_KO_CONVERT = "Conversion Failed";
   public static final String CW_DG_MSG_KO_CONVERT = "Failed to convert VCF to Genotype File\nError : ";
 
   public static final String CW_DG_OK_QC = "QC Complete";
@@ -325,9 +319,9 @@ public class GUI {
   public static final String CW_SENDING_NORTH = "Sending Data to the RPP server";
   public static final String CW_SENDING_SOUTH = "Please wait";
 
-  public static final String CW_DG_OK_SEND = "Data Transfered";
+  public static final String CW_DG_OK_SEND = "Data Transferred";
   public static final String CW_DG_MSG_OK_SEND = "Data received by the RPP server";
-  public static final String CW_DG_KO_SEND = "Data Transfert Failed";
+  public static final String CW_DG_KO_SEND = "Data Transfer Failed";
   public static final String CW_DG_MSG_KO_SEND = "Failed to send Data to the RPP server.\n";
   
   public static final int HSP_MEDIUM = 15;

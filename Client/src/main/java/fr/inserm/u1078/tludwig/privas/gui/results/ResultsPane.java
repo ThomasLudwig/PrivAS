@@ -1,8 +1,11 @@
-package fr.inserm.u1078.tludwig.privas.gui;
+package fr.inserm.u1078.tludwig.privas.gui.results;
 
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.GUI;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
+import fr.inserm.u1078.tludwig.privas.gui.ClientWindow;
+import fr.inserm.u1078.tludwig.privas.gui.FileExtensionChooser;
+import fr.inserm.u1078.tludwig.privas.gui.TableColumnAdjuster;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -16,7 +19,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Comparator;
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
@@ -53,16 +55,16 @@ public class ResultsPane extends JFrame {
     GUI.RP_TT_SHARED,
     GUI.RP_TT_TIME
   };
-  private static final int COL_NUM = 0;
-  private static final int COL_GENE = 1;
-  private static final int COL_POSITION = 2;
-  private static final int COL_PVALUE = 3;
-  private static final int COL_K0 = 4;
-  private static final int COL_K = 5;
-  private static final int COL_RANK = 6;
-  private static final int COL_TOTAL = 7;
-  private static final int COL_SHARED = 8;
-  private static final int COL_TIME = 9;
+  static final int COL_NUM = 0;
+  static final int COL_GENE = 1;
+  static final int COL_POSITION = 2;
+  static final int COL_PVALUE = 3;
+  static final int COL_K0 = 4;
+  static final int COL_K = 5;
+  static final int COL_RANK = 6;
+  static final int COL_TOTAL = 7;
+  static final int COL_SHARED = 8;
+  static final int COL_TIME = 9;
 
   private static final int PWIDTH = Toolkit.getDefaultToolkit().getScreenSize().width - 200;
   private static final int PHEIGHT = (Toolkit.getDefaultToolkit().getScreenSize().height - 170) / 2;
@@ -107,12 +109,12 @@ public class ResultsPane extends JFrame {
   private static final Comparator COMPARATOR_POSITION = (o1, o2) -> new Position((String) o1).compareTo(new Position((String) o2));
 
   //private HashMap<String, Region> ccds;
-  //DONE  manathan plot view (dot size as a factor of gene size ?)
+  //DONE  manhattan plot view (dot size as a factor of gene size ?)
   //DONE  export table (HTML)
   //DONE  export table (TSV)
   //DONE  export Manhattan (PNG)
   //DONE  panel can be launched without re-downloading results
-  //DONE  FIXME : column "#" should not be sortable
+  //DONE  column "#" should not be sortable
   //DONE  gene position CCDS - first variant of client file
   /**
    * The File from which the results are read
@@ -160,8 +162,8 @@ public class ResultsPane extends JFrame {
    * Parses a lines from a Results File
    *
    * @param line the line to parse
-   * @return a String array that will be showable in the Table of results
-   * @throws fr.inserm.u1078.tludwig.privas.gui.ResultsPane.ParsingException if the line could not be parsed
+   * @return a String array that will be visible in the Table of results
+   * @throws ResultsPane.ParsingException if the line could not be parsed
    */
   private String[] parseLine(String line) throws ParsingException {
     try {
@@ -188,9 +190,9 @@ public class ResultsPane extends JFrame {
    * Updates this Panel according to a Results File
    *
    * @param results the Results File to load
-   * @throws fr.inserm.u1078.tludwig.privas.gui.ResultsPane.ParsingException if the File could not be parsed
+   * @throws ResultsPane.ParsingException if the File could not be parsed
    */
-  void setResults(File results) throws ParsingException {
+  public void setResults(File results) throws ParsingException {
     this.resultFile = results;
     try {
       DefaultTableModel model = new DefaultTableModel();
@@ -326,91 +328,7 @@ public class ResultsPane extends JFrame {
   /**
    * Foreground (text) Color for unknown values
    */
-  private static final Color FG_NA = Color.GRAY;
-  
-  /**
-   * Class responsible of rendering the Table Cells
-   */
-  private static class FieldsRenderer extends DefaultTableCellRenderer {
-
-    /**
-     * Background Color of the normal cell
-     */
-    private static final Color BG_NORMAL_EVEN = Color.BLACK;//Color.WHITE;
-    /**
-     * Background Color of the normal cell
-     */
-    private static final Color BG_NORMAL_ODD = new Color(40,40,40);
-    /**
-     * Background Color of a selected cell
-     */
-    private static final Color BG_SELECTED = new Color(155, 226, 255);//Color.BLUE.brighter();
-
-    /**
-     * Foreground (text) Color of a selected cell
-     */
-    private static final Color FG_SELECTED = Color.BLACK;//Color.WHITE;
-    /**
-     * Foreground (text) Color of a normal cell
-     */
-    private static final Color FG_NORMAL = Color.WHITE;//Color.BLACK;
-
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-      Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-      //style
-      boolean na = Integer.valueOf((String) table.getValueAt(row, COL_TOTAL)) == 0;
-
-      c.setForeground(FG_NORMAL);
-      c.setBackground(( row % 2 == 0) ? BG_NORMAL_EVEN : BG_NORMAL_ODD);
-      
-      if (column == COL_NUM) {
-        ((JLabel) c).setText("" + (1+row));
-        c.setForeground(table.getTableHeader().getForeground());
-        return c;
-      }
-
-      if (column == COL_PVALUE) {
-        c.setFont(GUI.DEFAULT_BOLD_FONT);
-        c.setForeground(getColor(value));
-      }
-
-      if (na)
-        c.setForeground(FG_NA);
-
-      if (isSelected) {
-        c.setForeground(FG_SELECTED);
-        c.setBackground(BG_SELECTED);
-      }
-
-      //customize text
-      if (column == COL_TIME) {
-        String v = (String) value;
-        v = v.substring(0, v.length() - 1);
-        int i = v.indexOf('.');
-        String ms = v.substring(i + 1);
-        int s = new Integer(v.substring(0, i));
-        int m = s / 60;
-        s = s % 60;
-        String val = s + "." + ms + "s";
-        if (m > 0) {
-          int h = m / 60;
-          m = m % 60;
-          val = m + "m" + val;
-          if (h > 0) {
-            int d = h / 24;
-            h = h % 24;
-            val = h + "h" + val;
-            if (d > 0)
-              val = d + "d" + val;
-          }
-        }
-        ((JLabel) c).setText(val);
-      }
-
-      return c;
-    }
-  }
+  static final Color FG_NA = Color.GRAY;
 
   /**
    * Gets the text color according to the p-value
@@ -418,7 +336,7 @@ public class ResultsPane extends JFrame {
    * @param pvalue a String representing a Double p-value
    * @return
    */
-  private static Color getColor(Object pvalue) {
+  static Color getColor(Object pvalue) {
     try {
       float log = (float) (-Math.log10(new Double((String) pvalue)) / 10);
       if (log < 0)
@@ -621,79 +539,9 @@ public class ResultsPane extends JFrame {
   }
 
   /**
-   * Class representing a Genomic Position (chromosome + position)
-   */
-  private static class Position {
-
-    private final int chr;
-    private final int pos;
-
-    /**
-     * Constructor
-     *
-     * @param str the position in form chr:pos
-     */
-    Position(String str) {
-      String[] f = str.split(":");
-      String c = f[0]
-              .replace(GUI.RP_CHR_PREFIX, "")
-              .replace(GUI.RP_CHR_X, "23")
-              .replace(GUI.RP_CHR_Y, "24")
-              .replace(GUI.RP_CHR_MT, "25")
-              .replace(GUI.RP_CHR_M, "25");
-      String p = f[1];
-      int ch = -1;
-      try {
-        ch = new Integer(c);
-      } catch (NumberFormatException e) {
-        //Ignore
-      }
-
-      this.chr = ch;
-      this.pos = new Integer(p);
-    }
-
-    /**
-     * Gets the Chromosome name
-     *
-     * @return
-     */
-    private String getChromosomeName() {
-      if (chr > 0 && chr < 23)
-        return chr + "";
-      if (chr == 23)
-        return GUI.RP_CHR_X;
-      if (chr == 24)
-        return GUI.RP_CHR_Y;
-      if (chr == 25)
-        return GUI.RP_CHR_MT;
-      return GUI.RP_CHR_UNKNOWN;
-    }
-
-    @Override
-    public String toString() {
-      String chromosome = getChromosomeName();
-      return chromosome + ':' + pos;
-    }
-
-    /**
-     * Compare another position to this one
-     *
-     * @param p the other position
-     * @return 0 - if both position are the same, negative if the other position is before this one, positive otherwise
-     */
-    private int compareTo(Position p) {
-      if (this.chr == p.chr)
-        return this.pos - p.pos;
-      return this.chr - p.chr;
-    }
-  }
-
-  /**
    * Exception thrown when there is a problem parse lines from a Results File
    */
-  public class ParsingException extends Exception {
-
+  public static class ParsingException extends Exception {
     ParsingException(String message, Throwable cause) {
       super(message, cause);
     }
