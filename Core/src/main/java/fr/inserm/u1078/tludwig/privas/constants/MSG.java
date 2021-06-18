@@ -394,7 +394,7 @@ public class MSG {
           + RPP_SYNTAX_TPS_GETKEY_COMMAND + N
           + RPP_SYNTAX_TPS_SESSION_DIR + N;
   public static final String MSG_FAIL_RPP = "Unable to start instance of RPP Server: ";
-  public static final String MSG_DESC_TPS = "- Launch the Third-Party Server (should be used by the provides script, to manage scheduler issues):";
+  public static final String MSG_DESC_TPS = "- Launch the Third-Party Server (should be used by the provided script, to manage scheduler issues):";
   
   //tps
   public static final String TPS_RANDOM = "random";
@@ -430,7 +430,7 @@ public class MSG {
   public static final String MSG_CMD_QC_CONV_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_QC_CONV + " input.vcf(.gz)";
 
   public static final String MSG_DESC_WSS = "- Compute a WSS Association Test (locally):";
-  public static final String MSG_CMD_WSS = T + MSG_CMD_JAVA_TPS + MSG.ARG_WSSKEY
+  public static final String MSG_CMD_WSS = T + MSG_CMD_JAVA_TPS + " " + MSG.ARG_WSSKEY
           + " genotype_files.lst"
           + " phenotypes.tsv"
           + " NB_CORES"
@@ -438,9 +438,9 @@ public class MSG {
           + " results.tsv";
   
   public static final String MSG_DESC_RANKSUM = "- Compute a WSS Ranksum:";
-  public static final String MSG_CMD_RANKSUM = T + MSG_CMD_JAVA_TPS + MSG.ARG_RANKSUMKEY
+  public static final String MSG_CMD_RANKSUM = T + MSG_CMD_JAVA_TPS + " " + MSG.ARG_RANKSUMKEY
           + " geneName"
-          + " phenotype.tsv"
+          + " genotypes.tsv"
           + " statuses.bool";
   
   public static final String MSG_FAIL_WSS = "Unable to start WSS computation: ";

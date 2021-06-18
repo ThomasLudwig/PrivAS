@@ -257,7 +257,7 @@ public class TPSRun {
       int affected = 0;
       int unaffected = 0;
       for(int i = 0 ; i < f.length; i++){
-        phenotypes[i] = Boolean.parseBoolean(f[i]);
+        phenotypes[i] = Boolean.parseBoolean(f[i].replace("0", "false").replace("1", "true"));
         if(phenotypes[i])
           affected++;
         else

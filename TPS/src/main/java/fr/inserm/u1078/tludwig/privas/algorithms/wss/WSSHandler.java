@@ -209,7 +209,7 @@ public class WSSHandler {
     statuses = new boolean[f.length];
     try{
       for (int i = 0; i < f.length; i++)
-        statuses[i] = Boolean.parseBoolean(f[i]);
+        statuses[i] = Boolean.parseBoolean(f[i].replace("0", "false").replace("1", "true"));
     } catch(NumberFormatException nfe){
       System.err.println("Unable to parse boolean is phenotype file.\n"+nfe.getMessage());
     }
