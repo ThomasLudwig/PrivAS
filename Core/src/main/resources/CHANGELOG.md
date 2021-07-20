@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.3 (2021-07-20)
+### Core
+-   Typo : in javadoc
+### Client
+### RPP
+### TPS
+-   WSSHandler : *debug* shuffle intial phenotype REMOVE BEFORE PUSH TO MAIN
+-   Shuffler : *changed* access to public for getNext()
+
 ## 1.0.2 (2021-06-09)
 ### Core
 ### Client

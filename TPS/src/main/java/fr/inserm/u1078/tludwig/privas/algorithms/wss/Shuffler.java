@@ -45,7 +45,7 @@ class Shuffler {
    *
    * @return random boolean array
    */
-  private boolean[] getNext() {
+  public boolean[] getNext() {
     int nbFalse = this.nbUnaffected;
     int nbTrue = this.nbAffected;
     boolean[] shuffled = new boolean[nbFalse + nbTrue];//All initialized to false
