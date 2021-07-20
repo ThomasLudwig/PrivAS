@@ -18,33 +18,32 @@ class Gamma {
    * Constructor for Gamma object
    *
    * @param gamma  the gamma value
-   * @param status is the first individual presenting this value affected ?
+   * @param phenotype is the first individual presenting this value affected ?
    */
-  Gamma(double gamma, boolean status) {
+  Gamma(double gamma, boolean phenotype) {
     this.gamma = gamma;
-    this.nbAffected = status ? 1 : 0;
+    this.nbAffected = phenotype ? 1 : 0;
     this.nbUnaffected = 1 - this.nbAffected;
   }
 
   /**
    * Compares two gamma values
-   * @param g the gamma object to compare
+   * @param that the gamma object to compare
    * @return this.gamma - g.gamma
    */
-  double compare(Gamma g){
-    return this.gamma - g.gamma;
-  }
+  double compare(Gamma that){return this.gamma - that.gamma;}
 
   /**
    * adding an individual for this value
    *
-   * @param status is the individual affected ?
+   * @param phenotype is the individual affected ?
    */
-  void add(boolean status) {
-    if (status)
+  boolean add(boolean phenotype) {
+    if(phenotype)
       this.nbAffected++;
     else
       this.nbUnaffected++;
+    return true;
   }
 
   /**
@@ -52,9 +51,7 @@ class Gamma {
    *
    * @return sum of affected and unaffected individuals
    */
-  int size() {
-    return this.nbAffected + this.nbUnaffected;
-  }
+  int size(){return this.nbAffected + this.nbUnaffected;}
 
   /**
    * The rank of the individuals presenting this value
@@ -62,9 +59,7 @@ class Gamma {
    * @param start the rank of the first individual, if he was alone
    * @return start + 0.5 * (size() - 1)
    */
-  private double getRanking(int start) {
-    return start + 0.5 * (size() - 1);
-  }
+  private double getRanking(int start) {return start + 0.5 * (size() - 1);}
 
   /**
    * the partial ranking sum
@@ -72,7 +67,14 @@ class Gamma {
    * @param start the rank of the first individual presenting this gamma
    * @return number of affected individual * getRanking(start)
    */
-  double getSum(int start) {
-    return this.nbAffected * this.getRanking(start);
+  double getSum(int start){return this.nbAffected * this.getRanking(start);}
+
+  @Override
+  public String toString() {
+    return "Gamma{" +
+            "gamma=" + gamma +
+            ", nbAffected=" + nbAffected +
+            ", nbUnaffected=" + nbUnaffected +
+            '}';
   }
 }
