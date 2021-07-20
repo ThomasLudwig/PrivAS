@@ -223,6 +223,10 @@ public class WSSHandler {
     //number of unaffected individuals in the dataset
     nbUnaffected = statuses.length - nbAffected;
 
+    //TODO START OF DEBUG SECTION TO REMOVE
+    statuses = new Shuffler(nbUnaffected, nbAffected, 1138L).getNext();
+    //TODO END OF DEBUG SECTION TO REMOVE
+
     //for each file in the genotypes list, create a wss object
     in = new UniversalReader(genotypeListFilename);
     wss = new ArrayList<>();

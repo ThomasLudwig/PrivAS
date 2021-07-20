@@ -126,7 +126,7 @@ public class GenotypesFileHandler {
    *
    * @param vcfFilename      the name of the VCF file to convert
    * @param genotypeFilename the name of the resulting Genotype file
-   * @throws IOException                                                                     if there are problems while reading the file
+   * @throws IOException     if there are problems while reading the file
    * @throws GenotypesFileHandler.GenotypeFileException if the file is not in the exception format
    */
   public static int convertVCF2Genotypes(String vcfFilename, String genotypeFilename) throws IOException, GenotypeFileException {
