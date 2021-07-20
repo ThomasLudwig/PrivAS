@@ -31,27 +31,25 @@ class RankedGammaList {
    * Inserts the double at the appropriate place in the list and increment the boolean counter
    *
    * @param d the gamma value
-   * @param status is the individual affected ?
+   * @param phenotype is the individual affected ?
    */
-  void add(double d, boolean status) {
-    Gamma gamma = new Gamma(d, status);
+  boolean add(double d, boolean phenotype) {
+    Gamma gamma = new Gamma(d, phenotype);
 
-    if (this.gammas.isEmpty()) {
-      this.gammas.add(gamma);
-      return;
-    }
+    //first known element
+    if (this.gammas.isEmpty())
+      return this.gammas.add(gamma);
 
+    //insertion sort
+    //Cut array in halves and work recursively on the good half
     int min = 0;
     int max = this.gammas.size() - 1;
-
     while (max - min > 1) {
       int c = (min + max) / 2;
       Gamma current = this.gammas.get(c);
       double compare = current.compare(gamma);
-      if(compare == 0){//if (current.gamma == d) {
-        current.add(status);
-        return;
-      }
+      if(compare == 0)//if (current.gamma == d) {
+        return current.add(phenotype);
 
       if(compare < 0)//if (current.gamma < d)
         min = c;
@@ -59,35 +57,32 @@ class RankedGammaList {
         max = c;
     }
 
+
+    //here max == min || max == min + 1
+
     double compareMin = gamma.compare(this.gammas.get(min));
     //before min
-    if(compareMin < 0){
-      this.gammas.add(min, gamma);
-      return;
-    }
+    if(compareMin < 0)
+      return this.add(min, gamma);
 
     //equals min
-    if(compareMin == 0){ //checked, it happens often
-      this.gammas.get(min).add(status);
-      return;
-    }
+    if(compareMin == 0) //checked, it happens often
+      return this.add(min, phenotype);
 
-    double compareMax = gamma.compare(this.gammas.get(max));
-    //between min and max
-    if(compareMax < 0) {
-      this.gammas.add(max, gamma);
-      return;
-    }
+    if(min != max) {
+      double compareMax = gamma.compare(this.gammas.get(max));
+      //between min and max
+      if (compareMax < 0)
+        return this.add(max, gamma);
 
-    //equals max
-    if (compareMax == 0) { //checked, it happens often
-      this.gammas.get(max).add(status);
-      return;
+      //equals max
+      if (compareMax == 0) //checked, it happens often
+        return this.add(max, phenotype);
     }
 
     //after max
     max++;
-    this.gammas.add(max, gamma);
+    return this.add(max, gamma);
   }
 
   /**
@@ -105,5 +100,19 @@ class RankedGammaList {
       start += gamma.size();
     }
     return x;
+  }
+
+  private boolean add(int index, boolean phenotype){
+    return this.gammas.get(index).add(phenotype);
+  }
+
+  private boolean add(int index, Gamma gamma){
+    this.gammas.add(index, gamma);
+    return true;
+  }
+
+  public void printDebug(){
+    for(Gamma gamma : gammas)
+      System.out.println(gamma.toString());
   }
 }

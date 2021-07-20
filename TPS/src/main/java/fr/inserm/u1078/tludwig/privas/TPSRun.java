@@ -249,23 +249,16 @@ public class TPSRun {
     try {
       String gene = args[1];
       String genotypeFile = args[2];
-      boolean[] phenotypes;
-      BufferedReader in = new BufferedReader(new FileReader(args[3]));
-      String[] f = in.readLine().split("\t");
-      in.close();
-      phenotypes = new boolean[f.length];
+      boolean[] phenotypes = WSS.parsePhenotypes(args[3]);
+
       int affected = 0;
-      int unaffected = 0;
-      for(int i = 0 ; i < f.length; i++){
-        phenotypes[i] = Boolean.parseBoolean(f[i]);
+      for(int i = 0 ; i < phenotypes.length; i++)
         if(phenotypes[i])
           affected++;
-        else
-          unaffected++;
-      }
+      int unaffected = phenotypes.length - affected;
 
       WSS wss = new WSS(gene, phenotypes, genotypeFile);
-      System.out.println(gene+"\taff="+affected+"\tunaff="+unaffected+"\tranksum="+wss.start(phenotypes));
+      System.out.println(gene+"\tpheno="+WSS.getTextPhenotype(phenotypes)+"\taff="+affected+"\tunaff="+unaffected+"\tranksum="+wss.start(phenotypes)+"\toriginal="+wss.testUnoptimized(phenotypes));
     } catch (Exception e) {
       e.printStackTrace();
     }

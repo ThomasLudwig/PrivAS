@@ -2,6 +2,9 @@ package fr.inserm.u1078.tludwig.privas.algorithms.wss;
 
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -67,60 +70,60 @@ public class WSS {
    * Builds a WSS from a file
    *
    * @param gene             name of the genomic region
-   * @param affected         status of the sample (true when affected)
+   * @param phenotypes         phenotypes of the samples (true when affected)
    * @param genotypeFilename name of the file containing the genotypes
    * @throws IOException
    */
-  public WSS(String gene, boolean[] affected, String genotypeFilename) throws IOException {
+  public WSS(String gene, boolean[] phenotypes, String genotypeFilename) throws IOException {
     this.gene = gene;
-    this.load(affected, genotypeFilename);
+    this.load(phenotypes, genotypeFilename);
   }
 
   /**
    * Builds a WSS from a list of lines
    *
    * @param gene     name of the genomic region
-   * @param affected status of the sample (true when affected)
+   * @param phenotypes phenotypes of the samples (true when affected)
    * @param lines    lines of genotypes (one column per sample with integer values from -1 to 2)
    */
-  public WSS(String gene, boolean[] affected, ArrayList<String> lines) {
+  public WSS(String gene, boolean[] phenotypes, ArrayList<String> lines) {
     this.gene = gene;
-    this.load(affected, lines);
+    this.load(phenotypes, lines);
   }
 
   /**
    * Loads the real phenotypes (sample status) and reads the genotypes from a file
    *
-   * @param affected         status of the sample (true when affected)
+   * @param phenotypes         phenotypes of the samples (true when affected)
    * @param genotypeFilename name of the file containing the genotypes
    * @throws IOException
    */
-  private void load(boolean[] affected, String genotypeFilename) throws IOException {
+  private void load(boolean[] phenotypes, String genotypeFilename) throws IOException {
     UniversalReader in = new UniversalReader(genotypeFilename);
     String line;
     ArrayList<String> lines = new ArrayList<>();
     while ((line = in.readLine()) != null)
       lines.add(line);
-    this.load(affected, lines);
+    this.load(phenotypes, lines);
   }
 
   /**
    * Loads the real phenotypes (sample status) and reads the genotypes from a list of lines from a file
    *
-   * @param status status of the sample (true when affected)
+   * @param phenotypes phenotypes of the sample (true when affected)
    * @param lines lines of genotypes (one column per sample with integer values from -1 to 2)
    */
-  private void load(boolean[] status, ArrayList<String> lines) {
+  private void load(boolean[] phenotypes, ArrayList<String> lines) {
     int nbAffected = 0;
-    for(boolean s : status)
+    for(boolean s : phenotypes)
       if(s)
         nbAffected++;
-    int nbUnaffected = status.length - nbAffected;
+    int nbUnaffected = phenotypes.length - nbAffected;
     this.factor = 0.5/(nbUnaffected+1);
 
     this.totalVariants = lines.size();
     this.sharedVariants = 0;
-    this.genotypes = new int[lines.size()][status.length];
+    this.genotypes = new int[totalVariants][phenotypes.length];
     for (int i = 0; i < lines.size(); i++) {
       boolean hasAffected = false;
       boolean hasUnaffected = false;
@@ -128,7 +131,7 @@ public class WSS {
       int[] geno = replaceMissingWithMostFrequent(f); // No missing
       for (int j = 0; j < f.length; j++) {
         if (geno[j] != mostFrequentGenotype)
-          if (status[j])
+          if (phenotypes[j])
             hasAffected = true;
           else
             hasUnaffected = true;
@@ -138,7 +141,17 @@ public class WSS {
         this.sharedVariants++;
     }
     if (totalVariants < 1)
-      System.err.println("Unexpected : 0 variant for gene ["+this.gene+"]");
+      System.err.println("Unexpected : no variants for gene ["+this.gene+"]");
+  }
+
+  public static boolean[] parsePhenotypes(String phenotypeFilename) throws IOException {
+    BufferedReader in = new BufferedReader(new FileReader(phenotypeFilename));
+    String[] f = in.readLine().split("\t");
+    in.close();
+    boolean[] phenotypes = new boolean[f.length];
+    for(int i = 0 ; i < f.length; i++)
+      phenotypes[i] = Boolean.parseBoolean(f[i].replace("0", "false").replace("1", "true"));
+    return phenotypes;
   }
 
   /**
@@ -176,12 +189,16 @@ public class WSS {
   /**
    * Compute the real ranksum
    *
-   * @param affected status of the sample (true when affected)
+   * @param phenotypes phenotypes of the samples (true when affected)
    * @return the computed ranksum
    */
-  public double start(boolean[] affected) {
-    ranksum = xOptimizedNoMissing(affected);
+  public double start(boolean[] phenotypes) {
+    ranksum = xOptimizedNoMissing(phenotypes, this.genotypes, this.factor);
     return ranksum;
+  }
+
+  public double testUnoptimized(boolean[] phenotypes){
+    return xOriginal(phenotypes, this.genotypes);
   }
 
   /**
@@ -217,7 +234,7 @@ public class WSS {
    */
   private void doPermutation(final boolean[] shuffled) {
     k.incrementAndGet();
-    if (xOptimizedNoMissing(shuffled) >= ranksum)
+    if (xOptimizedNoMissing(shuffled, this.genotypes, this.factor) >= ranksum)
       k0.incrementAndGet();
   }
 
@@ -250,15 +267,15 @@ public class WSS {
   /**
    * sum of the ranks (on the genetic score) for affected individuals
    *
-   * @param status status of the sample (true when affected)
+   * @param phenotypes phenotypes of the samples (true when affected)
    * @return
    */
-  private double xOriginal(boolean[] status) {
+  private static double xOriginal(boolean[] phenotypes, int[][] genotypes) {
     //weight of the variant v
-    final double[] w = new double[this.totalVariants];
+    final double[] w = new double[genotypes.length];
 
     //compute mu,nu,n,q and w
-    for (int v = 0; v < this.totalVariants; v++) {
+    for (int v = 0; v < genotypes.length; v++) {
       //number of unaffected individuals genotyped for variant i
       int nu = 0;
       //number of mutant alleles observed for variant i in the unaffected individuals
@@ -266,10 +283,10 @@ public class WSS {
       //number of genotyped individuals (affected + unaffected)
       int n = 0;
 
-      for (int i = 0; i < status.length; i++)
+      for (int i = 0; i < phenotypes.length; i++)
         if (genotypes[v][i] != Constants.GENO_MISSING){
           n++;
-          if (!status[i]) {
+          if (!phenotypes[i]) {
             nu++;
             mu += genotypes[v][i];
           }
@@ -291,11 +308,11 @@ public class WSS {
 
     //genetic scores for individuals
 //    HashMap<String, Integer> debug = new HashMap<>();
-    for (int i = 0; i < status.length; i++) {
+    for (int i = 0; i < phenotypes.length; i++) {
 //      int nbMissing = 0;
       //     StringBuilder sb = new StringBuilder(i).append(" ").append(affected[i]);
       double gamma = 0.0;
-      for (int v = 0; v < this.totalVariants; v++)
+      for (int v = 0; v < genotypes.length; v++)
         if (genotypes[v][i] != Constants.GENO_MISSING){
           gamma += genotypes[v][i] / w[v]; //in assotestR, one missing genotype set the whole gamma (genetic score) to 0 for the individual
           //        sb.append(" + ").append(genotypes[v][i]).append("/").append(w[v]);
@@ -308,7 +325,7 @@ public class WSS {
 //      if(debug.containsKey(sb.toString()))
 //        count += debug.get(sb.toString());
 //      debug.put(sb.toString(), count);
-      gammaList.add(gamma, status[i]/*, nbMissing*/);
+      gammaList.add(gamma, phenotypes[i]/*, nbMissing*/);
     }
 /*    for(String key : debug.keySet())
       System.err.println("["+debug.get(key)+"] -> "+key);
@@ -320,23 +337,25 @@ public class WSS {
 
   /**
    * sum of the ranks (on the genetic score) for affected individuals<br>/
-   * this is an optimized version, that assumes no missing genotype (as missing are replaced with the most frequent homo genotypes
-   * @param status status of the sample (true when affected)
+   * this is an optimized version, that assumes no missing genotypes (as missing are replaced with the most frequent homo genotypes
+   * @param phenotypes phenotypes of the samples (true when affected)
    * @return
    */
-  private double xOptimizedNoMissing(boolean[] status) {
+  private static double xOptimizedNoMissing(boolean[] phenotypes, int[][] genotypes, double factor) {
     //weight of the variant v
-    final double[] w = new double[this.totalVariants];
+    final int N = phenotypes.length;
+    final int V = genotypes.length;
+    final double[] w = new double[V];
     //compute mu,nu,n,q and w
-    for (int v = 0; v < this.totalVariants; v++) {
-      //number of mutant alleles observed for variant i in the unaffected individuals
+    for (int v = 0; v < V; v++) {
+      //1 + number of mutant alleles observed for variant v in the unaffected individuals
       int mu = 1; //optimized, was mu = 0;
-      for (int i = 0; i < status.length; i++)
-        if (!status[i])
+      for (int i = 0; i < N; i++)
+        if (!phenotypes[i])
           mu += genotypes[v][i];
       //mutant_unaffected + 1 / 2*genotyped_unaffected + 2 for variant v
       double q = factor * mu; // optimised, was double q = (mu + 1.0) / (2 * nu + 2.0) with nu=0 et mu=0 at start
-      w[v] = Math.sqrt(status.length * q * (1 - q)); //w == 0 if :n == 0 or q == 0 or q == 1
+      w[v] = Math.sqrt(N * q * (1 - q)); //w == 0 if : N == 0 or q == 0 or q == 1
       //q == 0 -> impossible
       //q == 1 -> all genotyped unaffected individual are 2
     }
@@ -344,13 +363,45 @@ public class WSS {
     //Arrays to sort/rank gammas
     RankedGammaList gammaList = new RankedGammaList();
     //genetic scores for individuals
-    for (int i = 0; i < status.length; i++) {
+    for (int i = 0; i < N; i++) {
       double gamma = 0.0;
-      for (int v = 0; v < this.totalVariants; v++)
+      for (int v = 0; v < V; v++)
         gamma += genotypes[v][i] / w[v];
-      gammaList.add(gamma, status[i]);
+      gammaList.add(gamma, phenotypes[i]);
     }
+
+    //gammaList.printDebug();
     return gammaList.getRanking();
+  }
+
+  public static String getTextPhenotype(boolean[] bs){
+    String code64 = "";
+    for(int i = 0 ; i < bs.length; i+=6){
+      int fac = 1;
+      int l = 0;
+      for(int j = i; j < i+6 && j < bs.length; j++) {
+        int v = bs[bs.length - (1+j)] ? 1 : 0;
+        l += v * fac;
+        fac *= 2;
+      }
+      code64 = code64(l) + code64;
+    }
+   /* StringBuilder sb = new StringBuilder(hex).append("\t");
+    for(boolean b : bs)
+      sb.append(b ? "1" : "0");
+    return sb.toString();*/
+    return code64;
+  }
+
+  public static final String CODE64 = "0123456789" +
+          "abcdefghijklmnopqrstuvwxyz" +
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+          "+*";
+
+  public static char code64(int i){
+    if(i > CODE64.length())
+      return '?';
+    return CODE64.charAt(i);
   }
 
   /**
@@ -359,7 +410,7 @@ public class WSS {
    * @return (k0-1)/(k-1)
    */
   double getPValue() {
-    return (k0.get() + 1.0) / (k.get() + 1.0);//k0+1 / k+1 From Madsen Browning , to avoid pvalue=0
+    return (k0.get() + 1.0) / (k.get() + 1.0);//k0+1 / k+1 From Madsen Browning, to avoid pvalue=0
   }
 
   /**
