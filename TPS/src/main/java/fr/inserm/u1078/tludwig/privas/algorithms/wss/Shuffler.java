@@ -3,7 +3,7 @@ package fr.inserm.u1078.tludwig.privas.algorithms.wss;
 import java.util.Random;
 
 /**
- * Provides shuffles of (un)Affected status
+ * Provides shuffles of (un)Affected phenotypes
  *
  * @author Thomas E. Ludwig (INSERM - U1078)
  * Started on             2021-05-21

@@ -1,13 +1,11 @@
 package fr.inserm.u1078.tludwig.privas.algorithms.wss;
 
+import fr.inserm.u1078.tludwig.privas.algorithms.Utils;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -50,7 +48,7 @@ public class WSS {
 
   //current values
   /**
-   * ranksum for the actual status
+   * ranksum for the actual phenotypes
    */
   private double ranksum;
 
@@ -92,7 +90,7 @@ public class WSS {
   }
 
   /**
-   * Loads the real phenotypes (sample status) and reads the genotypes from a file
+   * Loads the real phenotypes and reads the genotypes from a file
    *
    * @param phenotypes         phenotypes of the samples (true when affected)
    * @param genotypeFilename name of the file containing the genotypes
@@ -108,7 +106,7 @@ public class WSS {
   }
 
   /**
-   * Loads the real phenotypes (sample status) and reads the genotypes from a list of lines from a file
+   * Loads the real phenotypes and reads the genotypes from a list of lines from a file
    *
    * @param phenotypes phenotypes of the sample (true when affected)
    * @param lines lines of genotypes (one column per sample with integer values from -1 to 2)
@@ -142,16 +140,6 @@ public class WSS {
     }
     if (totalVariants < 1)
       System.err.println("Unexpected : no variants for gene ["+this.gene+"]");
-  }
-
-  public static boolean[] parsePhenotypes(String phenotypeFilename) throws IOException {
-    BufferedReader in = new BufferedReader(new FileReader(phenotypeFilename));
-    String[] f = in.readLine().split("\t");
-    in.close();
-    boolean[] phenotypes = new boolean[f.length];
-    for(int i = 0 ; i < f.length; i++)
-      phenotypes[i] = Boolean.parseBoolean(f[i].replace("0", "false").replace("1", "true"));
-    return phenotypes;
   }
 
   /**
@@ -204,7 +192,7 @@ public class WSS {
   /**
    * count k0 for all the boolean arrays, on several cores
    *
-   * @param shuffled  array of arrays of shuffled status
+   * @param shuffled  array of arrays of shuffled phenotypes
    * @param nbThreads number of core to use
    */
   public void doPermutations(final boolean[][] shuffled, final int nbThreads) {
@@ -214,12 +202,12 @@ public class WSS {
   }
 
   /**
-   * Partial count k0 for the boolean status from shuffled between [start;start+length[
+   * Partial count k0 for the boolean phenotypes from shuffled between [start;start+length[
    *
-   * @param shuffled array of arrays of shuffled status
+   * @param shuffled array of arrays of shuffled phenotypes
    * @param start    index of first boolean arrays to process
    * @param length   number of boolean arrays to process
-   * @return number of time when x(boolean[] status) >= reference ranksum
+   * @return number of time when x(boolean[] phenotypes) >= reference ranksum
    */
   private void doPermutations(final boolean[][] shuffled, final int start, final int length) {
     //k0 is the number of permutations that have a ranking sum at least as low as the real data
@@ -374,36 +362,6 @@ public class WSS {
     return gammaList.getRanking();
   }
 
-  public static String getTextPhenotype(boolean[] bs){
-    String code64 = "";
-    for(int i = 0 ; i < bs.length; i+=6){
-      int fac = 1;
-      int l = 0;
-      for(int j = i; j < i+6 && j < bs.length; j++) {
-        int v = bs[bs.length - (1+j)] ? 1 : 0;
-        l += v * fac;
-        fac *= 2;
-      }
-      code64 = code64(l) + code64;
-    }
-   /* StringBuilder sb = new StringBuilder(hex).append("\t");
-    for(boolean b : bs)
-      sb.append(b ? "1" : "0");
-    return sb.toString();*/
-    return code64;
-  }
-
-  public static final String CODE64 = "0123456789" +
-          "abcdefghijklmnopqrstuvwxyz" +
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-          "+*";
-
-  public static char code64(int i){
-    if(i > CODE64.length())
-      return '?';
-    return CODE64.charAt(i);
-  }
-
   /**
    * p-value of the WSS test
    *
@@ -420,17 +378,6 @@ public class WSS {
    * @return formatted output
    */
   String getResults(long start) {
-    return gene + T + getPValue() + T + k0.get() + T + k.get() + T + ranksum + T + totalVariants + T + sharedVariants + T + duration(start) + "s";
-  }
-
-  /**
-   * Gets the durations in seconds.milliseconds elapses since the given timestamp
-   *
-   * @param start initial timestamp
-   * @return
-   */
-  private static double duration(long start) {
-    long ms = (new Date().getTime() - start);
-    return ms * 0.001;
+    return gene + T + getPValue() + T + k0.get() + T + k.get() + T + ranksum + T + totalVariants + T + sharedVariants + T + Utils.durationInSeconds(start) + "s";
   }
 }
