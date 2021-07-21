@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4 (2021-07-21)
+### Core
+### Client
+### RPP
+### TPS
+
 ## 1.0.3 (2021-07-21)
 ### Core
 * Typo : in javadoc
