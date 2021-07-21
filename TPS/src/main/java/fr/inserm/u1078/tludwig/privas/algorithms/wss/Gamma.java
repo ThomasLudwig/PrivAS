@@ -37,6 +37,7 @@ class Gamma {
    * adding an individual for this value
    *
    * @param phenotype is the individual affected ?
+   * @return true
    */
   boolean add(boolean phenotype) {
     if(phenotype)

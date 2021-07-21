@@ -509,14 +509,13 @@ public class ThirdPartyServer extends Instance {
     int missingControl = 0;
     String[] fCase = lCase.split("\t");
     String[] fControl = lControl.split("\t");
-    for(String s : fCase){
+    for(String s : fCase)
       if(new Integer(s) == -1)      
         missingCase++;
-    }
-    for(String s : fControl){
+
+    for(String s : fControl)
       if(new Integer(s) == -1)      
         missingControl++;
-    }
     
     double pval = fet.twoTailed(fCase.length - missingCase, missingCase, fControl.length - missingControl, missingControl);
     return pval > 0.001;

@@ -52,7 +52,7 @@ public class WSSHandler {
   /**
    * status of the sample (true when affected)
    */
-  private boolean[] statuses;
+  private boolean[] phenotypes;
   /**
    * number of affected samples
    */
@@ -117,7 +117,7 @@ public class WSSHandler {
    * Creates the list of genes to process, loads phenotype data and start computing
    *
    * @param genotypeListFilename name of the file containing the genotypes
-   * @param phenotypeFilename    name of the file containing the affected/unaffected statuses of the samples
+   * @param phenotypeFilename    name of the file containing the affected/unaffected phenotypes of the samples
    *
    * @return the results of WSS. A result file, in clear text, stored in a byte array
    * @throws IOException
@@ -199,17 +199,17 @@ public class WSSHandler {
    * Loads phenotype data, loads the list of genes
    *
    * @param genotypeListFilename name of the file containing the genotypes
-   * @param phenotypeFilename    name of the file containing the affected/unaffected statuses of the samples
+   * @param phenotypeFilename    name of the file containing the affected/unaffected phenotypes of the samples
    * @throws IOException
    */
   private void loadData(String genotypeListFilename, String phenotypeFilename) throws IOException {
-    //reading phenotype status
+    //reading phenotype
     UniversalReader in = new UniversalReader(phenotypeFilename);
     String[] f = in.readLine().split("\\s+");
-    statuses = new boolean[f.length];
+    phenotypes = new boolean[f.length];
     try{
       for (int i = 0; i < f.length; i++)
-        statuses[i] = Boolean.parseBoolean(f[i].replace("0", "false").replace("1", "true"));
+        phenotypes[i] = Boolean.parseBoolean(f[i]);
     } catch(NumberFormatException nfe){
       System.err.println("Unable to parse boolean is phenotype file.\n"+nfe.getMessage());
     }
@@ -217,15 +217,15 @@ public class WSSHandler {
 
     //number of affected individuals in the dataset
     nbAffected = 0;
-    for (boolean b : statuses)
+    for (boolean b : phenotypes)
       if (b)
         nbAffected++;
     //number of unaffected individuals in the dataset
-    nbUnaffected = statuses.length - nbAffected;
+    nbUnaffected = phenotypes.length - nbAffected;
 
-    //TODO START OF DEBUG SECTION TO REMOVE
-    statuses = new Shuffler(nbUnaffected, nbAffected, 1138L).getNext();
-    //TODO END OF DEBUG SECTION TO REMOVE
+    //DONE START OF DEBUG SECTION TO REMOVE
+    //phenotypes = new Shuffler(nbUnaffected, nbAffected, 1138L).getNext();
+    //DONE END OF DEBUG SECTION TO REMOVE
 
     //for each file in the genotypes list, create a wss object
     in = new UniversalReader(genotypeListFilename);
@@ -234,7 +234,7 @@ public class WSSHandler {
     while ((line = in.readLine()) != null) {
       f = line.split("\t");
       //f[0] - gene name /  f[1] - filename
-      wss.add(new WSS(f[0], statuses, f[1]));
+      wss.add(new WSS(f[0], phenotypes, f[1]));
     }
     in.close();
     statusRunning(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size()));
@@ -270,10 +270,10 @@ public class WSSHandler {
     //number of affected individuals in the dataset
     this.nbAffected = nbAffected;
     this.nbUnaffected = nbUnaffected;
-    //reading phenotype status
-    statuses = new boolean[this.nbAffected + this.nbUnaffected];
+    //reading phenotypes
+    phenotypes = new boolean[this.nbAffected + this.nbUnaffected];
     for (int i = 0; i < this.nbAffected + this.nbUnaffected; i++)
-      statuses[i] = i < this.nbAffected;
+      phenotypes[i] = i < this.nbAffected;
     wss = new ArrayList<>();
     for (String gene : mergedGenotypes.keySet()) {
       ArrayList<String> genotypes = mergedGenotypes.get(gene);
@@ -282,7 +282,7 @@ public class WSSHandler {
       /*else if(out != null)
         for(String ge : genotypes) 
           out.println(gene+"\t"+ge);*/
-      wss.add(new WSS(gene, statuses, genotypes));
+      wss.add(new WSS(gene, phenotypes, genotypes));
     }
 
     statusRunning(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size()));
@@ -329,7 +329,7 @@ public class WSSHandler {
     ArrayList<WSS> keep = new ArrayList<>();
 
     for (WSS w : this.wss) {
-      w.start(this.statuses);
+      w.start(this.phenotypes);
       w.doPermutations(shuffled, this.nbThreads);
       if (w.isStopReached(this.minK0, this.maxK, this.rejectionPValue, this.minPValueMinusLog))
         out.println(w.getResults(start));

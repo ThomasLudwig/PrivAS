@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas;
 
+import fr.inserm.u1078.tludwig.privas.algorithms.Utils;
 import fr.inserm.u1078.tludwig.privas.algorithms.wss.WSS;
 import fr.inserm.u1078.tludwig.privas.algorithms.wss.WSSHandler;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
@@ -51,7 +52,7 @@ public class TPSRun {
           computeWSS(args);
           break;
         case MSG.ARG_RANKSUMKEY:
-          computeRanksum(args);
+          computeWSSRanksum(args);
           break;
         default:
           usage();
@@ -72,7 +73,7 @@ public class TPSRun {
     System.err.println(MSG.MSG_TOOLS);
     usageKeygen(false);
     usageComputeWSS(false);
-    usageComputeRanksum(false);
+    usageComputeWSSRanksum(false);
   }
 
   public static void doc(String[] args) throws Exception {
@@ -205,7 +206,7 @@ public class TPSRun {
     System.err.println(MSG.MSG_CMD_WSS);
   }
 
-  private static void usageComputeRanksum(boolean prefix) {
+  private static void usageComputeWSSRanksum(boolean prefix) {
     if (prefix)
       System.err.println(MSG.MSG_USAGE);
     System.err.println(MSG.MSG_DESC_RANKSUM);
@@ -245,11 +246,11 @@ public class TPSRun {
     }
   }
 
-  private static void computeRanksum(String[] args){
+  private static void computeWSSRanksum(String[] args){
     try {
       String gene = args[1];
       String genotypeFile = args[2];
-      boolean[] phenotypes = WSS.parsePhenotypes(args[3]);
+      boolean[] phenotypes = Utils.parsePhenotypes(args[3]);
 
       int affected = 0;
       for(int i = 0 ; i < phenotypes.length; i++)
@@ -258,7 +259,7 @@ public class TPSRun {
       int unaffected = phenotypes.length - affected;
 
       WSS wss = new WSS(gene, phenotypes, genotypeFile);
-      System.out.println(gene+"\tpheno="+WSS.getTextPhenotype(phenotypes)+"\taff="+affected+"\tunaff="+unaffected+"\tranksum="+wss.start(phenotypes)+"\toriginal="+wss.testUnoptimized(phenotypes));
+      System.out.println(gene+"\tpheno="+Utils.getTextPhenotype(phenotypes)+"\taff="+affected+"\tunaff="+unaffected+"\tranksum="+wss.start(phenotypes)+"\toriginal="+wss.testUnoptimized(phenotypes));
     } catch (Exception e) {
       e.printStackTrace();
     }

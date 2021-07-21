@@ -1,13 +1,17 @@
 # Changelog
 
-## 1.0.3 (2021-07-20)
+## 1.0.3 (2021-07-21)
 ### Core
--   Typo : in javadoc
+* Typo : in javadoc
 ### Client
 ### RPP
 ### TPS
--   WSSHandler : *debug* shuffle intial phenotype REMOVE BEFORE PUSH TO MAIN
--   Shuffler : *changed* access to public for getNext()
+* WSS : *changed* references to **status** or **affected** are changed to *phenotypes*, **changed** `x()` methods to static 
+* Shuffler : *changed* access to public for getNext()
+* Utils : *added* class providing static methods that are independent of the algorithms
+* TPSRun : *changed* output of `computeWSSRanksum`, add information and results of both optimized and unoptimized methods
+* Gamma : *added* `toString()`, **changed** `add(boolean phenotype)` returns `true` instead of void
+* RankedGammaList : *added* `add(int, boolean)`, `add(int, Gamma)`, `printDebug()`, **changed** `add(double, boolean)` simplified through use of boolean add instead of void
 
 ## 1.0.2 (2021-06-09)
 ### Core
