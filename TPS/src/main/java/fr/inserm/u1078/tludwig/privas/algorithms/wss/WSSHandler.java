@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.algorithms.wss;
 
+import fr.inserm.u1078.tludwig.privas.algorithms.Utils;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
@@ -204,16 +205,7 @@ public class WSSHandler {
    */
   private void loadData(String genotypeListFilename, String phenotypeFilename) throws IOException {
     //reading phenotype
-    UniversalReader in = new UniversalReader(phenotypeFilename);
-    String[] f = in.readLine().split("\\s+");
-    phenotypes = new boolean[f.length];
-    try{
-      for (int i = 0; i < f.length; i++)
-        phenotypes[i] = Boolean.parseBoolean(f[i]);
-    } catch(NumberFormatException nfe){
-      System.err.println("Unable to parse boolean is phenotype file.\n"+nfe.getMessage());
-    }
-    in.close();
+    phenotypes = Utils.parsePhenotypes(phenotypeFilename);
 
     //number of affected individuals in the dataset
     nbAffected = 0;
