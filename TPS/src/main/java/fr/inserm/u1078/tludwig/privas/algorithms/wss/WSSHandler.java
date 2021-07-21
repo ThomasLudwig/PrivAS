@@ -220,11 +220,11 @@ public class WSSHandler {
     //DONE END OF DEBUG SECTION TO REMOVE
 
     //for each file in the genotypes list, create a wss object
-    in = new UniversalReader(genotypeListFilename);
+    UniversalReader in = new UniversalReader(genotypeListFilename);
     wss = new ArrayList<>();
     String line;
     while ((line = in.readLine()) != null) {
-      f = line.split("\t");
+      String[] f = line.split("\t");
       //f[0] - gene name /  f[1] - filename
       wss.add(new WSS(f[0], phenotypes, f[1]));
     }
