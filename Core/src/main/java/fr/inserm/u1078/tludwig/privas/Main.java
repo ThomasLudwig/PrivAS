@@ -8,6 +8,8 @@ import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 import fr.inserm.u1078.tludwig.privas.utils.qc.QualityControl;
 
 import java.io.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * Main Class, entry point of the program. Only static fields and methods
@@ -48,17 +50,31 @@ public final class Main {
   }
 
   /**
-   * Prints the usage message for preparing RPP data files
-   *
+   * Generic method to get usage String
    * @param prefix should print the "Usage :" prefix ?
+   * @param client who is calling ? true for the Client, false for RPP
+   * @param desc the description for this command
+   * @param cmdClient the client command line for this command
+   * @param cmdRpp the rpp command line for this command
+   * @return the complete usage string
    */
-  public static String usageConvertVCF(boolean prefix, boolean client) {
+  private static String usageGeneric(boolean prefix, boolean client, String desc, String cmdClient, String cmdRpp){
     StringBuilder ret = new StringBuilder();
     if (prefix)
       ret.append(MSG.MSG_USAGE).append("\n");
-    ret.append(MSG.MSG_DESC_PREPARE).append("\n");
-    ret.append(client ? MSG.MSG_CMD_PREPARE_CLIENT : MSG.MSG_CMD_PREPARE_RPP);
+    ret.append(desc).append("\n");
+    ret.append(client ? cmdClient : cmdRpp);
     return ret.toString();
+  }
+
+  /**
+   * Prints the usage message for preparing RPP data files
+   *
+   * @param prefix should print the "Usage :" prefix ?
+   *
+   */
+  public static String usageConvertVCF(boolean prefix, boolean client) {
+    return usageGeneric(prefix, client, MSG.MSG_DESC_PREPARE, MSG.MSG_CMD_PREPARE_CLIENT, MSG.MSG_CMD_PREPARE_RPP);
   }
 
   /**
@@ -67,21 +83,15 @@ public final class Main {
    * @param prefix should print the "Usage :" prefix ?
    */
   public static String usageQualityControl(boolean prefix, boolean client) {
-    StringBuilder ret = new StringBuilder();
-    if (prefix)
-      ret.append(MSG.MSG_USAGE).append("\n");
-    ret.append(MSG.MSG_DESC_QC).append("\n");
-    ret.append(client ? MSG.MSG_CMD_QC_CLIENT : MSG.MSG_CMD_QC_RPP);
-    return ret.toString();
+    return usageGeneric(prefix, client, MSG.MSG_DESC_QC, MSG.MSG_CMD_QC_CLIENT, MSG.MSG_CMD_QC_RPP);
   }
 
   public static String usageQualityControlAndConvert(boolean prefix, boolean client) {
-    StringBuilder ret = new StringBuilder();
-    if (prefix)
-      ret.append(MSG.MSG_USAGE).append("\n");
-    ret.append(MSG.MSG_DESC_QC_CONV).append("\n");
-    ret.append(client ? MSG.MSG_CMD_QC_CONV_CLIENT : MSG.MSG_CMD_QC_CONV_RPP);
-    return ret.toString();
+    return usageGeneric(prefix, client, MSG.MSG_DESC_QC_CONV, MSG.MSG_CMD_QC_CONV_CLIENT, MSG.MSG_CMD_QC_CONV_RPP);
+  }
+
+  public static String usageExtractAndHash(boolean prefix, boolean client) {
+    return usageGeneric(prefix, client, MSG.MSG_DESC_EXTRACT_HASH, MSG.MSG_CMD_EXTRACT_HASH_CLIENT, MSG.MSG_CMD_EXTRACT_HASH_RPP);
   }
 
   /**
@@ -135,5 +145,18 @@ public final class Main {
     }
     File file = new File(outVCF);
     file.delete();
+  }
+
+  public static void extractAndHash(String[] args, boolean client){
+    try {
+      String inVCF = args[1];
+      String outVCFFilename = args[2];
+      String outGeneFilename = args[3];
+      String hashingKey = args[4];
+      GenotypesFileHandler.extractCanonicalAndHash(inVCF, outVCFFilename, outGeneFilename, hashingKey);
+    } catch (IOException | ArrayIndexOutOfBoundsException | InvalidKeyException | NoSuchAlgorithmException | GenotypesFileHandler.GenotypeFileException e) {
+      System.err.println(MSG.MSG_FAIL_EXTRACT_HASH + e.getClass() + " " + e.getMessage());
+      usageQualityControl(true, client);
+    }
   }
 }

@@ -42,6 +42,7 @@ public class MSG {
   public static final String ARG_RANKSUMKEY = "--rank";
   public static final String ARG_QC = "--qc";
   public static final String ARG_QC_CONV = "--qc-convert";
+  public static final String ARG_EXTRACT_HASH = "--extractandhash";
 
   //general
   public static final String FAIL_MKDIR = "Could not create directory";
@@ -444,6 +445,11 @@ public class MSG {
           + " statuses.bool";
   
   public static final String MSG_FAIL_WSS = "Unable to start WSS computation: ";
+
+  public static final String MSG_DESC_EXTRACT_HASH = "- Extract and hash canonical variants from input vcf file";
+  public static final String MSG_CMD_EXTRACT_HASH_CLIENT = MSG_CMD_JAVA_CLIENT + " " + MSG.ARG_EXTRACT_HASH + " input.vcf(.gz) output.tsv hashkey";
+  public static final String MSG_CMD_EXTRACT_HASH_RPP = MSG_CMD_JAVA_RPP + " " + MSG.ARG_EXTRACT_HASH + " input.vcf(.gz) output.tsv hashkey";
+  public static final String MSG_FAIL_EXTRACT_HASH = "Unable to extract and hash canonical variants from input vcf file";
 
   //gui
   public static final String GUI_DEFAULT_DIRECTORY = ".";

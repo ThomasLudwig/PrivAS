@@ -48,6 +48,9 @@ public class RPPRun {
         case MSG.ARG_QC_CONV:
           Main.qcAndConvert(args, false);
           break;
+        case MSG.ARG_EXTRACT_HASH:
+          Main.extractAndHash(args, false);
+          break;
         default:
           usage();
       }
@@ -70,6 +73,8 @@ public class RPPRun {
     ret.append(MSG.MSG_TOOLS).append(N);
     ret.append(N);
     ret.append(Main.usageConvertVCF(false, false));
+    ret.append(N);
+    ret.append(Main.usageExtractAndHash(false, false));
     return ret.toString();
   }
 

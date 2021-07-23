@@ -6,15 +6,14 @@ import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.zip.GZIPOutputStream;
 
 import fr.inserm.u1078.tludwig.privas.instances.Instance;
 import fr.inserm.u1078.tludwig.privas.listener.ProgressListener;
+import fr.inserm.u1078.tludwig.privas.messages.Message;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Random;
 
 /**
  * Class to Handle Genotype Files
@@ -695,6 +694,71 @@ public class GenotypesFileHandler {
     }
     in.close();
     return hashPos;
+  }
+
+  /**
+   Converts a VCF file into a TSV file containing the first 5 columns + the canonical + the hash canonical (one line per alt)
+   * @param inputFilename   the name of the input vcf file
+   * @param variantOutputFilename  the name of the output tsv file for variants
+   * @param geneOutputFilename  the name of the output tsv file for genes
+   * @param hashKey the key to use when hashing the canonical variants
+   * @throws IOException  when there is a problem reading/writing the files
+   * @throws InvalidKeyException
+   * @throws NoSuchAlgorithmException should never be thrown since the hashing algorithm is fixed
+   */
+  public static void extractCanonicalAndHash(String inputFilename, String variantOutputFilename, String geneOutputFilename, String hashKey) throws IOException, InvalidKeyException, NoSuchAlgorithmException, GenotypeFileException {
+    UniversalReader in = new UniversalReader(inputFilename);
+    PrintWriter out = new PrintWriter(new FileWriter(variantOutputFilename));
+    SortedSet<String> genes = new TreeSet<>();
+
+    int idxGene = -1;
+    String vepString = null;
+    String header = null;
+    String line;
+    int nbLines = 0;
+    while ((line = in.readLine()) != null)
+      if (line.startsWith("#")) {
+        if (line.startsWith(VEP_PREFIX)) {
+          vepString = line;
+          int idx = line.lastIndexOf(' ');
+          String[] f = line.substring(idx, line.length() - 2).split("\\|", -1);
+          for (int i = 0; i < f.length; i++)
+            if (VEP_GENE.equals(f[i]))
+              idxGene = i;
+          if (idxGene == -1)
+            throw new GenotypeFileException("Unable to find " + VEP_GENE + " in the VEP header");
+        } else if (line.startsWith(HEADER_PREFIX))
+          header = line;
+      } else {
+        if (vepString == null)
+          throw new GenotypeFileException("Your VCF file does not seem to contain VEP annotations. Can't proceed.");
+        if (header == null)
+          throw new GenotypeFileException("Your VCF file seems to be badly formatted. Missing header.");
+        nbLines++;
+        if(nbLines%10000 == 0)
+          System.err.println("Read lines from "+inputFilename+": "+nbLines);
+        String[] f = line.split(T);
+        String prefix = String.join(T, f[VCF_CHR], f[VCF_POS], f[VCF_ID], f[VCF_REF]);
+        for (String alt :  f[VCF_ALT].split(",")) {
+          String canon = getCanonical(f[VCF_CHR], f[VCF_POS], f[VCF_REF], alt);
+          String hashed = Crypto.hashSHA256(hashKey, canon);
+          out.println(String.join(T, prefix, alt, canon, hashed));
+        }
+        for (String info : f[VCF_INFO].split(";")) {
+          if (info.startsWith("CSQ=")) {
+            for (String csq : info.split(",")) {
+              genes.add(csq.split("\\|")[idxGene]);
+            }
+          }
+        }
+      }
+    System.err.println("Read lines from "+inputFilename+": "+nbLines);
+    in.close();
+    out.close();
+    out = new PrintWriter(new FileWriter(geneOutputFilename));
+    for(String gene : genes)
+      out.println(gene + T + Crypto.hashSHA256(hashKey, gene));
+    out.close();
   }
 
   /**

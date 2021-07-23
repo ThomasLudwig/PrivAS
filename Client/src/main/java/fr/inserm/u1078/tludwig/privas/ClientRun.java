@@ -56,6 +56,9 @@ public class ClientRun {
         case MSG.ARG_QC:
           Main.qc(args, true);
           break;
+        case MSG.ARG_EXTRACT_HASH:
+          Main.extractAndHash(args, false);
+          break;
         default:
           usage();
       }
@@ -82,6 +85,8 @@ public class ClientRun {
     ret.append(Main.usageQualityControl(false, true)).append(N);
     ret.append(MSG.MSG_TOOLS).append(N);
     ret.append(Main.usageConvertVCF(false, true));
+    ret.append(N);
+    ret.append(Main.usageExtractAndHash(false, true));
     return ret.toString();
   }
 
