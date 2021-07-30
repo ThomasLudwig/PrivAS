@@ -62,7 +62,7 @@ public class Parameters {
   /**
    * By default WSS stops when it reaches this value of k
    */
-  public static final int WSS_DEFAULT_MAX_K = 10000000;
+  public static final int WSS_DEFAULT_MAX_K = 100000000;
   /**
    * By default WSS stops if the pvalue is above this value
    */

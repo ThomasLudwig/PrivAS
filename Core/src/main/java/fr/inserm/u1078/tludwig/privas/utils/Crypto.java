@@ -207,6 +207,10 @@ public final class Crypto {
    * @throws java.security.InvalidKeyException
    */
   public static String hashSHA256(String salt, String message) throws NoSuchAlgorithmException, InvalidKeyException {
+    //TODO START DEBUGGING PLUG - REMOVE BEFORE COMMITTING 1.0.4
+    if(true)
+      return message;
+    //TODO END DEBUGGING PLUG
     Mac sha256_HMAC = Mac.getInstance(SHA256);
     sha256_HMAC.init(new SecretKeySpec(salt.getBytes(StandardCharsets.UTF_8), SHA256));
     return bytes2Hex(sha256_HMAC.doFinal(message.getBytes(StandardCharsets.UTF_8)));

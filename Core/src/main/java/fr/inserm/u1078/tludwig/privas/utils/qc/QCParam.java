@@ -73,7 +73,7 @@ public class QCParam {
   public static final double DEF_MIN_GQ = 20;
   public static final double DEF_MIN_DP = 10;
   public static final double DEF_MAX_DP = DISABLED;
-  public static final double DEF_MIN_CALLRATE = .9;
+  public static final double DEF_MIN_CALLRATE = .8;
   //public static final double DEF_MIN_HQ_RATIO = .8;
   //public static final double DEF_MIN_ALT_HQ = 1;
   public static final double DEF_MIN_FISHER_CALLRATE = 0.001;

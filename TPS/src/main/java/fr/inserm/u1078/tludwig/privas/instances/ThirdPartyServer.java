@@ -396,6 +396,7 @@ public class ThirdPartyServer extends Instance {
 
       //here we populate the genotypes for each variant in each gene
       HashMap<String, ArrayList<String>> genotypes = new HashMap<>();
+      HashMap<String, ArrayList<String>> variants = new HashMap<>();
       statusStarted(MSG.WSS_OK_PARSE, true);
       int pooledFrequencyFiltered = 0;
       failedFisher = 0;
@@ -405,17 +406,28 @@ public class ThirdPartyServer extends Instance {
         HashMap<String, String> variantLineControl = extractVariantLines(rppData.get(gene));
 
         ArrayList<String> merge = merge(variantLineCase, variantLineControl, missingCases, missingControl);
+        PrintWriter out = null;;
         pooledFrequencyFiltered += removeAlleleFrequency(merge, frqThreshold);
+        ArrayList<String> mergedGenotypes = new ArrayList<>();
+        ArrayList<String> variantNames = new ArrayList<>();
 
-        if(!merge.isEmpty())
-          genotypes.put(gene, merge);
+        for(String line : merge){
+          int i =  line.indexOf('\t');
+          variantNames.add(line.substring(0, i));
+          mergedGenotypes.add(line.substring(i+1));
+        }
+
+        if(!mergedGenotypes.isEmpty()) {
+          genotypes.put(gene, mergedGenotypes);
+          variants.put(gene, variantNames);
+        }
       }
       statusStarted(MSG.cat(MSG.WSS_FILTERED_FREQUENCY, pooledFrequencyFiltered), false);
       statusStarted(MSG.cat(MSG.WSS_FILTERED_FISHER, failedFisher), false);
       statusStarted(MSG.WSS_OK_FILTER, true);
 
       //debug export input data !
-      export(genotypes);
+      export(genotypes, variants);
       
       return genotypes;
     }
@@ -428,7 +440,8 @@ public class ThirdPartyServer extends Instance {
     double an = 0;
     double ac = 0;
 
-    for(String g : f){
+    for(int i = 1 ; i < f.length; i++){
+      String g = f[i];
       int v = new Integer(g);
       if(v != -1){
         an += 2;
@@ -439,33 +452,39 @@ public class ThirdPartyServer extends Instance {
   }
 
   private int removeAlleleFrequency(ArrayList<String> lines, double frq){
-    ArrayList<String> filtered = new ArrayList<>();
-    for(String line : lines)
-      if(filterPooledFrequency(line, frq))
-        filtered.add(line);
+    ArrayList<Integer> filtered = new ArrayList<>();
+    for(int i = 0 ; i < lines.size(); i++)
+      if(filterPooledFrequency(lines.get(i), frq))
+        filtered.add(i);
 
-    lines.removeAll(filtered);
+    for(int i = filtered.size() - 1 ; i >= 0; i--)
+      lines.remove(filtered.get(i));
     return filtered.size();
   }
   
-  private void export(HashMap<String, ArrayList<String>> genotypes) throws IOException{
+  private void export(HashMap<String, ArrayList<String>> genotypes, HashMap<String, ArrayList<String>> variants) throws IOException{
     String debugDir = this.sessionDir + File.separator + "debug";
     new File(debugDir).mkdirs();
     
     for(String gene : genotypes.keySet()){
-        PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator + "debug."+gene+".geno"));
-        for(String line : genotypes.get(gene))
-          out.println(line);
-        out.close();
+      PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator + "debug."+gene+".geno"));
+      ArrayList<String> vs = variants.get(gene);
+      ArrayList<String> gs = genotypes.get(gene);
+      for(int i = 0 ; i < vs.size(); i++){
+        String v = vs.get(i);
+        String g = gs.get(i);
+        out.println(v + "\t" + g);
       }
-      PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator +"debug.pheno"));
-      StringBuilder sb = new StringBuilder();
-      for(int i = 0 ; i < nbAffected; i++)
-        sb.append("\t1");
-      for(int i = 0 ; i < nbUnaffected; i++)
-        sb.append("\t0");
-      out.println(sb.substring(1));
       out.close();
+    }
+    PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator +"debug.pheno"));
+    StringBuilder sb = new StringBuilder();
+    for(int i = 0 ; i < nbAffected; i++)
+      sb.append("\t1");
+    for(int i = 0 ; i < nbUnaffected; i++)
+      sb.append("\t0");
+    out.println(sb.substring(1));
+    out.close();
   }
 
   /**
@@ -486,12 +505,12 @@ public class ThirdPartyServer extends Instance {
       String lCase = vAffected.get(variant);
       String lControl = vUnaffected.get(variant);
       if (lControl == null) //add if only on the client's side
-        merge.add(lCase + "\t" + missingUnaffected);
+        merge.add(variant+ "\t" + lCase + "\t" + missingUnaffected);
       else {  // if variant is common to both groups, perform a fisher test
         if(fet == null)
           fet = new FisherExactTest(lCase.split("\t").length + lControl.split("\t").length);
         if(checkCallrate(fet, lCase, lControl))
-          merge.add(lCase + "\t" + lControl);
+          merge.add(variant+ "\t" + lCase + "\t" + lControl);
         else
           failedFisher++;
       }
@@ -499,11 +518,11 @@ public class ThirdPartyServer extends Instance {
 
     for (String variant : vUnaffected.keySet()) //process rpp variants that aren't common to client
       if (vAffected.get(variant) == null) 
-        merge.add(missingAffected + "\t" + vUnaffected.get(variant));      
+        merge.add(variant+ "\t" + missingAffected + "\t" + vUnaffected.get(variant));
     
     return merge;
   }
-  
+
   private static boolean checkCallrate(FisherExactTest fet, String lCase, String lControl){
     int missingCase = 0;
     int missingControl = 0;
