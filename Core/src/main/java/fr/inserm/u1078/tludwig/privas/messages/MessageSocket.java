@@ -1,6 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.messages;
 
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
+import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
 import fr.inserm.u1078.tludwig.privas.instances.MessageException;
 import fr.inserm.u1078.tludwig.privas.listener.ProgressListener;
@@ -41,7 +42,7 @@ public class MessageSocket {
    * Actual Constructor
    *
    * @param socket the embedded socket
-   * @throws IOException
+   * @throws IOException if the streams cannot be opened
    */
   private MessageSocket(Socket socket) throws IOException {
     this.socket = socket;
@@ -55,7 +56,7 @@ public class MessageSocket {
    * A Server (RPP) creates this MessageSocket in order to received a Message from a Client, then send a Reply (another Message)
    *
    * @param serverSocket the Server Socket is part of the server instance (RPP), it listen of the selected port
-   * @throws IOException
+   * @throws IOException if an I/O error occurs when waiting for a connection.
    */
   public MessageSocket(ServerSocket serverSocket) throws IOException {
     this(serverSocket.accept());
@@ -68,7 +69,7 @@ public class MessageSocket {
    *
    * @param ip   the IP address (or name) of the server
    * @param port the port of the server
-   * @throws IOException
+   * @throws IOException if an I/O error occurs when creating the socket.
    */
   public MessageSocket(String ip, int port) throws IOException {
     this(new Socket(ip, port));
@@ -77,7 +78,7 @@ public class MessageSocket {
   /**
    * Gets the Remote party's Address (Used by the server to log connections)
    *
-   * @return
+   * @return the IP address of the client
    */
   public String getClientIP() {
     try {
@@ -91,7 +92,7 @@ public class MessageSocket {
    * Writes a Message to the Socket
    *
    * @param message the message
-   * @throws IOException
+   * @throws IOException     if an I/O error occurs when writing.
    */
   public void writeMessage(Message message) throws IOException {
     this.writeMessage(message, null);
@@ -113,7 +114,7 @@ public class MessageSocket {
    *
    * @param message          the message
    * @param progressListener an optional ProgressListener to keep updated of the writing progression
-   * @throws IOException
+   * @throws IOException     if an I/O error occurs when writing.
    */
   public void writeMessage(Message message, ProgressListener progressListener) throws IOException {
     os.writeUTF(message.getType());
@@ -155,8 +156,8 @@ public class MessageSocket {
    * Reads a Message from the MessageSocket
    *
    * @return the Message
-   * @throws IOException
-   * @throws MessageException
+   * @throws IOException      if an I/O error occurs when reading.
+   * @throws MessageException if the Message cannot be parsed
    */
   public Message readMessage() throws IOException, MessageException {
     try {
@@ -178,17 +179,15 @@ public class MessageSocket {
         }
       }
       return Message.buildMessage(type, kv);
-    } catch(IOException | MessageException e){
-      throw e;
-    } catch(Exception e1){ //Something else (NumberFormatException | NullPointer | ArrayIndexOutOfBounds...
-      throw new IOException("Unable to read Message("+e1.getClass().getSimpleName()+")", e1);
+    } catch(RuntimeException e1) {
+      throw new IOException(MSG.cat(MSG.MSG_UNABLE_READ_MESSAGE, e1.getClass().getSimpleName()), e1);
     }
   }
 
   /**
    * Closes this MessageSocket (and its underlying Socket and DataInput/OutputStream
    *
-   * @throws IOException
+   * @throws IOException      if an I/O error occurs when closing the socket.
    */
   public void close() throws IOException {
     this.is.close();

@@ -152,7 +152,7 @@ public class LoggingPanel extends JPanel implements LogListener {
       this.doc.insertString(doc.getLength(), "] ", bracket);
       this.doc.insertString(doc.getLength(), s, style);
     } catch (BadLocationException e) {
-      System.err.println(s);
+      //Ignore
     }
     this.jtp.setCaretPosition(this.doc.getLength());
   }
@@ -160,7 +160,7 @@ public class LoggingPanel extends JPanel implements LogListener {
   /**
    * Squeezes the StackTrace of an Exception in the Panel
    * @param e the Exception
-   * @return 
+   * @return the stack trace as a String
    */
   private String squeeze(Throwable e) {
     StringBuilder sb = new StringBuilder(e.getClass().getSimpleName()+" "+e.getMessage());

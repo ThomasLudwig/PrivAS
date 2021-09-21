@@ -24,7 +24,29 @@ public abstract class Message implements Serializable {
    * Possible parameter Keys
    */
   enum Key {
-    CLIENT_PUB_RSA, DATASET, MAX_MAF, MAX_MAF_NFE, LIMIT_TO_SNVS, MIN_CSQ, DATASETS, TPS_NAME, ENCRYPTED_AES, ENCRYPTED_CLIENT_DATA, ENCRYPTED_CLIENT_EXCLUDED_VARIANT, ALGORITHM, ERROR_MESSAGE, ENCRYPTED_RESULTS, ENCRYPTED_HASH, THIRD_PUB_RSA, STATUS, SESSION, BED_FILE, QC_PARAM, EXCLUDED_VARIANTS
+    DATASETS, //SendRPPConfiguration
+    TPS_NAME, //SendRPPConfiguration
+    GNOMAD_VERSIONS, //SendRPPConfiguration
+    CLIENT_PUB_RSA, //AskSession
+    DATASET, //AskSession
+    GNOMAD_VERSION, //AskSession
+    MAX_MAF, //AskSession
+    SUBPOPULATION, //AskSession
+    MAX_MAF_SUBPOP, //AskSession
+    LIMIT_TO_SNVS, //AskSession
+    MIN_CSQ, //AskSession
+    QC_PARAM, //AskSession
+    BED_FILE, //AskSession, SendSession
+    SESSION, //SessionMessage
+    ENCRYPTED_HASH, //SendSession
+    THIRD_PUB_RSA, //SendSession
+    ENCRYPTED_AES, //SendClientData
+    ENCRYPTED_CLIENT_DATA, //SendClientData
+    ENCRYPTED_CLIENT_EXCLUDED_VARIANT, //SendClientData
+    ALGORITHM, //SendClientData
+    STATUS, //SendRPPStatus, SendTPSStatus
+    ERROR_MESSAGE, //SendError
+    ENCRYPTED_RESULTS //SendResults
   }
 
   /**
@@ -37,26 +59,26 @@ public abstract class Message implements Serializable {
    *
    * @param type       the type of the Message
    * @param parameters parameters of the Message
-   * @return
-   * @throws MessageException
+   * @return the new Message
+   * @throws MessageException if there if the message type is not recognized
    */
   public static Message buildMessage(String type, HashMap<String, String> parameters) throws MessageException {
     Class<?> clazz;
     try {
       clazz = Class.forName(type);  
     } catch (ClassNotFoundException e) {
-      throw new MessageException("Unknown Message Type ["+type+"]", e);
+      throw new MessageException(MSG.cat(MSG.MSG_UNKNOWN_TYPE, type), e);
     }
     
     try {
-      Constructor<?> ctor;
-      ctor = clazz.getConstructor();
-      Message m = (Message) ctor.newInstance();
+      Constructor<?> constructor;
+      constructor = clazz.getConstructor();
+      Message m = (Message) constructor.newInstance();
       for (String k : parameters.keySet())
         m.set(Key.valueOf(k), parameters.get(k));
       return m;
     } catch (EmptyParameterException | IllegalAccessException | IllegalArgumentException | InstantiationException | NoSuchMethodException | SecurityException | InvocationTargetException e) {
-      throw new MessageException("Unable to build new message of type ["+type+"] ("+e.getClass().getSimpleName()+" : "+e.getMessage()+")",e);
+      throw new MessageException(MSG.cat(MSG.cat(MSG.MSG_UNABLE_BUILD, type), e),e);
     }    
   }
 
@@ -71,7 +93,7 @@ public abstract class Message implements Serializable {
    * Gets the type of the Message
    * The type is the full class name
    *
-   * @return
+   * @return the type of Message
    */
   public final String getType() {
     return this.getClass().getName();
@@ -80,7 +102,7 @@ public abstract class Message implements Serializable {
   /**
    * Gets the names (Keys) of all the Message's parameters
    *
-   * @return
+   * @return the names (Keys) of all the Message's parameters
    */
   public final String getKeys() {
     StringBuilder sb = new StringBuilder();
@@ -111,7 +133,7 @@ public abstract class Message implements Serializable {
    * Gets a parameter's value
    *
    * @param key the name of the parameter
-   * @return
+   * @return a value for the given key
    */
   String getValue(Key key) {
     return this.parameters.get(key);

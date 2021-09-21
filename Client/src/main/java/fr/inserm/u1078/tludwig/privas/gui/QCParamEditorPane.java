@@ -1,5 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.gui;
 
+import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
+import fr.inserm.u1078.tludwig.privas.gui.helper.QCParamTextField;
 import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import javax.swing.*;
@@ -47,28 +49,26 @@ public class QCParamEditorPane extends JPanel {
   public QCParamEditorPane(FileExtensionChooser fcQCParam){
     this.fcQCParam = fcQCParam;
     this.qcParam = new QCParam();
-    minQD = new JTextField(QCParam.asString(qcParam.getMinQD()), 8);
-    maxABHetDev = new JTextField(QCParam.asString(qcParam.getMaxABHetDev()),8);
-    minInbreeding = new JTextField(QCParam.asString(qcParam.getMinInbreeding()), 8);
-    minMQRanksum = new JTextField(QCParam.asString(qcParam.getMinMQRanksum()), 8);
-    indelMaxFS = new JTextField(QCParam.asString(qcParam.getIndelMaxFS()), 8);
-    snpMaxFS = new JTextField(QCParam.asString(qcParam.getSnpMaxFS()), 8);
-    indelMaxSOR = new JTextField(QCParam.asString(qcParam.getIndelMaxSOR()), 8);
-    snpMaxSOR = new JTextField(QCParam.asString(qcParam.getSnpMaxSOR()), 8);
-    indelMinMQ = new JTextField(QCParam.asString(qcParam.getIndelMinMQ()), 8);
-    snpMinMQ = new JTextField(QCParam.asString(qcParam.getSnpMinMQ()), 8);
-    indelMinRPRS = new JTextField(QCParam.asString(qcParam.getIndelMinRPRS()), 8);
-    snpMinRPRS = new JTextField(QCParam.asString(qcParam.getSnpMinRPRS()), 8);
-    minGQ = new JTextField(QCParam.asString(qcParam.getMinGQ()), 8);
-    minDP = new JTextField(QCParam.asString(qcParam.getMinDP()), 8);
-    maxDP = new JTextField(QCParam.asString(qcParam.getMaxDP()), 8);
-    minCallrate = new JTextField(QCParam.asString(qcParam.getMinCallrate()), 8);
-    //minHQRatio = new JTextField(QCParam.asString(qcParam.getMinHQRatio()), 8);
-    //minAltHQ = new JTextField(QCParam.asString(qcParam.getMinAltHQ()), 8);
-    minFisherCallrate = new JTextField(QCParam.asString(qcParam.getMinFisherCallrate()), 8);
-
+    minQD = new QCParamTextField(QCParam.asString(qcParam.getMinQD()), 8);
+    maxABHetDev = new QCParamTextField(QCParam.asString(qcParam.getMaxABHetDev()),8);
+    minInbreeding = new QCParamTextField(QCParam.asString(qcParam.getMinInbreeding()), 8);
+    minMQRanksum = new QCParamTextField(QCParam.asString(qcParam.getMinMQRanksum()), 8);
+    indelMaxFS = new QCParamTextField(QCParam.asString(qcParam.getIndelMaxFS()), 8);
+    snpMaxFS = new QCParamTextField(QCParam.asString(qcParam.getSnpMaxFS()), 8);
+    indelMaxSOR = new QCParamTextField(QCParam.asString(qcParam.getIndelMaxSOR()), 8);
+    snpMaxSOR = new QCParamTextField(QCParam.asString(qcParam.getSnpMaxSOR()), 8);
+    indelMinMQ = new QCParamTextField(QCParam.asString(qcParam.getIndelMinMQ()), 8);
+    snpMinMQ = new QCParamTextField(QCParam.asString(qcParam.getSnpMinMQ()), 8);
+    indelMinRPRS = new QCParamTextField(QCParam.asString(qcParam.getIndelMinRPRS()), 8);
+    snpMinRPRS = new QCParamTextField(QCParam.asString(qcParam.getSnpMinRPRS()), 8);
+    minGQ = new QCParamTextField(QCParam.asString(qcParam.getMinGQ()), 8);
+    minDP = new QCParamTextField(QCParam.asString(qcParam.getMinDP()), 8);
+    maxDP = new QCParamTextField(QCParam.asString(qcParam.getMaxDP()), 8);
+    minCallrate = new QCParamTextField(QCParam.asString(qcParam.getMinCallrate()), 8);
+    //minHQRatio = new QCParamTextField(QCParam.asString(qcParam.getMinHQRatio()), 8);
+    //minAltHQ = new QCParamTextField(QCParam.asString(qcParam.getMinAltHQ()), 8);
+    minFisherCallrate = new QCParamTextField(QCParam.asString(qcParam.getMinFisherCallrate()), 8);
     //filenameTF = new JTextField(30);
-
     init();
   }
 
@@ -142,7 +142,7 @@ public class QCParamEditorPane extends JPanel {
     //qcParam.unsafeSetValue(QCParam.KEY_MIN_ALT_HQ, minAltHQ.getText());
     qcParam.unsafeSetValue(QCParam.KEY_MIN_FISHER_CALLRATE , minFisherCallrate.getText());
 
-    String defaultName = "QC"+qcParam.hashCode()+".param";
+    String defaultName = FileFormat.QC_PREFIX +qcParam.hashCode()+"."+FileFormat.FILE_QC_PARAM_EXTENSION;
     fcQCParam.setSelectedFile(new File(defaultName));
     if (this.fcQCParam.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
       //this.filenameTF.setText(this.fcQCParam.getSelectedFile().getAbsolutePath());
@@ -153,8 +153,4 @@ public class QCParamEditorPane extends JPanel {
     }
     return null;
   }
-
-  /*public String getFilename() {
-    return filenameTF.getText();
-  }*/
 }

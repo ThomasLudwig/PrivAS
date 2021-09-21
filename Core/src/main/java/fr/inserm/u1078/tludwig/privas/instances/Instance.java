@@ -28,7 +28,7 @@ public abstract class Instance {
   /**
    * Adds a LogListener to this Instance
    *
-   * @param logListener
+   * @param logListener the listener to add
    */
   public void addLogListener(LogListener logListener) {
     if (this.logListeners.contains(logListener))
@@ -39,7 +39,7 @@ public abstract class Instance {
   /**
    * Logs a successful operation message
    *
-   * @param message
+   * @param message the successful operation message
    */
   public void logSuccess(String message) {
     for (LogListener l : this.logListeners)
@@ -49,7 +49,7 @@ public abstract class Instance {
   /**
    * Logs an informative message
    *
-   * @param message
+   * @param message the informative message
    */
   public void logInfo(String message) {
     for (LogListener l : this.logListeners)
@@ -59,7 +59,7 @@ public abstract class Instance {
   /**
    * Logs a debugging message
    *
-   * @param message
+   * @param message the debugging message
    */
   public void logDebug(String message) {
     for (LogListener l : this.logListeners)
@@ -69,7 +69,7 @@ public abstract class Instance {
   /**
    * Logs an error message
    *
-   * @param message
+   * @param message the error message
    */
   public void logError(String message) {
     for (LogListener l : this.logListeners)
@@ -79,7 +79,7 @@ public abstract class Instance {
   /**
    * Logs a warning message
    *
-   * @param message
+   * @param message the warning message
    */
   public void logWarning(String message) {
     for (LogListener l : this.logListeners)
@@ -89,19 +89,17 @@ public abstract class Instance {
   /**
    * Logs an exception as an error
    *
-   * @param e
+   * @param e the exception
    */
   public void logError(Throwable e) {
-    for (LogListener l : this.logListeners){
+    for (LogListener l : this.logListeners)
       l.logError(e);
-    }
-    
   }
 
   /**
    * Logs an exception as a warning
    *
-   * @param e
+   * @param e the exception
    */
   public void logWarning(Exception e) {
     for (LogListener l : this.logListeners)

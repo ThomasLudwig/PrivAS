@@ -48,7 +48,7 @@ public class HashAndPosition {
   /**
    * Gets the dictionary from the genomic region (gene) to the position of the first variant (chr:pos)
    *
-   * @returnembedded gene/position dictionary
+   * @return embedded gene/position dictionary
    */
   public HashMap<String, String> getGene2position() {
     return gene2position;

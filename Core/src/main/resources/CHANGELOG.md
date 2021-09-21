@@ -1,12 +1,17 @@
 # Changelog
 
-## 1.0.4 (2021-07-23)
+## 1.0.4 (2021-09-21)
 ### Core
-* GenotypesFileHandler : *added* `extractCanonicalAndHash` that allows to get hashed values from the original VCF file, in order to debug a session
+* GenotypesFileHandler : *added* `extractCanonicalAndHash` that allows getting hashed values from the original VCF file, in order to debug a session
+* Use of external GnomAD exome/genome files (allows choosing GnomAD version)
+* Classes `ExtractAnnotations`,`BinaryGnomadReader`,`BinaryGnomadWriter` and `GnomADIndexReader` to process a binary version of the GnomAD files
 ### Client
-* ClientRun : *added* command line `--extractandhash` 
+* ClientRun : *added* command line `--extractandhash`
+* Filtering on external GnomAD files, with choice of subpopulation and choice of GnomAD version
+* Better management of Exception 
 ### RPP
 * RPPRun : *added* command line `--extractandhash`
+* Filtering on external GnomAD files, with choice of subpopulation
 ### TPS
 
 ## 1.0.3 (2021-07-21)

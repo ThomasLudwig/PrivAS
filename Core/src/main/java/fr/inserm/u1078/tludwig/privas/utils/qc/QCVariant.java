@@ -11,7 +11,7 @@ import java.util.HashMap;
  * Unit Test defined on   XXXX-XX-XX
  */
 class QCVariant {
-  public static final String KEY_DP = "DP";
+  //public static final String KEY_DP = "DP";
   public static final String KEY_AD = "AD";
   public static final String KEY_GQ = "GQ";
 
@@ -19,18 +19,18 @@ class QCVariant {
   public static final String KEY_FS = "FS";
   public static final String KEY_SOR = "SOR";
   public static final String KEY_MQ = "MQ";
-  public static final String KEY_READPOSRANKSUM = "ReadPosRankSum";
+  public static final String KEY_READ_POS_RANKSUM = "ReadPosRankSum";
   public static final String KEY_INBREEDING = "InbreedingCoeff";
   public static final String KEY_MQRANKSUM = "MQRankSum";
 
   public static final int FILTER_QD = 1;
   public static final int FILTER_INBREEDING = 2;
-  public static final int FILTER_MQRANKSUM = 4;
+  public static final int FILTER_MQ_RANKSUM = 4;
   public static final int FILTER_FS = 8;
   public static final int FILTER_SOR = 16;
   public static final int FILTER_MQ = 32;
-  public static final int FILTER_READPOSRANKSUM = 64;
-  public static final int FILTER_ABHETDEV = 128;
+  public static final int FILTER_READ_POS_RANKSUM = 64;
+  public static final int FILTER_AB_HET_DEV = 128;
   public static final int FILTER_CALLRATE = 256;
   //public static final int FILTER_HQ = 512;
   public static final int FILTER_NUMBER = 512;
@@ -38,7 +38,7 @@ class QCVariant {
   private final boolean hasSNP;
   private final int alleleNumber;
   private final HashMap<String, String> infos;
-  private final int iDP;
+  //private final int iDP;
   private final int iGQ;
   private final int iAD;
   private final Genotype[] genotypes;
@@ -66,14 +66,14 @@ class QCVariant {
         infos.put(kv[0], kv[1]);
     }
     String[] format = f[8].split(":");
-    int dp = -1;
+    //int dp = -1;
     int gq = -1;
     int ad = -1;
     for(int i = 0 ; i < format.length; i++){
       switch(format[i]){
-        case KEY_DP:
+       /* case KEY_DP:
           dp = i;
-          break;
+          break;*/
         case KEY_GQ:
           gq = i;
           break;
@@ -82,7 +82,7 @@ class QCVariant {
           break;
       }
     }
-    this.iDP = dp;
+    //this.iDP = dp;
     this.iAD = ad;
     this.iGQ = gq;
     genotypes = new Genotype[f.length - 9];
@@ -174,25 +174,26 @@ class QCVariant {
   }
 
   boolean filterMinAllowMissing(double threshold, String key){
-    double val = getValue(key);
+    //double val = getValue(key);
     return filterMinAllowMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" < "+threshold+" ["+filter+"]");
   }
 
   boolean filterMinRejectMissing(double threshold, String key){
-    double val = getValue(key);
+    //double val = getValue(key);
     return filterMinRejectMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" < "+threshold+" ["+filter+"]");
   }
 
+  @SuppressWarnings("unused")
   boolean filterMaxAllowMissing(double threshold, String key){
-    double val = getValue(key);
+    //double val = getValue(key);
     return filterMaxAllowMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" > "+threshold+" ["+filter+"]");
   }
 
   boolean filterMaxRejectMissing(double threshold, String key){
-    double val = getValue(key);
+    //double val = getValue(key);
     return filterMaxRejectMissing(threshold, getValue(key));
     //System.out.println(key + " : "+val+" > "+threshold+" ["+filter+"]");
   }
@@ -208,7 +209,7 @@ class QCVariant {
       filter += FILTER_INBREEDING;
     // MQRankSum
     if(filterMinAllowMissing(qcParam.getMinMQRanksum(), KEY_MQRANKSUM))
-      filter += FILTER_MQRANKSUM;
+      filter += FILTER_MQ_RANKSUM;
     //FS
     if(hasSNP) {
       if (filterMaxRejectMissing(qcParam.getSnpMaxFS(), KEY_FS))
@@ -235,11 +236,11 @@ class QCVariant {
     }
     //ReadPosRankSum
     if(hasSNP) {
-      if (filterMinAllowMissing(qcParam.getSnpMinRPRS(), KEY_READPOSRANKSUM))
-        filter += FILTER_READPOSRANKSUM;
+      if (filterMinAllowMissing(qcParam.getSnpMinRPRS(), KEY_READ_POS_RANKSUM))
+        filter += FILTER_READ_POS_RANKSUM;
     } else {
-      if(filterMinAllowMissing(qcParam.getIndelMinRPRS(), KEY_READPOSRANKSUM))
-        filter += FILTER_READPOSRANKSUM;
+      if(filterMinAllowMissing(qcParam.getIndelMinRPRS(), KEY_READ_POS_RANKSUM))
+        filter += FILTER_READ_POS_RANKSUM;
     }
 
     //detailed
@@ -247,8 +248,8 @@ class QCVariant {
     //double totalHQ = 0;
     final double totalSample = this.genotypes.length;
 
-    double[] numHets = new double[alleleNumber];
-    double[] denomHets = new double[alleleNumber];
+    double[] numeratorHets = new double[alleleNumber];
+    double[] denominatorHets = new double[alleleNumber];
 
     for(Genotype geno : genotypes){
       if(!geno.isMissing()){
@@ -257,10 +258,10 @@ class QCVariant {
           //totalHQ++;
           if (geno.isHeterozygousDiploid()) {
             final int[] ad = geno.getAD();
-            numHets[geno.gt0] += ad[geno.gt0];
-            numHets[geno.gt1] += ad[geno.gt1];
-            denomHets[geno.gt0] += ad[geno.gt0] + ad[geno.gt1];
-            denomHets[geno.gt1] += ad[geno.gt0] + ad[geno.gt1];
+            numeratorHets[geno.gt0] += ad[geno.gt0];
+            numeratorHets[geno.gt1] += ad[geno.gt1];
+            denominatorHets[geno.gt0] += ad[geno.gt0] + ad[geno.gt1];
+            denominatorHets[geno.gt1] += ad[geno.gt0] + ad[geno.gt1];
           }
         }
       }
@@ -269,8 +270,8 @@ class QCVariant {
     double maxABHetDev = qcParam.getMaxABHetDev();
     if (isEnabled(maxABHetDev))
       for (int h = 0; h < alleleNumber; h++)
-        if (denomHets[h] != 0 && Math.abs(0.5 - (numHets[h] / denomHets[h])) > maxABHetDev) {
-          filter += FILTER_ABHETDEV;
+        if (denominatorHets[h] != 0 && Math.abs(0.5 - (numeratorHets[h] / denominatorHets[h])) > maxABHetDev) {
+          filter += FILTER_AB_HET_DEV;
           break;
         }
 
@@ -307,7 +308,7 @@ class QCVariant {
   public class Genotype{
     final int gt0;
     final int gt1;
-    final double dp;
+    //final double dp;
     final double sumAD;
     final int[] ad;
     final double gq;
@@ -328,16 +329,19 @@ class QCVariant {
         else
           gt1 = -1;
       }
-      //parse dp
       double tmp = Double.NaN;
+      /*
+      //parse dp
       try {
         tmp = Integer.parseInt(f[iDP]);
       } catch (NumberFormatException |ArrayIndexOutOfBoundsException ignore) {
         //ignore
       }
       this.dp = tmp;
-      //parse gq
       tmp = Double.NaN;
+       */
+      //parse gq
+
       try {
         tmp = Integer.parseInt(f[iGQ]);
       } catch (NumberFormatException |ArrayIndexOutOfBoundsException ignore) {
@@ -370,10 +374,10 @@ class QCVariant {
       if(isEnabled(qcParam.getMaxABGenoDev()))
       if (gt0 != -1 && gt1 != -1 && gt0 != gt1) {
         if (ad != null) {
-          double num = ad[gt0];
-          double denom = ad[gt0] + ad[gt1];
-          double val = Math.abs(0.5 - (num / denom));
-          return denom != 0 && val <= qcParam.getMaxABGenoDev();
+          double numerator = ad[gt0];
+          double denominator = ad[gt0] + ad[gt1];
+          double val = Math.abs(0.5 - (numerator / denominator));
+          return denominator != 0 && val <= qcParam.getMaxABGenoDev();
         }
       }
       return true;

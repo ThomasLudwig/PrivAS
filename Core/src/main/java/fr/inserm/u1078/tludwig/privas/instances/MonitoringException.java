@@ -6,6 +6,7 @@ package fr.inserm.u1078.tludwig.privas.instances;
  */
 public class MonitoringException extends Exception {
 
+  @SuppressWarnings("unused")
   public MonitoringException() {
   }
 
@@ -13,10 +14,8 @@ public class MonitoringException extends Exception {
     super(message);
   }
 
+  @SuppressWarnings("unused")
   public MonitoringException(String message, Throwable cause) {
     super(message, cause);
   }
-  
-  
-
 }

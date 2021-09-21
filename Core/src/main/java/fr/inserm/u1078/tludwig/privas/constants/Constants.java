@@ -1,6 +1,8 @@
 package fr.inserm.u1078.tludwig.privas.constants;
 
+import java.text.CharacterIterator;
 import java.text.SimpleDateFormat;
+import java.text.StringCharacterIterator;
 import java.util.Date;
 
 /**
@@ -22,10 +24,10 @@ public class Constants {
   public static final String TIME = "HH:mm:ss";
   
   //DateFormat
-  /**
-   * TPS Prefixed Date/Time
-   */
-  public static final SimpleDateFormat DF_TPS = new SimpleDateFormat("'[TPS '" + DAY + " " + TIME + "'] '");
+  ///**
+  // * TPS Prefixed Date/Time
+  // */
+  //public static final SimpleDateFormat DF_TPS = new SimpleDateFormat("'[TPS '" + DAY + " " + TIME + "'] '");
   /**
    * RPP Prefixed Date/Time
    */
@@ -35,18 +37,23 @@ public class Constants {
    */
   public static final SimpleDateFormat DF_DAY_DOT_TIME = new SimpleDateFormat("yyyyMMdd.HHmmss");
   /**
-   * Dot separated Date Format
+   * Hour Format
    */
   public static final SimpleDateFormat DF_TIME = new SimpleDateFormat(TIME);
   /**
-   * * Hour Format
+   * * Day Format
    */
   public static final SimpleDateFormat DF_DAY = new SimpleDateFormat(DAY);
 
   /**
+   * Day and Hour Format
+   */
+  public static final SimpleDateFormat DF_DAY_TIME = new SimpleDateFormat(DAY + " "+ TIME);
+
+  /**
    * Formatted expected end of task Date/Time
    * @param duration estimated duration left (ms)
-   * @return 
+   * @return  the duration in a formatted string
    */
   public static String formatEnd(long duration) {
     final Date now = new Date();
@@ -58,6 +65,42 @@ public class Constants {
     if (Constants.DF_DAY.format(now).equals(endDay))
       return endTime;
     return endTime + " on " + endDay;
+  }
+
+  /**
+   * Returns the number of seconds between two dates
+   * @param start the start of the interval
+   * @param end the end of the interval
+   * @return the number of seconds
+   */
+  public static long durationInSeconds(Date start, Date end){
+    return (end.getTime() - start.getTime()) / 1000;
+  }
+
+  public static String duration(Date start, Date end) {
+    long dur = durationInSeconds(start, end);
+    String s = dur%60+"";
+    if(s.length() < 2)
+      s = "0" + s;
+    String out = s+"s";
+    dur = dur / 60;
+    if(dur > 1) {
+      String m = dur%60+"";
+      if(m.length() < 2)
+        m = "0" + m;
+      out = m+"m"+out;
+      dur = dur / 60;
+      if(dur > 1){
+        String h = dur%24+"";
+        if(h.length() < 2 && dur/24 > 1)
+          h = "0"+h;
+        out = h+"h"+out;
+        dur = dur / 24;
+        if(dur > 1)
+          out = dur+"days "+out;
+      }
+    }
+    return out;
   }
 
   //Default Text for some variables
@@ -114,11 +157,23 @@ public class Constants {
   public static final String SS_NO_GENE = "--No-Gene--";
   
   //Algorithm names
+
+  public static boolean parseBoolean(String s){
+    switch(s){
+      case "0" : return false;
+      case "1" : return true;
+      default : return Boolean.parseBoolean(s.toLowerCase());
+    }
+  }
   
   /**
    * WSS
    */
   public static final String ALGO_WSS = "wss";
+
+  public static final String ALGO_RAVAGES_WSS = "ravages_wss";
+  public static final String ALGO_RAVAGES_SKAT = "ravages_skat";
+  public static final String ALGO_RAVAGES_SKAT_O = "ravages_skat_o";
 
   //WSS results file columns / header
   
@@ -177,6 +232,7 @@ public class Constants {
   /**
    * Heterozygous
    */
+  @SuppressWarnings("unused")
   public static final int GENO_HET = 1;
   /**
    * Homozygous to alternate allele
@@ -222,4 +278,72 @@ public class Constants {
     "33.splice_donor_variant",
     "34.splice_acceptor_variant",
     "35.transcript_ablation"};
+
+  public static final String[] GNOMAD_SUBPOPS = {
+          "None",
+          "AFR",
+          "AMR",
+          "ASJ",
+          "EAS",
+          "FIN",
+          "NFE",
+          "OTH",
+          "SAS",
+          "Male",
+          "Female",
+          "POPMAX"
+  };
+
+  public static int getSubpopIndex(String subpop){
+    for(int i = 0; i < GNOMAD_SUBPOPS.length; i++){
+      if(GNOMAD_SUBPOPS[i].equalsIgnoreCase(subpop))
+        return i;
+    }
+    return -1;
+  }
+
+  public static String humanReadableByteCountBin(long bytes) {
+    long absB = bytes == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(bytes);
+    if (absB < 1024) {
+      return bytes + " B";
+    }
+    long value = absB;
+    CharacterIterator ci = new StringCharacterIterator("KMGTPE");
+    for (int i = 40; i >= 0 && absB > 0xfffccccccccccccL >> i; i -= 10) {
+      value >>= 10;
+      ci.next();
+    }
+    value *= Long.signum(bytes);
+    return String.format("%.1f %ciB", value / 1024.0, ci.current());
+  }
+
+  public static String HTML(String text) {
+    return "<html>" + text + "</html>";
+  }
+
+  public static final String DISABLED = "disabled";
+
+  public static final String SCP = "scp";
+  public static final String SSH = "ssh";
+  public static String scp(String src, String dest){
+    return scp(src, dest, false);
+  }
+  public static String scp(String src, String dest, boolean recursively){
+    return SCP+(recursively ? " -r":"")+" "+src+" "+dest;
+  }
+  public static String[] ssh(String login, String address, String command, String... arguments){
+    StringBuilder commandline = new StringBuilder(command);
+    for(String arg : arguments)
+      commandline.append(" '").append(arg).append("'");
+    return new String[]{
+            SSH,
+            "-t",
+            login + "@" + address,
+            commandline.toString()
+    };
+  }
+
+  public static String distant(String login, String address, String path){
+    return login + "@" + address + ":" + path;
+  }
 }

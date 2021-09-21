@@ -3,11 +3,7 @@ package fr.inserm.u1078.tludwig.privas.instances;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.text.ParseException;
 import java.util.Date;
 
@@ -70,7 +66,7 @@ public class RPPStatus {
    *
    * @param previous Previous RPPStatus
    * @param percent  Completion of the Extraction in percent
-   * @return
+   * @return RPPStatus when RPP is extracting (either WAITING_RPP or WAITING_BOTH)
    */
   public static RPPStatus extracting(RPPStatus previous, int percent) {
     if (previous.state.equals(State.WAITING_RPP))
@@ -83,7 +79,7 @@ public class RPPStatus {
    * RPP Data have been fully Extracted
    *
    * @param previous Previous RPPStatus
-   * @return
+   * @return RPPStatus when RPP is done extracting (either WAITING_CLIENT or TPS_SENDING)
    */
   public static RPPStatus rppDataExtracted(RPPStatus previous) {
     if (previous.state.equals(State.NEW_SESSION) || previous.state.equals(State.WAITING_BOTH))
@@ -100,7 +96,7 @@ public class RPPStatus {
    * RPP has received Client Data
    *
    * @param previous Previous RPPStatus
-   * @return
+   * @return RPPStatus when Client data are Received (either RPP_EMPTY_DATA, WAITING_RPP or TPS_SENDING)
    */
   public static RPPStatus clientDataReceived(RPPStatus previous) {
     if(previous.state.equals(State.RPP_EMPTY_DATA))
@@ -114,7 +110,7 @@ public class RPPStatus {
    * Creates a new RPPStatus :
    * A new Session has been created by RPP
    *
-   * @return
+   * @return RPPStatus for new Session
    */
   public static RPPStatus newSession() {
     return new RPPStatus(State.NEW_SESSION, null);
@@ -124,7 +120,7 @@ public class RPPStatus {
    * Creates a new RPPStatus :
    * RPP is in an unknown State
    *
-   * @return
+   * @return RPPStatus for unknown state
    */
   public static RPPStatus unknown() {
     return new RPPStatus(State.UNKNOWN, null);
@@ -135,7 +131,7 @@ public class RPPStatus {
    * The launched Job is pending on the Third Party Server
    *
    * @param before Number of jobs in the queue before this one
-   * @return
+   * @return RPPStatus for job pending on TPS
    */
   public static RPPStatus pending(int before) {
     return new RPPStatus(State.TPS_PENDING, MSG.QUEUED(before));
@@ -146,7 +142,7 @@ public class RPPStatus {
    * The launched Job is running on the Third Party Server
    *
    * @param details Additional information from the Third Party Server
-   * @return
+   * @return RPPStatus for Running job on TPS
    */
   public static RPPStatus running(String details) {
     return new RPPStatus(State.TPS_RUNNING, details);
@@ -156,8 +152,8 @@ public class RPPStatus {
    * Creates a new RPPStatus :
    * The Results are available on the Third Party Server and are being retrieved by the RPP
    *
-   * @param details
-   * @return
+   * @param details the details from the original TPStatus
+   * @return RPPStatus for retrieving results from TPS
    */
   public static RPPStatus retrieving(String details) {
     return new RPPStatus(State.TPS_DONE, details);
@@ -167,7 +163,7 @@ public class RPPStatus {
    * Creates a new RPPStatus :
    * The Results are available on the RPP for the Client
    *
-   * @return
+   * @return RPPStatus for Results available on RPP
    */
   public static RPPStatus available() {
     return new RPPStatus(State.RESULTS_AVAILABLE, null);
@@ -177,7 +173,7 @@ public class RPPStatus {
    * Creates a new RPPStatus :
    * The Session has expired, all associated files were deleted from the RPP
    *
-   * @return
+   * @return RPPStatus for expired session
    */
   public static RPPStatus expired() {
     return new RPPStatus(State.EXPIRED, null);
@@ -186,8 +182,8 @@ public class RPPStatus {
   /**
    * Creates a new RPPStatus :
    * There was an error on the RPP
-   * @param details
-   * @return 
+   * @param details details about the error
+   * @return  RPPStatus for error state
    */
   public static RPPStatus error(String details){
     return new RPPStatus(State.ERROR, details);
@@ -196,8 +192,8 @@ public class RPPStatus {
   /**
    * Creates a new RPPStatus :
    * There was an error coming from the TPS
-   * @param details
-   * @return 
+   * @param details detailed on the error
+   * @return RPPStatus for an error on the TPS
    */
   public static RPPStatus tpsError(String details){
     return new RPPStatus(State.TPS_ERROR, details);
@@ -206,16 +202,17 @@ public class RPPStatus {
   /**
    * Creates a new RPPStatus :
    * TPS is in an unknown state
-   * @return
+   * @return RPPStatus for an unknown state on the tps
    */
-  public static RPPStatus tpsUnknown(){
+  @SuppressWarnings("unused")
+  public static RPPStatus tpsUnknown(){ //FIXME unused
     return new RPPStatus(State.TPS_UNKNOWN, null);
   }
 
   /**
    * Creates a new RPPStatus :
-   * TPS is in an unknown state
-   * @return
+   * TPS is unreachable
+   * @return RPPStatus for an unreachable TPS
    */
   public static RPPStatus tpsUnreachable(String details){
     return new RPPStatus(State.TPS_UNREACHABLE, details);
@@ -225,7 +222,7 @@ public class RPPStatus {
    * Serializes the RPPStatus to a file
    *
    * @param filename the name of the file where the RPPStatus will be serialized to
-   * @throws IOException
+   * @throws IOException if an I/O error occurs when writing serialized version to the file
    */
   synchronized public void serialize(String filename) throws IOException {
     String ser = 
@@ -243,9 +240,9 @@ public class RPPStatus {
    *
    * @param filename the name of the file where the RPPStatus will be deserialized from
    * @return the deserialized RPPStatus
-   * @throws Exception
+   * @throws IOException if an I/O error occurs when reading from the file
    */
-  public static RPPStatus deserialize(String filename) throws Exception {
+  public static RPPStatus deserialize(String filename, Instance instance) throws IOException {
     BufferedReader in = new BufferedReader(new FileReader(filename));
     String time = in.readLine();
     State state = State.valueOf(in.readLine());
@@ -253,7 +250,7 @@ public class RPPStatus {
     try {
       date = Constants.DF_DAY_DOT_TIME.parse(time);
     } catch (ParseException e) {
-      System.err.println(MSG.cat(MSG.STS_KO_DESERIAL, time));
+      instance.logError(MSG.cat(MSG.STS_KO_DESERIALIZE, time));
       //Nothing
     }
     String extra = null;

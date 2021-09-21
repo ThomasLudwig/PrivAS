@@ -76,7 +76,8 @@ public class Parameters {
   /**
    * The default RPP Server's address
    */
-  public static final String RPP_DEFAULT_ADDRESS = "lysine.univ-brest.fr";
+  public static final String RPP_DEFAULT_ADDRESS = "alanine.univ-brest.fr";
+  //public static final String RPP_DEFAULT_ADDRESS = "lysine.univ-brest.fr";
   /**
    * The default RPP Server's port
    */
@@ -86,11 +87,11 @@ public class Parameters {
   /**
    * Default Allele Frequency above which variants are rejected
    */
-  public static final double CRIT_DEFAULT_MAF = 0.05;
+  public static final double CRIT_DEFAULT_MAF = 0.001;
   /**
    * Default vep consequence below which variants are rejected
    */
-  public static final int CRIT_DEFAULT_CSQ = 24;
+  public static final int CRIT_DEFAULT_CSQ = 25;
   /**
    * Default number of maximum permutation in the WSS algorithm
    */
@@ -99,7 +100,7 @@ public class Parameters {
   /**
    * Default maximum allele frequency for variants in pooled data
    */
-  public static final double CRIT_DEFAULT_WSS_FRQ = 0.1;
+  public static final double CRIT_DEFAULT_WSS_FRQ = 0.05;
 
   /**
    * Size of the blocks read from/written to a MessageSocket

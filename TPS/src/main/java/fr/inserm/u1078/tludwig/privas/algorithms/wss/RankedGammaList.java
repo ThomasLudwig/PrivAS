@@ -33,6 +33,7 @@ class RankedGammaList {
    * @param d the gamma value
    * @param phenotype is the individual affected ?
    */
+  @SuppressWarnings("UnusedReturnValue")
   boolean add(double d, boolean phenotype) {
     Gamma gamma = new Gamma(d, phenotype);
 
@@ -109,10 +110,5 @@ class RankedGammaList {
   private boolean add(int index, Gamma gamma){
     this.gammas.add(index, gamma);
     return true;
-  }
-
-  public void printDebug(){
-    for(Gamma gamma : gammas)
-      System.out.println(gamma.toString());
   }
 }

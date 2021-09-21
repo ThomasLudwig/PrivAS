@@ -62,7 +62,6 @@ public class FisherExactTest {
       v[2]++;
       v[3]--;
     }
-
     //Message.debug("Fisher("+a+", "+c+", "+b+", "+d+") => "+sum);
     return sum;
   }
@@ -76,7 +75,7 @@ public class FisherExactTest {
    * 17 5 2 13 --> 2, 5, 17, 13 ??
    *
    *
-   * @return
+   * @return the ordered values
    */
   private int[] rotate(int a, int b, int c, int d) {
     int[] r = new int[]{a, b, c, d};

@@ -1,19 +1,18 @@
 package fr.inserm.u1078.tludwig.privas.gui;
 
+import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.GUI;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.listener.SessionListener;
 import fr.inserm.u1078.tludwig.privas.instances.ClientSession;
 import fr.inserm.u1078.tludwig.privas.instances.RPPStatus;
 import fr.inserm.u1078.tludwig.privas.instances.RPPStatus.State;
-import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Toolkit;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -63,13 +62,21 @@ public class SessionPanel extends JPanel implements SessionListener {
    */
   private final JTextField dataset;
   /**
+   * Shows the selected GnomAD Version on RPP
+   */
+  private final JTextField gnomADVersion;
+  /**
+   * Shows the selected GnomAD subpopulation
+   */
+  private final JTextField selectSubpop;
+  /**
    * Shows the Maximum Allele Frequency allowed in variant selected
    */
   private final JTextField maf;
   /**
    * Shows the Maximum Allele Frequency allowed in variant selected
    */
-  private final JTextField mafNFE;
+  private final JTextField mafSubpop;
   /**
    * Shows the Least Severe vep Consequence allowed in variant selected
    */
@@ -102,7 +109,22 @@ public class SessionPanel extends JPanel implements SessionListener {
    * Shows the path to the Genotype File used by the Client (and its number of variants)
    */
   private final JTextField genotypeFile;
-
+  /**
+   * Shows the path to the binary GnomAD file
+   */
+  private final JTextField gnomADFilename;
+  /**
+   * Shows the path to the bed file of well covered positions
+   */
+  private final JTextField bedFilename;
+  /**
+   * Shows the path to the Client's Excluded Variants File
+   */
+  private final JTextField excludedVariantsFilename;
+  /**
+   * Shows the path to the File containing the Quality Control Parameters
+   */
+  private final JTextField qcParamFilename;
   /**
    * Shows the information relative to the RPP
    */
@@ -113,7 +135,7 @@ public class SessionPanel extends JPanel implements SessionListener {
   private final JPanel rppLed;
 
   /**
-   * Size of the RPP state "LED"
+   * Size of the RPP state LED
    */
   private static final int SIZE = 16;
 
@@ -141,23 +163,28 @@ public class SessionPanel extends JPanel implements SessionListener {
     final int nbCol = 98;
     
     this.clientWindow = clientWindow;
-    this.sessionID = new JTextField();
-    this.hashKey = new JTextField();
+    this.sessionID = new JTextField(20);
+    this.hashKey = new JTextField(20);
     this.publicKey = new JTextArea(nbRow, nbCol);
     this.privateKey = new JTextArea(nbRow, nbCol);
-    this.aes = new JTextField();
-    this.dataset = new JTextField();
-    this.maf = new JTextField();
-    this.mafNFE = new JTextField();
-    this.csq = new JTextField();
+    this.aes = new JTextField(20);
+    this.dataset = new JTextField(30);
+    this.gnomADVersion = new JTextField(20);
+    this.selectSubpop = new JTextField(5);
+    this.maf = new JTextField(10);
+    this.mafSubpop = new JTextField(10);
+    this.csq = new JTextField(30);
     this.limitToSNVs = new JCheckBox("", true);
-    this.rpp = new JTextField();
-    this.tpsName = new JTextField();
+    this.rpp = new JTextField(30);
+    this.tpsName = new JTextField(30);
     this.thirdParty = new JTextArea(nbRow, nbCol);
-    this.algorithm = new JTextField();
+    this.algorithm = new JTextField(50);
     this.rppStatus = new JTextField();
-    this.genotypeFile = new JTextField();
-
+    this.genotypeFile = new JTextField(40);
+    this.gnomADFilename = new JTextField(40);
+    this.bedFilename = new JTextField(40);
+    this.excludedVariantsFilename = new JTextField(40);
+    this.qcParamFilename = new JTextField(40);
     this.rppLed = new JPanel();
     this.rppPanel = new JPanel();
 
@@ -166,7 +193,7 @@ public class SessionPanel extends JPanel implements SessionListener {
 
   /**
    * Initializes the Panel (Layout, SessionListener)
-   * @param session 
+   * @param session the ClientSession
    */
   private void init(ClientSession session) {
     this.idUpdated(session.getId());
@@ -192,8 +219,10 @@ public class SessionPanel extends JPanel implements SessionListener {
     this.privateKey.setEditable(false);
     this.aes.setEditable(false);
     this.dataset.setEditable(false);
+    this.gnomADVersion.setEditable(false);
+    this.selectSubpop.setEditable(false);
     this.maf.setEditable(false);
-    this.mafNFE.setEditable(false);
+    this.mafSubpop.setEditable(false);
     this.csq.setEditable(false);
     this.rpp.setEditable(false);
     this.tpsName.setEditable(false);
@@ -201,6 +230,10 @@ public class SessionPanel extends JPanel implements SessionListener {
     this.algorithm.setEditable(false);
     this.rppStatus.setEditable(false);
     this.genotypeFile.setEditable(false);
+    this.gnomADFilename.setEditable(false);
+    this.bedFilename.setEditable(false);
+    this.excludedVariantsFilename.setEditable(false);
+    this.qcParamFilename.setEditable(false);
 
     this.publicKey.setLineWrap(true);
     this.privateKey.setLineWrap(true);
@@ -214,6 +247,10 @@ public class SessionPanel extends JPanel implements SessionListener {
     JScrollPane publicKeySP = new JScrollPane();
     JScrollPane privateKeySP = new JScrollPane();
     JScrollPane thirdPartySP = new JScrollPane();
+    gnomADFilename.setBackground(LookAndFeel.TEXT_BG_COLOR); //don't understand why it isn't already done by L&F
+    bedFilename.setBackground(LookAndFeel.TEXT_BG_COLOR); //don't understand why it isn't already done by L&F
+    excludedVariantsFilename.setBackground(LookAndFeel.TEXT_BG_COLOR);//don't understand why it isn't already done by L&F
+    qcParamFilename.setBackground(LookAndFeel.TEXT_BG_COLOR);//don't understand why it isn't already done by L&F
     genotypeFile.setBackground(LookAndFeel.TEXT_BG_COLOR); //don't understand why it isn't already done by L&F
     publicKey.setBackground(LookAndFeel.TEXT_BG_COLOR); //don't understand why it isn't already done by L&F
     publicKeySP.setViewportView(publicKey);
@@ -229,55 +266,76 @@ public class SessionPanel extends JPanel implements SessionListener {
 
     JPanel main = new JPanel();
     main.setLayout(new GridBagLayout());
-    addElement(main, rppPanel, GUI.SP_LABEL_RPP, GUI.SP_TOOLTIP_RPP, 1, LEFT);
-    addElement(main, tpsName, GUI.SP_LABEL_THIRD_PARTY_NAME, GUI.SP_TOOLTIP_THIRD_PARTY_NAME, 1, RIGHT);
-    addElement(main, dataset, GUI.SP_LABEL_DATASET, GUI.SP_TOOLTIP_DATASET, 2, LEFT);
-    addElement(main, maf, GUI.SP_LABEL_MAF, GUI.SP_TOOLTIP_MAF, 3, LEFT);
-    addElement(main, mafNFE, GUI.SP_LABEL_MAF_NFE, GUI.SP_TOOLTIP_MAF, 3, RIGHT);
-    addElement(main, sessionID, GUI.SP_LABEL_ID, GUI.SP_TOOLTIP_ID, 4, LEFT);
-    addElement(main, csq, GUI.SP_LABEL_CSQ, GUI.SP_TOOLTIP_CSQ, 4, RIGHT);
-    addElement(main, aes, GUI.SP_LABEL_AES, GUI.SP_TOOLTIP_AES, 5, LEFT);
-    addElement(main, limitToSNVs, GUI.SP_LABEL_LIMIT_SNV, GUI.SP_TOOLTIP_LIMIT_SNV, 5, RIGHT);
-    
-        
-    addElement(main, algorithm, GUI.SP_LABEL_ALGORITHM, GUI.SP_TOOLTIP_ALGORITHM, 6, ALL);
-    addElement(main, genotypeFile, GUI.SP_LABEL_GENOTYPE, GUI.SP_TOOLTIP_GENOTYPE, 7, ALL);
-    addElement(main, hashKey, GUI.SP_LABEL_HASH, GUI.SP_TOOLTIP_HASH, 8, ALL);    
-    addElement(main, publicKeySP, GUI.SP_LABEL_PUBLIC, GUI.SP_TOOLTIP_PUBLIC, 9, ALL);
-    addElement(main, privateKeySP, GUI.SP_LABEL_PRIVATE, GUI.SP_TOOLTIP_PRIVATE, 10, ALL);
-    addElement(main, thirdPartySP, GUI.SP_LABEL_THIRD_PARTY_KEY, GUI.SP_TOOLTIP_THIRD_PARTY_KEY, 11, ALL);
-    addElement(main, rppStatus, GUI.SP_LABEL_STATUS, GUI.SP_TOOLTIP_STATUS, 12, ALL);
+    int row = 1;
+    addElement(main, rppPanel, GUI.SP_LABEL_RPP, GUI.SP_TOOLTIP_RPP, row, HPosition.LEFT);
+    addElement(main, tpsName, GUI.SP_LABEL_THIRD_PARTY_NAME, GUI.SP_TOOLTIP_THIRD_PARTY_NAME, row++, HPosition.BIG_RIGHT);
+    addElement(main, dataset, GUI.SP_LABEL_DATASET, GUI.SP_TOOLTIP_DATASET, row, HPosition.BIG_LEFT);
+    addElement(main, gnomADVersion, GUI.SP_LABEL_GNOMAD_VERSION, GUI.SP_TOOLTIP_GNOMAD_VERSION, row++, HPosition.RIGHT);
+    addElement(main, maf, GUI.SP_LABEL_MAF, GUI.SP_TOOLTIP_MAF, row, HPosition.LEFT);
+    addElement(main, selectSubpop, GUI.SP_LABEL_SUBPOP, GUI.SP_TOOLTIP_SUBPOP, row, HPosition.MIDDLE);
+    addElement(main, mafSubpop, GUI.SP_LABEL_MAF_SUBPOP, GUI.SP_TOOLTIP_MAF_SUBPOP, row++, HPosition.RIGHT);
+    addElement(main, sessionID, GUI.SP_LABEL_ID, GUI.SP_TOOLTIP_ID, row, HPosition.LEFT);
+    addElement(main, csq, GUI.SP_LABEL_CSQ, GUI.SP_TOOLTIP_CSQ, row, HPosition.MIDDLE);
+    addElement(main, limitToSNVs, GUI.SP_LABEL_LIMIT_SNV, GUI.SP_TOOLTIP_LIMIT_SNV, row++, HPosition.RIGHT);
+
+    addElement(main, aes, GUI.SP_LABEL_AES, GUI.SP_TOOLTIP_AES, row, HPosition.LEFT);
+    addElement(main, algorithm, GUI.SP_LABEL_ALGORITHM, GUI.SP_TOOLTIP_ALGORITHM, row++, HPosition.BIG_RIGHT);
+
+    addElement(main, genotypeFile, GUI.SP_LABEL_GENOTYPE, GUI.SP_TOOLTIP_GENOTYPE, row++, HPosition.ALL);
+    addElement(main, gnomADFilename, GUI.SP_LABEL_GNOMAD_FILENAME, GUI.SP_TOOLTIP_GNOMAD_FILENAME, row++, HPosition.ALL);
+    addElement(main, bedFilename, GUI.SP_LABEL_BED_FILENAME, GUI.SP_TOOLTIP_BED_FILENAME, row++, HPosition.ALL);
+    addElement(main, qcParamFilename, GUI.SP_LABEL_QC_PARAM_FILENAME, GUI.SP_TOOLTIP_QC_PARAM_FILENAME, row++, HPosition.ALL);
+    addElement(main, excludedVariantsFilename, GUI.SP_LABEL_EXCLUDED_VARIANTS_FILENAME, GUI.SP_TOOLTIP_EXCLUDED_VARIANTS_FILENAME, row++, HPosition.ALL);
+    addElement(main, hashKey, GUI.SP_LABEL_HASH, GUI.SP_TOOLTIP_HASH, row++, HPosition.ALL);
+    addElement(main, publicKeySP, GUI.SP_LABEL_PUBLIC, GUI.SP_TOOLTIP_PUBLIC, row++, HPosition.ALL);
+    addElement(main, privateKeySP, GUI.SP_LABEL_PRIVATE, GUI.SP_TOOLTIP_PRIVATE, row++, HPosition.ALL);
+    addElement(main, thirdPartySP, GUI.SP_LABEL_THIRD_PARTY_KEY, GUI.SP_TOOLTIP_THIRD_PARTY_KEY, row++, HPosition.ALL);
+    addElement(main, rppStatus, GUI.SP_LABEL_STATUS, GUI.SP_TOOLTIP_STATUS, row++, HPosition.ALL);
 
     this.setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
     this.add(main);    
   }
-  
-  public static final int LEFT = 1;
-  public static final int RIGHT = 2;
-  public static final int ALL = 3;
+
+  private enum HPosition {LEFT, BIG_LEFT, MIDDLE, BIG_RIGHT, RIGHT, ALL}
+
   private static final int LEFT_MARGIN = 10;
   private static final int MIDDLE_MARGIN = 10;
   private static final int RIGHT_MARGIN = 5;  
   private static final int TOP_MARGIN = 2;
   private static final int BOTTOM_MARGIN = 2;
   
-  private void addElement(JPanel dest, JComponent comp, String label, String tooltip, int row, int pos){
+  private void addElement(JPanel dest, JComponent comp, String label, String tooltip, int row, HPosition pos){
     GridBagConstraints c = new GridBagConstraints();    
     c.fill = GridBagConstraints.BOTH;
     c.gridheight = 1;
     
     //Top-Left pad
     c.gridy = row*3;
-    c.gridx = pos == RIGHT ? 5 : 0;    
+
+    switch(pos){
+      case LEFT:
+      case BIG_LEFT:
+      case ALL :
+        c.gridx = 0;
+        break;
+      case MIDDLE:
+      case BIG_RIGHT:
+        c.gridx = 5;
+        break;
+      case RIGHT:
+        c.gridx = 10;
+        break;
+    }
+
     c.gridwidth = 1;
     dest.add(Box.createRigidArea(new Dimension(LEFT_MARGIN, TOP_MARGIN)), c);
     
     //Label
     c.gridx++;
     c.gridy++;
-    JLabel jlab = new JLabel(label);
-    setToolTipRecursively(jlab, tooltip);
-    dest.add(jlab, c);
+    JLabel jLabel = new JLabel(label);
+    setToolTipRecursively(jLabel, tooltip);
+    dest.add(jLabel, c);
     
     //Middle pad
     c.gridx++;
@@ -285,12 +343,40 @@ public class SessionPanel extends JPanel implements SessionListener {
     
     //Component
     c.gridx++;
-    c.gridwidth = pos == ALL ? 6 : 1;
+
+    switch(pos){
+      case LEFT:
+      case MIDDLE:
+      case RIGHT:
+        c.gridwidth = 1;
+        break;
+      case BIG_LEFT:
+      case BIG_RIGHT:
+        c.gridwidth = 6;
+        break;
+      case ALL:
+        c.gridwidth = 11;
+        break;
+    }
+
     setToolTipRecursively(comp, tooltip);
     dest.add(comp, c);
     
-    //Bottom-Right pad    
-    c.gridx = pos == LEFT ? 4 : 9;
+    //Bottom-Right pad
+    switch(pos){
+      case LEFT:
+        c.gridx = 4;
+        break;
+      case BIG_LEFT:
+      case MIDDLE:
+        c.gridx = 9;
+        break;
+      case RIGHT:
+      case BIG_RIGHT:
+      case ALL:
+        c.gridx = 14;
+        break;
+    }
     c.gridy++;
     c.gridheight = 1;
     c.gridwidth = 1;
@@ -303,31 +389,11 @@ public class SessionPanel extends JPanel implements SessionListener {
    * @param text the Tool Tip Text
    */
   private static void setToolTipRecursively(JComponent c, String text) {
-    c.setToolTipText("<html>" + text + "</html>");
+    c.setToolTipText(Constants.HTML(text));
 
     for (Component cc : c.getComponents())
       if (cc instanceof JComponent)
         setToolTipRecursively((JComponent) cc, text);
-  }
-
-  /**
-   * <ol>
-   * <li>Adds a Component to a JPanel
-   * <li>Surround the component with a TitledBorder
-   * <li>Affect the Component with a Tool Tip Text
-   * </ol>
-   * @param panel the parent JPanel
-   * @param comp the component to add
-   * @param label the title of the component
-   * @param tooltip  the Tool Tip Text
-   */
-  private static void addBordered(JPanel panel, JComponent comp, String label, String tooltip) {
-    JPanel p = new JPanel();
-    p.setLayout(new BorderLayout());
-    p.add(comp, BorderLayout.CENTER);
-    p.setBorder(BorderFactory.createTitledBorder(label));
-    setToolTipRecursively(p, tooltip);
-    panel.add(p);
   }
 
   /**
@@ -378,10 +444,13 @@ public class SessionPanel extends JPanel implements SessionListener {
   }
   
   @Override
-  public void maxMAFNFEUpdated(double mafNFE) {
-    this.setText(this.mafNFE, mafNFE);
+  public void maxMAFSubpopUpdated(double mafSubpop) {
+    this.setText(this.mafSubpop, mafSubpop);
   }
-  
+
+  @Override
+  public void selectedGnomADSubpopulationUpdated(String selectedGnomADSubpopulation) { this.setText(this.selectSubpop, selectedGnomADSubpopulation); }
+
   @Override
   public void limitToSNVsUpdated(boolean limitToSNVs) {
     this.limitToSNVs.setSelected(limitToSNVs);
@@ -453,16 +522,16 @@ public class SessionPanel extends JPanel implements SessionListener {
     if(date != null)
       msg = date + " " + msg;
 
-    msg = msg.replace("<RET>", "\n");
+    msg = msg.replace(Constants.RET, "\n");
 
     switch(state){
       case RPP_EMPTY_DATA:
       case ERROR:
       case TPS_ERROR:
-        this.clientWindow.alertError("RPP reported an error", msg);
+        this.clientWindow.showAndLogError(msg, GUI.SP_TIT_RPP_ERROR);
         break;
       case TPS_DONE:
-        this.clientWindow.alertInfo("Message from RPP", msg);
+        this.clientWindow.showMessage(msg, GUI.SP_TIT_RPP_MESSAGE);
         this.clientWindow.getResults();
         break;
       default :
@@ -493,13 +562,16 @@ public class SessionPanel extends JPanel implements SessionListener {
       this.setText(this.rpp, null);
       setRPPLedOFF();
     } else {
-      if (this.clientWindow.doConnect())
-        setRPPLedOK();
-      else
-        setRPPLedKO();
+        if (this.clientWindow.doConnect()) {
+          setRPPLedOK();
+          this.clientWindow.monitorRPP();
+        }
+        else {
+          setRPPLedKO();
+          clientWindow.showAndLogError(MSG.CL_KO_CONNECT, MSG.CL_KO_CONNECT);
+        }
       this.setText(this.rpp, address + ":" + portNumber);
     }
-    this.clientWindow.monitorRPP();
   }
   
   public void setRPPLedOK(){
@@ -545,7 +617,27 @@ public class SessionPanel extends JPanel implements SessionListener {
   }
 
   @Override
+  public void availableGnomADVersionsUpdated(String gnomADVersions) {
+    //Nothing - SessionPanel will not display available GnomAD Versions
+  }
+
+  @Override
+  public void excludedVariantsFilenameUpdated(String excludedVariantsFilename) {this.setText(this.excludedVariantsFilename, excludedVariantsFilename);  }
+
+  @Override
+  public void qcParamFilenameUpdated(String qcParamFilename) {this.setText(this.qcParamFilename, qcParamFilename);}
+
+  @Override
+  public void selectedGnomADVersionUpdated(String gnomADVersion) { this.setText(this.gnomADVersion, gnomADVersion);  }
+
+  @Override
   public void thirdPartyPublicNameUpdated(String name) {
     this.setText(this.tpsName, name);
   }
+
+  @Override
+  public void bedFilenameUpdated(String bedFilename) { this.setText(this.bedFilename, bedFilename); }
+
+  @Override
+  public void selectedGnomADFilenameUpdated(String gnomADFilename) { this.setText(this.gnomADFilename, gnomADFilename); }
 }

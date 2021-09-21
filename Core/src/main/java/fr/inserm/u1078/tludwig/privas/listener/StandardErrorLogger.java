@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.listener;
 
+import fr.inserm.u1078.tludwig.privas.Main;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 
 import java.util.Date;
@@ -45,7 +46,8 @@ public class StandardErrorLogger implements LogListener {
 
   @Override
   public void logDebug(String message) {
-    log(message, DEBUG);
+    if(Main.DEBUG)
+      log(message, DEBUG);
   }
 
   @Override

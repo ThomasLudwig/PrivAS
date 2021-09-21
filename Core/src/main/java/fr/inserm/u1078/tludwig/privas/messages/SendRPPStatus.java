@@ -14,6 +14,7 @@ public class SendRPPStatus extends SessionMessage {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public SendRPPStatus() {
   }
 
@@ -32,7 +33,7 @@ public class SendRPPStatus extends SessionMessage {
   /**
    * Gets the status of the RPP
    *
-   * @return
+   * @return the status of the RPP
    */
   public final String getStatus() {
     return this.getValue(Key.STATUS);

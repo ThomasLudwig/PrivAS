@@ -1,6 +1,12 @@
 # TODO
 
 ## Core
+* Just one binary GnomAD file
+    - header : version, date, etc
+    - exome data
+    - genome data
+* String TAGS such as FileFormats.SESSION_AVAILABLE_DATASETS could all be converted to enum structures
+* GnomAD : Single Binary File with Exome + Genome data at once (concat, not paste)
 * Variant Selection : Hard-coded NFE --> remove or selectable population
 * Variant Selection : for frequency f --> keep v <=f AND v >= 1-f
 * Fisher Test on call rate, read from QC.param and sent to TPS as WSS parameter

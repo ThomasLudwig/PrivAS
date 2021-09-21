@@ -1,6 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.utils.qc;
 
-import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
+import fr.inserm.u1078.tludwig.privas.utils.CanonicalVariant;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -42,6 +42,7 @@ public class Consumer extends Thread {
     return this.filters[i];
   }
 
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
   private boolean process(Output output) {
     //Process output
     if (QualityControl.END_MESSAGE.equals(output.line)) {
@@ -70,7 +71,7 @@ public class Consumer extends Thread {
     String[] alts = f[4].split(",");
 
     for(String alt : alts)
-      exc.println(GenotypesFileHandler.getCanonical(chr, pos, ref, alt));
+      exc.println(new CanonicalVariant(chr, pos, ref, alt));
   }
 
   private Output remove(int nb) {
@@ -117,7 +118,7 @@ public class Consumer extends Thread {
     int fs = 0;
     int sor = 0;
     int mq = 0;
-    int readpos = 0;
+    int readPos = 0;
     int abhet = 0;
     int callrate = 0;
     //int hq = 0;
@@ -128,7 +129,7 @@ public class Consumer extends Thread {
         qd += filters[i];
       if((i&QCVariant.FILTER_INBREEDING) == QCVariant.FILTER_INBREEDING)
         inbreeding += filters[i];
-      if((i&QCVariant.FILTER_MQRANKSUM) == QCVariant.FILTER_MQRANKSUM)
+      if((i&QCVariant.FILTER_MQ_RANKSUM) == QCVariant.FILTER_MQ_RANKSUM)
         mqranksum += filters[i];
       if((i&QCVariant.FILTER_FS) == QCVariant.FILTER_FS)
         fs += filters[i];
@@ -136,28 +137,29 @@ public class Consumer extends Thread {
         sor += filters[i];
       if((i&QCVariant.FILTER_MQ) == QCVariant.FILTER_MQ)
         mq += filters[i];
-      if((i&QCVariant.FILTER_READPOSRANKSUM) == QCVariant.FILTER_READPOSRANKSUM)
-        readpos += filters[i];
-      if((i&QCVariant.FILTER_ABHETDEV) == QCVariant.FILTER_ABHETDEV)
+      if((i&QCVariant.FILTER_READ_POS_RANKSUM) == QCVariant.FILTER_READ_POS_RANKSUM)
+        readPos += filters[i];
+      if((i&QCVariant.FILTER_AB_HET_DEV) == QCVariant.FILTER_AB_HET_DEV)
         abhet += filters[i];
       if((i&QCVariant.FILTER_CALLRATE) == QCVariant.FILTER_CALLRATE)
         callrate += filters[i];
         /*if((i&QCVariant.FILTER_HQ) == QCVariant.FILTER_HQ)
           hq += filters[i];*/
     }
-    return "Total["+total+"] "
-            + "Pass["+pass+"] "
-            + "QD["+qd+"] "
-            + "Inbreeding["+inbreeding+"] "
-            + "MQRS["+mqranksum+"] "
-            + "FS["+fs+"] "
-            + "SOR["+sor+"] "
-            + "MQ["+mq+"] "
-            + "ReadPos["+readpos+"] "
-            + "ABHET["+abhet+"] "
-            + "CallRate["+callrate+"] "
-            //+ "HQ["+hq+"] "
-            ;
+    return String.join(" ",
+            "Total["+total+"]",
+            "Pass["+pass+"]",
+            "QD["+qd+"]",
+            "Inbreeding["+inbreeding+"]",
+            "MQRS["+mqranksum+"]",
+            "FS["+fs+"]",
+            "SOR["+sor+"]",
+            "MQ["+mq+"]",
+            "ReadPos["+readPos+"]",
+            "ABHET["+abhet+"]",
+            "CallRate["+callrate+"]"
+            //+ "HQ["+hq+"]"
+    );
   }
 
   public static class Output {

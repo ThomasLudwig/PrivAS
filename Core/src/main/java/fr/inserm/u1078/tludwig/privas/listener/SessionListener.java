@@ -33,7 +33,7 @@ public interface SessionListener {
    *
    * @param maf the new value of the Minor Allele Frequency Threshold
    */
-  void maxMAFNFEUpdated(double maf);
+  void maxMAFSubpopUpdated(double maf);
 
   /**
    * Gives notification that the Consequence threshold has been updated
@@ -58,10 +58,22 @@ public interface SessionListener {
   /**
    * Gives notification that the Client Genotype File name has been updated
    *
-   * @param genotypeFilename
+   * @param genotypeFilename the name of the genotype file
    * @param lines the new value of the Client Genotype File name
    */
   void clientGenotypeFilenameUpdated(String genotypeFilename, int lines);
+
+  /**
+   * Gives notification that the Client's Quality Control Parameters File has been updated
+   * @param qcParamFilename the name of the new QCParam File
+   */
+  void qcParamFilenameUpdated(String qcParamFilename);
+
+  /**
+   * Gives notification that the name of the Client's File listing all well-covered positions has been updated
+   * @param bedFilename the name of the new Bed File
+   */
+  void bedFilenameUpdated(String bedFilename);
 
   /**
    * Gives notification that the Selected Dataset has been updated
@@ -76,6 +88,19 @@ public interface SessionListener {
    * @param datasets the new value of Available Datasets
    */
   void availableDatasetsUpdated(String datasets);
+
+  /**
+   * Gives notification that the GnomAD Versions Available have been updated
+   *
+   * @param gnomADVersions the new value of Available GnomAD Versions
+   */
+  void availableGnomADVersionsUpdated(String gnomADVersions);
+
+  void selectedGnomADVersionUpdated(String selectedGnomADVersion);
+
+  void selectedGnomADSubpopulationUpdated(String selectedGnomADSubpopulation);
+
+  void selectedGnomADFilenameUpdated(String gnomADFilename);
 
   /**
    * Gives notification that the Client Public Key has been updated
@@ -116,6 +141,12 @@ public interface SessionListener {
    * @param thirdPartyName the new value of Third Party Public Name
    */
   void thirdPartyPublicNameUpdated(String thirdPartyName);
+
+  /**
+   * Gives notification that the Excluded Variants Filename has been updated
+   * @param excludedVariantsFilename the new name for the Client's Excluded Variants File
+   */
+  void excludedVariantsFilenameUpdated(String excludedVariantsFilename);
 
   /**
    * Gives notification that the RPP address:port has been updated

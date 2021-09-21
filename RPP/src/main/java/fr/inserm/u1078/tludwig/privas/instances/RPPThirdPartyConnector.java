@@ -62,7 +62,7 @@ public class RPPThirdPartyConnector {
   /**
    * Executes a unix command
    *
-   * @param command
+   * @param command the Unix command to execute
    */
   private void exec(String command) throws IOException, InterruptedException {
     Process p = Runtime.getRuntime().exec(command.split("\\s+"));
@@ -73,7 +73,7 @@ public class RPPThirdPartyConnector {
    * Gets the Third Party Server's Public RSA key as a one-line pem String (through ssh)
    *
    * @param sessionId the Session ID
-   * @return
+   * @return the Third Party Server's Public RSA key as a one-line pem String (through ssh)
    */
   String getTPSPublicKey(String sessionId) {
     rpp.logInfo(MSG.RPP_INF_TPS_KEY);
@@ -106,24 +106,22 @@ public class RPPThirdPartyConnector {
   void sendDataAndStartJob(String sessionId) {
     rpp.submitNow(() -> {
       rpp.logInfo(MSG.cat(MSG.RPP_INF_SENDING, rpp.getFilenameFor(sessionId, FileFormat.FILE_AES_KEY)));
-
-      String sendInput = "scp -r " + rpp.getFilenameFor(sessionId, null/* directory */) + " " + login + "@" + address + ":" + sessionDir;
+      String sendInput = Constants.scp(
+              rpp.getFilenameForDir(sessionId),
+              Constants.distant(login, address, sessionDir),
+              true
+      );
       try {
         exec(sendInput);
       } catch (IOException | InterruptedException ex) {
         rpp.setStatus(sessionId, RPPStatus.tpsError(ex.getMessage()));
         
       }
-      //TODO how to check that all files were received ? Maybe checksum, download tps.checksum and compare to rpp.checksum
+      //QUESTION how to check that all files were received ? Maybe checksum, download tps.checksum and compare to rpp.checksum
       rpp.logInfo(MSG.cat(MSG.RPP_INF_STARTING, launchScript));
       //exec(launchJob);
       try {
-        String[] command = {
-          "ssh",
-          "-t",
-          login + "@" + address,
-          launchScript + " '" + sessionId + "'"
-        };
+        String[] command = Constants.ssh(login, address, launchScript,sessionId);
         ProcessBuilder p = new ProcessBuilder(command);
         p.start();
       } catch (IOException e) {
@@ -138,13 +136,16 @@ public class RPPThirdPartyConnector {
    * Gets the TPSStatus of the Third Party Server (through scp)
    *
    * @param sessionId the Session ID
-   * @return
+   * @return the TPSStatus of the Third Party Server (through scp)
    */
   List<TPStatus> getStatuses(String sessionId, int last) throws Exception{
     ArrayList<TPStatus> statuses = new ArrayList<>();
 
     String dest = rpp.getFilenameFor(sessionId, FileFormat.FILE_TPS_STATUS);
-    String cmd = "scp " + login + "@" + address + ":" + sessionDir + "/" + sessionId + "/" + FileFormat.FILE_TPS_STATUS + " " + dest;
+    String cmd = Constants.scp(
+            Constants.distant(login, address, sessionDir + "/" + sessionId + "/" + FileFormat.FILE_TPS_STATUS),
+            dest
+    );
    /* try {*/
       exec(cmd);
    /*   try {*/
@@ -188,8 +189,9 @@ public class RPPThirdPartyConnector {
    * @param sessionId the Session ID
    */
   void getResults(String sessionId) {
-    String dest = rpp.getFilenameFor(sessionId, FileFormat.FILE_RESULTS);
-    String cmd = "scp " + login + "@" + address + ":" + sessionDir + "/" + sessionId + "/" + FileFormat.FILE_RESULTS + " " + dest;
+    String cmd = Constants.scp(
+            Constants.distant(login, address, sessionDir + "/" + sessionId + "/" + FileFormat.FILE_RESULTS),
+            rpp.getFilenameFor(sessionId, FileFormat.FILE_RESULTS));
     try {
       exec(cmd);
     } catch (IOException | InterruptedException ex) {

@@ -11,6 +11,7 @@ public class SendRPPConfiguration extends Message {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public SendRPPConfiguration() {
   }
 
@@ -21,9 +22,10 @@ public class SendRPPConfiguration extends Message {
    * @param tpsName  the name of the Third Party Server
    * @throws Message.EmptyParameterException if at least one of the parameters is null
    */
-  public SendRPPConfiguration(String datasets, String tpsName) throws EmptyParameterException {
+  public SendRPPConfiguration(String datasets, String gnomADVersions, String tpsName) throws EmptyParameterException {
     super();
     this.setDatasets(datasets);
+    this.setGnomADVersions(gnomADVersions);
     this.setTPSName(tpsName);
   }
 
@@ -40,10 +42,27 @@ public class SendRPPConfiguration extends Message {
   /**
    * Gets the value for the datasets parameter
    *
-   * @return
+   * @return the value for the datasets parameter
    */
   public final String getDatasets() {
     return this.getValue(Key.DATASETS);
+  }
+
+  /**
+   * Sets the GnomAD Versions parameter's value
+   * @param gnomADVersions the list of available GnomAD Versions
+   * @throws EmptyParameterException if the value is null
+   */
+  public void setGnomADVersions(String gnomADVersions) throws EmptyParameterException {
+    this.set(Key.GNOMAD_VERSIONS, gnomADVersions);
+  }
+
+  /**
+   * Gets the value for the GnomAD Versions parameter
+   * @return the value for the GnomAD Versions parameter
+   */
+  public final String getGnomADVersions() {
+    return this.getValue(Key.GNOMAD_VERSIONS);
   }
 
   /**
@@ -59,7 +78,7 @@ public class SendRPPConfiguration extends Message {
   /**
    * Gets the value for the tpsName parameter
    *
-   * @return
+   * @return the value for the tpsName parameter
    */
   public final String getTPSName() {
     return this.getValue(Key.TPS_NAME);

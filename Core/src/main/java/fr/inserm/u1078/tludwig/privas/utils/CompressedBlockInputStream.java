@@ -160,5 +160,4 @@ public class CompressedBlockInputStream extends FilterInputStream {
     // lower bound on the actual amount of available data
     return this.outLength - this.outOffs + this.in.available();
   }
-
 }

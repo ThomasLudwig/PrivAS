@@ -1,8 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.utils;
 
 import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.TreeSet;
 
@@ -17,22 +15,19 @@ public class VariantExclusionSet {
     this.excluded = new TreeSet<>();
   }
   
-  public VariantExclusionSet(String filename, String hashKey) throws IOException, NoSuchAlgorithmException, InvalidKeyException {
+  public VariantExclusionSet(String filename, String hashKey) throws IOException {
     this();
     if(filename != null && !filename.isEmpty())
       this.load(filename, hashKey);
   }
   
-  public void load(String filename, String hashKey) throws IOException, NoSuchAlgorithmException, InvalidKeyException {
+  public void load(String filename, String hashKey) throws IOException {
     UniversalReader in = new UniversalReader(filename);
     String line;
     while((line = in.readLine()) != null)
       if(!line.startsWith("#")){
         String[] f = line.split("\t", -1);
-        if(f.length >= 7 && !f[7].equalsIgnoreCase("PASS")){
-          String canonical = GenotypesFileHandler.getCanonical(f[0], f[1], f[3], f[4]);
-          this.add(Crypto.hashSHA256(hashKey, canonical));
-        }
+        this.add(Crypto.hashSHA256(hashKey, f[0]));
       }
     in.close();
   }
@@ -48,7 +43,8 @@ public class VariantExclusionSet {
   public TreeSet<String> getSet(){
     return this.excluded;
   }
-  
+
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
   public boolean contains(String s){
     return this.excluded.contains(s);
   }

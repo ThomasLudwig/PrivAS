@@ -1,5 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.utils.qc;
 
+import fr.inserm.u1078.tludwig.privas.constants.Constants;
+
 import java.io.*;
 import java.util.Objects;
 
@@ -77,8 +79,6 @@ public class QCParam {
   //public static final double DEF_MIN_HQ_RATIO = .8;
   //public static final double DEF_MIN_ALT_HQ = 1;
   public static final double DEF_MIN_FISHER_CALLRATE = 0.001;
-
-  public static final QCParam DEFAULT_QC_PARAM = new QCParam();
 
   public static final String FIELD_SEP = ";";
   public static final String KV_SEP = "=";
@@ -177,28 +177,26 @@ public class QCParam {
   }
 
   public String serialize(){
-    StringBuilder sb = new StringBuilder();
-    sb.append(KEY_MIN_QD).append(KV_SEP).append(minQD).append(FIELD_SEP);
-    sb.append(KEY_MAX_ABHET_DEV).append(KV_SEP).append(maxABHetDev).append(FIELD_SEP);
-    sb.append(KEY_MAX_AB_GENO_DEV).append(KV_SEP).append(maxABGenoDev).append(FIELD_SEP);
-    sb.append(KEY_MIN_INBREEDING).append(KV_SEP).append(minInbreeding).append(FIELD_SEP);
-    sb.append(KEY_MIN_MQRANKSUM).append(KV_SEP).append(minMQRanksum).append(FIELD_SEP);
-    sb.append(KEY_MAX_FS_INDEL).append(KV_SEP).append(indelMaxFS).append(FIELD_SEP);
-    sb.append(KEY_MAX_FS_SNP).append(KV_SEP).append(snpMaxFS).append(FIELD_SEP);
-    sb.append(KEY_MAX_SOR_INDEL).append(KV_SEP).append(indelMaxSOR).append(FIELD_SEP);
-    sb.append(KEY_MAX_SOR_SNP).append(KV_SEP).append(snpMaxSOR).append(FIELD_SEP);
-    sb.append(KEY_MIN_MQ_INDEL).append(KV_SEP).append(indelMinMQ).append(FIELD_SEP);
-    sb.append(KEY_MIN_MQ_SNP).append(KV_SEP).append(snpMinMQ).append(FIELD_SEP);
-    sb.append(KEY_MIN_RPRS_INDEL).append(KV_SEP).append(indelMinRPRS).append(FIELD_SEP);
-    sb.append(KEY_MIN_RPRS_SNP).append(KV_SEP).append(snpMinRPRS).append(FIELD_SEP);
-    sb.append(KEY_MIN_GQ).append(KV_SEP).append(minGQ).append(FIELD_SEP);
-    sb.append(KEY_MIN_DP).append(KV_SEP).append(minDP).append(FIELD_SEP);
-    sb.append(KEY_MAX_DP).append(KV_SEP).append(maxDP).append(FIELD_SEP);
-    sb.append(KEY_MIN_CALLRATE).append(KV_SEP).append(minCallrate).append(FIELD_SEP);
-    //sb.append(KEY_MIN_HQ_RATIO).append(KV_SEP).append(minHQRatio).append(FIELD_SEP);
-    //sb.append(KEY_MIN_ALT_HQ).append(KV_SEP).append(minAltHQ).append(FIELD_SEP);
-    sb.append(KEY_MIN_FISHER_CALLRATE).append(KV_SEP).append(minFisherCallrate);
-    return sb.toString();
+    return KEY_MIN_QD + KV_SEP + minQD + FIELD_SEP +
+            KEY_MAX_ABHET_DEV + KV_SEP + maxABHetDev + FIELD_SEP +
+            KEY_MAX_AB_GENO_DEV + KV_SEP + maxABGenoDev + FIELD_SEP +
+            KEY_MIN_INBREEDING + KV_SEP + minInbreeding + FIELD_SEP +
+            KEY_MIN_MQRANKSUM + KV_SEP + minMQRanksum + FIELD_SEP +
+            KEY_MAX_FS_INDEL + KV_SEP + indelMaxFS + FIELD_SEP +
+            KEY_MAX_FS_SNP + KV_SEP + snpMaxFS + FIELD_SEP +
+            KEY_MAX_SOR_INDEL + KV_SEP + indelMaxSOR + FIELD_SEP +
+            KEY_MAX_SOR_SNP + KV_SEP + snpMaxSOR + FIELD_SEP +
+            KEY_MIN_MQ_INDEL + KV_SEP + indelMinMQ + FIELD_SEP +
+            KEY_MIN_MQ_SNP + KV_SEP + snpMinMQ + FIELD_SEP +
+            KEY_MIN_RPRS_INDEL + KV_SEP + indelMinRPRS + FIELD_SEP +
+            KEY_MIN_RPRS_SNP + KV_SEP + snpMinRPRS + FIELD_SEP +
+            KEY_MIN_GQ + KV_SEP + minGQ + FIELD_SEP +
+            KEY_MIN_DP + KV_SEP + minDP + FIELD_SEP +
+            KEY_MAX_DP + KV_SEP + maxDP + FIELD_SEP +
+            KEY_MIN_CALLRATE + KV_SEP + minCallrate + FIELD_SEP +
+            //sb.append(KEY_MIN_HQ_RATIO).append(KV_SEP).append(minHQRatio).append(FIELD_SEP);
+            //sb.append(KEY_MIN_ALT_HQ).append(KV_SEP).append(minAltHQ).append(FIELD_SEP);
+            KEY_MIN_FISHER_CALLRATE + KV_SEP + minFisherCallrate;
   }
 
   public static QCParam deserialize(String content) throws QCException {
@@ -282,12 +280,12 @@ public class QCParam {
         this.setMinFisherCallrate(value);
         break;
       default :
-        throw new QCException("Unexpected key ["+key+"] value {"+asString+"}");
+        throw new QCException(key, asString);
     }
   }
 
   public static String asString(double d){
-    return Double.isNaN(d) ? "disabled" : ""+d;
+    return Double.isNaN(d) ? Constants.DISABLED : ""+d;
   }
 
   public double parse(String s){
@@ -302,9 +300,7 @@ public class QCParam {
     return minQD;
   }
 
-  public void setMinQD(double minQD) {
-    this.minQD = minQD;
-  }
+  public void setMinQD(double minQD) { this.minQD = minQD; }
 
   public double getMaxABHetDev() {
     return maxABHetDev;

@@ -16,6 +16,7 @@ public class SendSession extends SessionMessage {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public SendSession() {
   }
 
@@ -38,7 +39,7 @@ public class SendSession extends SessionMessage {
   /**
    * Gets the Hash Salt shared between the RPP and the Client
    *
-   * @return
+   * @return the Hash Salt shared between the RPP and the Client
    */
   public final String getEncryptedHashKey() {
     return this.getValue(Key.ENCRYPTED_HASH);
@@ -57,7 +58,7 @@ public class SendSession extends SessionMessage {
   /**
    * Gets the Public RSA Key from the Third Party Server
    *
-   * @return
+   * @return the Public RSA Key from the Third Party Server
    */
   public final String getThirdPartyPublicKey() {
     return this.getValue(Key.THIRD_PUB_RSA);
@@ -75,7 +76,7 @@ public class SendSession extends SessionMessage {
   
   /**
    * Sets the list of positions that are well covered
-   * @param bed 
+   * @param bed  the list of positions that are well covered
    */
   public void setBedFile(BedFile bed) {
     try {
@@ -86,9 +87,9 @@ public class SendSession extends SessionMessage {
   }
 
   /**
-   * Gets the list of well covered position
-   * @return 
-   * @throws BedRegion.BedRegionException
+   * Gets the list of well covered positions
+   * @return the list of well covered position
+   * @throws BedRegion.BedRegionException if there is a problem with the defined regions
    */
   public BedFile getBedFile() throws BedRegion.BedRegionException {
     return BedFile.deserialize(this.getValue(Key.BED_FILE));

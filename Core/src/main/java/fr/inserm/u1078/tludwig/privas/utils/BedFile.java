@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.utils;
 
+import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.utils.BedRegion.BedRegionException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,29 +39,28 @@ public class BedFile implements Cloneable {
   /**
    * Adds a bed line region
    *
-   * @param line
-   * @throws BedRegion.BedRegionException
+   * @param line a string in the bed format (starts with chrom<TAB>0-based-Start<TAB>1-based-end)
+   * @throws BedRegion.BedRegionException if in the line cannot be parsed or if end <= start
    */
   public void add(String line) throws BedRegionException {
     String[] f = line.split("\\s+");
     try {
-      int chr = GenotypesFileHandler.getChrAsNumber(f[0]);
+      int chr = CanonicalVariant.getChrAsNumber(f[0]);
       int start = new Integer(f[1]);
       int end = new Integer(f[2]);
       this.add(chr, new BedRegion(start, end));
     } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-      throw new BedRegionException("Unable to parse line [" + line + "] from bedfile ", e);
+      throw new BedRegionException(MSG.cat(MSG.BED_UNABLE_PARSE, line), e);
     }
   }
 
   /**
    * Adds to the bedfile and merges (Union) with all overlapping regions
    *
-   * @param chr
-   * @param r
-   * @throws BedRegion.BedRegionException
+   * @param chr the target chromosome
+   * @param r the region to add
    */
-  public void add(int chr, BedRegion r) throws BedRegionException {
+  public void add(int chr, BedRegion r) {
     ArrayList<BedRegion> chromosome = this.regions.computeIfAbsent(chr, k -> new ArrayList<>());
 
     //1) add region
@@ -69,22 +69,30 @@ public class BedFile implements Cloneable {
     if (idx < chromosome.size() - 1) {
       BedRegion next = chromosome.get(idx + 1);
       if (r.overlap(next))
-        r.applyUnion(chromosome.remove(idx + 1));
+        try {
+          r.applyUnion(chromosome.remove(idx + 1));
+        } catch(BedRegionException ignore){
+          //cannot happen since overlap is test above
+        }
     }
     //3) if intersect prev, applyIntersection to previous and remove current
     if (idx > 0) {
       BedRegion prev = chromosome.get(idx - 1);
       if (prev.overlap(r))
-        prev.applyUnion(chromosome.remove(idx));
+        try {
+          prev.applyUnion(chromosome.remove(idx));
+        } catch(BedRegionException ignore){
+          //cannot happen since overlap is test above
+        }
     }
   }
 
   /**
    * Adds to a position and return index
    *
-   * @param list
-   * @param r
-   * @return
+   * @param list ArrayList of Regions
+   * @param r the BedRegion to add
+   * @return the index of r in list
    */
   private static int add(ArrayList<BedRegion> list, BedRegion r) {
     //Don't do an insertion sort.
@@ -101,10 +109,9 @@ public class BedFile implements Cloneable {
   /**
    * Adds all the Regions from the given bed file to this bed file (this bed file commons its union with the given bed file)
    *
-   * @param bed
-   * @throws BedRegion.BedRegionException
+   * @param bed the BedFile to add
    */
-  public void addAsUnion(BedFile bed) throws BedRegionException {
+  public void addAsUnion(BedFile bed) {
     for (int chr : bed.regions.keySet())
       for (BedRegion r : bed.regions.get(chr))
         this.add(chr, r);
@@ -113,30 +120,21 @@ public class BedFile implements Cloneable {
   /**
    * Tells if a variant (in canonical format) overlaps at least one region in the bed file
    *
-   * @param canonical
-   * @return
+   * @param canonicalVariant the variant to test
+   * @return if a variant (in canonical format) overlaps at least one region in the bed file
    */
-  public boolean overlaps(String canonical) {
-    //canonical getChrAsNumber(chrom) + ":" + start + "+" + length + ":" + allele;
-    String[] f = canonical.split(":");
-    int chr = GenotypesFileHandler.getChrAsNumber(f[0]);
-    String[] p = f[1].split("\\+");
-    int start = new Integer(p[0]);
-    int length = new Integer(p[1]);
-    try {
-      return this.overlap(chr, start, length);
-    } catch (BedRegionException e) {
-      return false;//cannot append as length >= 0
-    }
+  public boolean overlaps(CanonicalVariant canonicalVariant) {
+    return this.overlap(canonicalVariant.getChrom(), canonicalVariant.getPos(), canonicalVariant.getLength());
   }
 
   /**
    * Tells of a given position is covered by a bed file
    *
-   * @param chr
-   * @param pos
-   * @return
+   * @param chr the chromosome of the region to test
+   * @param pos the position of the region to test
+   * @return true if this BedFile contains the given position
    */
+  @SuppressWarnings("unused")
   public boolean contains(int chr, int pos) {
     ArrayList<BedRegion> chromosome = this.regions.get(chr);
     if (chromosome == null)
@@ -151,51 +149,55 @@ public class BedFile implements Cloneable {
   /**
    * Tells if a position and length overlaps at least one region in the bed file
    *
-   * @param chr
-   * @param pos
-   * @param length
-   * @return
-   * @throws BedRegion.BedRegionException
+   * @param chr the chromosome of the region to test
+   * @param pos the start of the region to test
+   * @param length the length of the region to test
+   * @return true of the described region overlaps at least one region from this BedFile
    */
-  public boolean overlap(int chr, int pos, int length) throws BedRegionException {
+  public boolean overlap(int chr, int pos, int length)  {
     ArrayList<BedRegion> chromosome = this.regions.get(chr);
     if (chromosome == null)
       return false;
-    BedRegion r = new BedRegion(pos - 1, pos + length);
-    
-    //Get the least region with start before this start
-    int f = 0;
-    int l = chromosome.size();
-    int c;
-    while(l - f > 1){
-      c = (f+l)/2;
-      if(chromosome.get(c).getStart() < pos - 1)
-        f = c;
-      else
-        l = c;
+
+    try {
+      BedRegion r = new BedRegion(pos - 1, pos + length);
+      //Get the least region with start before this start
+      int f = 0;
+      int l = chromosome.size();
+      int c;
+      while (l - f > 1) {
+        c = (f + l) / 2;
+        if (chromosome.get(c).getStart() < pos - 1)
+          f = c;
+        else
+          l = c;
+      }
+
+      if (chromosome.get(f).overlap(r))
+        return true;
+      if (f < chromosome.size() - 2)
+        return chromosome.get(f + 1).overlap(r);
+    } catch(BedRegionException ignore){
+      //cannot happen since pos - 1 < pos + length, as length >= 0
     }
-    
-    if(chromosome.get(f).overlap(r))
-      return true;
-    if(f < chromosome.size() - 2)
-      return chromosome.get(f+1).overlap(r);
     return false;
   }
-  
+
+  /*
   public void print(){
     for(int chr : this.regions.keySet())
       for(BedRegion r : this.regions.get(chr))
         System.out.println(chr+" "+r.toString());
   }
+  */
 
   /**
    * Produces the intersection between two bed files. If one bed file is completely empty, and returns the other one.
    * @param bedA  first bed file
    * @param bedB  second bed file
-   * @return
-   * @throws BedRegion.BedRegionException
+   * @return a BedFile that is the intersection of the two input BedFiles
    */
-  public static BedFile getIntersection(BedFile bedA, BedFile bedB) throws BedRegion.BedRegionException {
+  public static BedFile getIntersection(BedFile bedA, BedFile bedB) {
     BedFile intersect = new BedFile();
     if(bedA.isEmpty())
       return bedB.copy();
@@ -234,7 +236,11 @@ public class BedFile implements Cloneable {
 
           for(int i = iS; i <= iE; i++)
             if(rA.overlap(rsB.get(i)))
-              intersect.add(chr, BedRegion.getIntersection(rA, rsB.get(i)));
+              try {
+                intersect.add(chr, BedRegion.getIntersection(rA, rsB.get(i)));
+              } catch(BedRegionException ignore){
+                //cannot happen since overlap is tested above
+              }
           
         }
       }
@@ -254,7 +260,8 @@ public class BedFile implements Cloneable {
     return super.clone();
   }
 
-  public static BedFile getUnion(BedFile bed1, BedFile bed2) throws BedRegionException {
+  @SuppressWarnings("unused")
+  public static BedFile getUnion(BedFile bed1, BedFile bed2) {
     BedFile union = new BedFile();
     union.addAsUnion(bed1);
     union.addAsUnion(bed2);

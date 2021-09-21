@@ -134,7 +134,7 @@ public class Manhattan extends JPanel {
    * Exports the Plot as a PNG File
    *
    * @param filename the name of the PNG File
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while writing to the file
    */
   public void exportAsPNG(String filename) throws IOException {
     OutputStream out = new FileOutputStream(filename);
@@ -146,7 +146,7 @@ public class Manhattan extends JPanel {
    *
    * @param l     number of different colors
    * @param theme the theme for which the color are generated
-   * @return
+   * @return the chromosome colors
    */
   private static Color[] chromColors(int l, int theme) {
     Color[] selected = new Color[]{Color.decode("#e41a1c"), Color.decode("#377eb8"), Color.decode("#4daf4a"), Color.decode("#984ea3"), Color.decode("#ff7f00"), Color.decode("#e4e400"), Color.decode("#a65628"), Color.decode("#f781bf")};
@@ -181,7 +181,7 @@ public class Manhattan extends JPanel {
    * @param pvalue   its associated p-value
    */
   public void add(String geneName, int chrom, int position, double pvalue) {
-    genes.add(new Gene(chrom, position, pvalue));
+    genes.add(new Gene(geneName, chrom, position, pvalue));
   }
 
   /**
@@ -207,11 +207,16 @@ public class Manhattan extends JPanel {
   /**
    * Gets the name of a Chromosome from its number (1 to 25)
    *
-   * @param i
-   * @return
+   * @param i the chromosome as an integer
+   * @return the chromosome name
    */
   private static String getChromName(int i) {
-    return ("chr" + (i + 1)).replace("23", "X").replace("24", "Y").replace("25", "MT");
+    if(i < 0)
+      return GUI.RP_CHR_UNKNOWN;
+    return ("chr" + (i + 1)).
+            replace("23", GUI.RP_CHR_X).
+            replace("24", GUI.RP_CHR_Y).
+            replace("25", GUI.RP_CHR_MT);
   }
 
   /**
@@ -239,7 +244,7 @@ public class Manhattan extends JPanel {
   /**
    * Ges the actual Chart
    *
-   * @return
+   * @return the actual Chart
    */
   private ChartPanel getChartPanel() {
 
@@ -285,8 +290,6 @@ public class Manhattan extends JPanel {
 
     XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) plot.getRenderer();
 
-    
-    
     //compute offset to center text
     double nbBP = maxX - minX; // min and max X coordinate
     double nbPX = 900 - 100; //min and max X projection
@@ -391,11 +394,13 @@ public class Manhattan extends JPanel {
    * </ul>
    */
   private static class Gene {
+    private final String name;
     private final int chrom;
     private final double x;
     private final double y;
 
-    Gene(int chrom, int position, double pvalue) {
+    Gene(String name, int chrom, int position, double pvalue) {
+      this.name = name; //TODO display for top 10 genes
       this.chrom = chrom;
       this.x = position;
       this.y = -Math.log10(pvalue);

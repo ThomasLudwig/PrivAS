@@ -22,23 +22,37 @@ public class QualityControl {
   public static final String END_MESSAGE = "XXX_NO_MORE_LINES_XXX";
   public static final int STEP = 10000;
 
-  public static void applyQC(String inputVCF, QCParam qcParam) throws IOException, QCException {
-    String outputVCF = FileUtils.getQCVCFFilename(inputVCF, qcParam);
-    String excludedVariants = FileUtils.getExcludedVariantFilename(inputVCF, qcParam);
-    applyQC(inputVCF, qcParam, outputVCF, excludedVariants, false);
+  /**
+   * Apply QC
+   * @param inputVCF the VCF File on which to apply the QC
+   * @param qcParam the QCParameters
+   * @return the number of filtered out variants
+   * @throws IOException If an I/O error occurs while return inputs of writing output
+   */
+  public static int applyQC(String inputVCF, QCParam qcParam) throws IOException {
+    String outputVCF = FileUtils.addQCPrefixToVCFFilename(inputVCF, qcParam);
+    String excludedVariants = FileUtils.excludedVariantFromQCedVCF(outputVCF);
+    return applyQC(inputVCF, qcParam, outputVCF, excludedVariants);
   }
+/*
+  public static void applyQC(String inputVCF, String qcParam, String outputVCF, String excludedVariants) throws QCException, IOException {
+    applyQC(inputVCF, new QCParam(qcParam), outputVCF, excludedVariants);
+  }*/
 
-  public static void applyQC(String inputVCF, String qcParam, String outputVCF, String excludedVariants, boolean gzipped) throws QCException, IOException {
-    applyQC(inputVCF, new QCParam(qcParam), outputVCF, excludedVariants, gzipped);
-  }
-
-  public static void applyQC(String inputVCF, QCParam qcParam, String outputVCF, String excludedVariants, boolean gzipped) throws IOException {
+  /**
+   * Apply QC
+   * @param inputVCF the VCF File on which to apply the QC
+   * @param qcParam the QCParameters
+   * @param outputVCF the filtered VCF
+   * @param excludedVariants the List of Variants Excluded during the QC
+   * @return the number of filtered out variants
+   * @throws IOException If an I/O error occurs while return inputs of writing output
+   */
+  public static int applyQC(String inputVCF, QCParam qcParam, String outputVCF, String excludedVariants) throws IOException {
     //Count header to skip
     int skipHeader = 0;
     UniversalReader in = new UniversalReader(inputVCF);
     PrintWriter out = new PrintWriter(new GZIPOutputStream(new FileOutputStream(outputVCF)));//gzipped
-    //PrintWriter exc = new PrintWriter(new GZIPOutputStream(new FileOutputStream(excludedVariants)));//gzipped -- unable to read back
-    //PrintWriter out = new PrintWriter(new FileWriter(outputVCF));
     PrintWriter exc = new PrintWriter(new FileWriter(excludedVariants));
     String line;
     while((line = in.readLine()) != null && line.startsWith("#")) {
@@ -62,6 +76,6 @@ public class QualityControl {
       //Ignore
     }
 
-    consumer.getFilter(0);
+    return consumer.getFilter(0);
   }
 }

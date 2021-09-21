@@ -8,12 +8,18 @@ package fr.inserm.u1078.tludwig.privas.utils.qc;
  * Checked for release on XXXX-XX-XX
  * Unit Test defined on   XXXX-XX-XX
  */
+@SuppressWarnings("unused")
 public class QCException extends Exception{
+
   public QCException() {
   }
 
   public QCException(String message) {
     super(message);
+  }
+
+  public QCException(String key, String value){
+    this("Unexpected key ["+key+"] value {"+value+"}");
   }
 
   public QCException(String message, Throwable cause) {

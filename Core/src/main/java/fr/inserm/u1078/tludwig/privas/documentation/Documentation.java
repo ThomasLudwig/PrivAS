@@ -1,5 +1,8 @@
 package fr.inserm.u1078.tludwig.privas.documentation;
 
+import fr.inserm.u1078.tludwig.privas.Main;
+import fr.inserm.u1078.tludwig.privas.constants.Command;
+
 /**
  * Class to generate the project's documentation
  *
@@ -8,8 +11,11 @@ package fr.inserm.u1078.tludwig.privas.documentation;
  * Checked for release on XXXX-XX-XX
  * Unit Test defined on   XXXX-XX-XX
  */
+@SuppressWarnings("unused")
 public class Documentation {
   public static final String BASH = "bash";
+  public static final String HR = "---";
+
 
   public static String bold(String string){
     return "**"+string+"**";
@@ -42,13 +48,6 @@ public class Documentation {
     return ret.toString();
   }
 
-  public static int getMax(String... strings){
-    int max = 0;
-    for(String string : strings)
-      max = Math.max(max, string.length());
-    return max;
-  }
-
   public static String code(String[] strings, String language, boolean numbered){
     StringBuilder ret = new StringBuilder("```");
     if(language != null)
@@ -75,10 +74,6 @@ public class Documentation {
         ret.append(" ").append(cell).append(" |");
     }
     return ret.toString();
-  }
-
-  public static String hr(){
-    return "---";
   }
 
   public static String link(String title, String url){
@@ -130,5 +125,24 @@ public class Documentation {
       ret.append("<li>").append(string).append("</li>");
     ret.append("</ul>");
     return ret.toString();
+  }
+
+  public static void getCommandLines(LineBuilder doc, Main.Party party){
+    doc.rstSection("PrivAS "+party.getName()+"'s Command Lines");
+    doc.rstSubsection("Main Command");
+    addCommandLine(doc, Command.getTopLevelCommand(party), party.getJar());
+
+    doc.rstSubsection("Tools");
+    for(Command cmd : Command.getCommands(party))
+      addCommandLine(doc, cmd, party.getJar());
+  }
+
+  public static void addCommandLine(LineBuilder doc, Command cmd, String jar){
+    doc.rstSubsubsection(cmd.getDescription());
+    doc.newLine();
+    doc.rstCode(BASH, cmd.getJavaCommand(jar));
+    //doc.newLine(bold("Arguments"));
+    doc.rstGridTable(cmd.getArguments(), false);
+    doc.newLine();
   }
 }

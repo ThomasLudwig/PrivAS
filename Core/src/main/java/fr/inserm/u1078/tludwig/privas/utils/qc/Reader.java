@@ -35,9 +35,9 @@ class Reader {
       return r;
     try {
       String line = in.readLine();
-      if(line == null) {
+      if(line == null)
         close();
-      } else
+      else
         r = new Pair<>(read,line);
     } catch (IOException e) {
       e.printStackTrace();

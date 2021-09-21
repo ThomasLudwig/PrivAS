@@ -1,6 +1,10 @@
 package fr.inserm.u1078.tludwig.privas;
 
+import fr.inserm.u1078.tludwig.privas.constants.Command;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
+import fr.inserm.u1078.tludwig.privas.instances.CommandLineInstance;
+import fr.inserm.u1078.tludwig.privas.instances.Instance;
+import fr.inserm.u1078.tludwig.privas.utils.ExtractAnnotations;
 import fr.inserm.u1078.tludwig.privas.utils.FileUtils;
 import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
 import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
@@ -8,8 +12,6 @@ import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 import fr.inserm.u1078.tludwig.privas.utils.qc.QualityControl;
 
 import java.io.*;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 
 /**
  * Main Class, entry point of the program. Only static fields and methods
@@ -17,7 +19,6 @@ import java.security.NoSuchAlgorithmException;
  * @author Thomas E. Ludwig (INSERM - U1078) 2019-01-23
  */
 public final class Main {
-  
   public static final boolean DEBUG = true;
   
   //TODO  propose Datasets in GRCh37 and GRCh38
@@ -50,113 +51,172 @@ public final class Main {
   }
 
   /**
-   * Generic method to get usage String
-   * @param prefix should print the "Usage :" prefix ?
-   * @param client who is calling ? true for the Client, false for RPP
-   * @param desc the description for this command
-   * @param cmdClient the client command line for this command
-   * @param cmdRpp the rpp command line for this command
-   * @return the complete usage string
-   */
-  private static String usageGeneric(boolean prefix, boolean client, String desc, String cmdClient, String cmdRpp){
-    StringBuilder ret = new StringBuilder();
-    if (prefix)
-      ret.append(MSG.MSG_USAGE).append("\n");
-    ret.append(desc).append("\n");
-    ret.append(client ? cmdClient : cmdRpp);
-    return ret.toString();
-  }
-
-  /**
-   * Prints the usage message for preparing RPP data files
-   *
-   * @param prefix should print the "Usage :" prefix ?
-   *
-   */
-  public static String usageConvertVCF(boolean prefix, boolean client) {
-    return usageGeneric(prefix, client, MSG.MSG_DESC_PREPARE, MSG.MSG_CMD_PREPARE_CLIENT, MSG.MSG_CMD_PREPARE_RPP);
-  }
-
-  /**
-   * Prints the usage message for performing Quality Control
-   *
-   * @param prefix should print the "Usage :" prefix ?
-   */
-  public static String usageQualityControl(boolean prefix, boolean client) {
-    return usageGeneric(prefix, client, MSG.MSG_DESC_QC, MSG.MSG_CMD_QC_CLIENT, MSG.MSG_CMD_QC_RPP);
-  }
-
-  public static String usageQualityControlAndConvert(boolean prefix, boolean client) {
-    return usageGeneric(prefix, client, MSG.MSG_DESC_QC_CONV, MSG.MSG_CMD_QC_CONV_CLIENT, MSG.MSG_CMD_QC_CONV_RPP);
-  }
-
-  public static String usageExtractAndHash(boolean prefix, boolean client) {
-    return usageGeneric(prefix, client, MSG.MSG_DESC_EXTRACT_HASH, MSG.MSG_CMD_EXTRACT_HASH_CLIENT, MSG.MSG_CMD_EXTRACT_HASH_RPP);
-  }
-
-  /**
    * Prepares an RPP data file by converting from a vep annotated VCF file
-   *
-   * @param args
    */
-  public static void convertVCF(String[] args, boolean client) {
+  public static void convertVCF(Main.CommandExecutor cmd) {
+    String[] args = cmd.getArgs();
     try {
       String vcfFile = args[1];
-      String output = GenotypesFileHandler.vcfFilename2GenotypesFilename(vcfFile);
-      GenotypesFileHandler.convertVCF2Genotypes(vcfFile, output);
+      String gnomADFilename = args[2];
+      GenotypesFileHandler.convertVCF2Genotypes(vcfFile, gnomADFilename, cmd.getInstance());
     } catch (GenotypesFileHandler.GenotypeFileException | IOException e) {
-      System.err.println(MSG.MSG_FAIL_PREPARE + e.getMessage());
-      usageConvertVCF(true, client);
+      cmd.fail(e);
     }
   }
 
-  public static void qc(String[] args, boolean client){
+  public static void qc(Main.CommandExecutor cmd) {
+    String[] args = cmd.getArgs();
     try {
       String inVCF = args[1];
       String qcParamFile = args[2];
       QCParam qcParam = new QCParam(qcParamFile);
       QualityControl.applyQC(inVCF, qcParam);
     } catch (QCException | IOException | ArrayIndexOutOfBoundsException e) {
-      System.err.println(MSG.MSG_FAIL_QC + e.getClass() + " " + e.getMessage());
-      usageQualityControl(true, client);
+      cmd.fail(e);
     }
   }
 
-  public static void qcAndConvert(String[] args, boolean client) {
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  public static void qcAndConvert(Main.CommandExecutor cmd) {
     QCParam qcParam = new QCParam();
     String inVCF;
+    String[] args = cmd.getArgs();
     try{
       inVCF = args[1];
       QualityControl.applyQC(inVCF, qcParam);
     } catch(Exception e) {
-      System.err.println(MSG.MSG_FAIL_QC + e.getClass() + " " + e.getMessage());
-      usageQualityControlAndConvert(true, client);
+      cmd.fail(e);
       return;
     }
-    String outVCF = FileUtils.getQCVCFFilename(inVCF, qcParam);
-    String genotypeFilename = FileUtils.getQCGenotypeFilename(inVCF, qcParam);
+    String outVCF = FileUtils.addQCPrefixToVCFFilename(inVCF, qcParam);
+    String gnomADFilename = args[2];
     try {
-      GenotypesFileHandler.convertVCF2Genotypes(outVCF, genotypeFilename);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } catch (GenotypesFileHandler.GenotypeFileException e) {
-      System.err.println(MSG.MSG_FAIL_PREPARE + e.getMessage());
-      usageQualityControlAndConvert(true, client);
+      GenotypesFileHandler.convertVCF2Genotypes(outVCF, gnomADFilename, cmd.getInstance());
+    } catch (GenotypesFileHandler.GenotypeFileException | IOException e) {
+      cmd.fail(e);
     }
     File file = new File(outVCF);
     file.delete();
   }
 
-  public static void extractAndHash(String[] args, boolean client){
+  public static void extractGnomAD(Main.CommandExecutor cmd) {
+    String[] args = cmd.getArgs();
+    try {
+      String gnomADVersion = args[1];
+      String listExome = args[2];
+      String listGenome = args[3];
+      String output = args[4];
+      ExtractAnnotations.convertGnomAD(gnomADVersion, listExome, listGenome, output, cmd.getInstance());
+    } catch (Exception e) {
+      cmd.fail(e);
+    }
+  }
+
+  public static void extractAndHash(Main.CommandExecutor cmd) {
+    String[] args = cmd.getArgs();
     try {
       String inVCF = args[1];
       String outVCFFilename = args[2];
       String outGeneFilename = args[3];
       String hashingKey = args[4];
-      GenotypesFileHandler.extractCanonicalAndHash(inVCF, outVCFFilename, outGeneFilename, hashingKey);
-    } catch (IOException | ArrayIndexOutOfBoundsException | InvalidKeyException | NoSuchAlgorithmException | GenotypesFileHandler.GenotypeFileException e) {
-      System.err.println(MSG.MSG_FAIL_EXTRACT_HASH + e.getClass() + " " + e.getMessage());
-      usageQualityControl(true, client);
+      GenotypesFileHandler.extractCanonicalAndHash(inVCF, outVCFFilename, outGeneFilename, hashingKey, cmd.getInstance());
+    } catch (IOException | ArrayIndexOutOfBoundsException | GenotypesFileHandler.GenotypeFileException e) {
+      cmd.fail(e);
+    }
+  }
+
+  /**
+   * Prints the various usages of this program
+   */
+  public static String getUsage(Party party) {
+    String N = "\n";
+    String jar = party.getJar();
+    StringBuilder out = new StringBuilder(MSG.MSG_USAGE + N
+            + Command.getTopLevelCommand(party).usage(jar) + N);
+
+    Command[] commands = Command.getCommands(party);
+    if(commands.length > 0) {
+      out.append(N).append(MSG.MSG_TOOLS);
+      for (Command cmd : commands)
+        out.append(N).append(cmd.usage(jar));
+    }
+    return out.toString();
+  }
+
+  public enum Party {
+    CLIENT("Client"),
+    RPP("RPP"),
+    TPS("TPS");
+    private final String name;
+
+    Party(String name){
+      this.name = name;
+    }
+
+    public String getJar() {
+      return "PrivAS."+name+".jar";
+    }
+
+    public String getName(){
+      return name;
+    }
+  }
+
+  public static class CommandExecutor {
+    private final Instance instance;
+    private final Command command;
+    private final String[] args;
+    private final Party party;
+
+    public CommandExecutor(String[] args, Party party) {
+      this.instance = new CommandLineInstance();
+      this.party = party;
+      if(args.length > 0 && args[0].startsWith("-")) {
+        this.args = args;
+        command = Command.parseString(args[0]);
+      } else {
+        this.command = Command.getTopLevelCommand(party);
+        this.args = new String[args.length + 1];
+        this.args[0] = "";
+        System.arraycopy(args, 0, this.args, 1, args.length);
+      }
+      instance.logInfo(MSG.MSG_WELCOME);
+      this.check();
+    }
+
+    public void check(){
+      if(command == Command.UNKNOWN)
+        return;
+      if(command.getArguments().length < args.length - 1)
+        instance.logWarning("More arguments than expected for this command");
+      if(command.getArguments().length > args.length  - 1)
+        instance.logError("Not enough arguments for this command");
+      if(command.getArguments().length != args.length - 1)
+        if(command != Command.CLIENT_TOP_LEVEL && command != Command.RPP_TOP_LEVEL && command != Command.TPS_TOP_LEVEL)
+          instance.logInfo(command.usage(party.getJar()));
+    }
+
+    public Instance getInstance() {
+      return instance;
+    }
+
+    public Command getCommand() {
+      return command;
+    }
+
+    public String[] getArgs() {
+      return args;
+    }
+
+    public Party getParty() {
+      return party;
+    }
+
+    public void fail(Exception e){
+      instance.logError(command.getFail());
+      if(e != null)
+        instance.logError(e);
+      instance.logInfo(command.usage(party.getJar()));
     }
   }
 }

@@ -20,40 +20,43 @@ public class LookAndFeel {
   public static final ColorUIResource LOG_BG_COLOR = new ColorUIResource(new Color(210, 210, 210));
   public static final ColorUIResource TEXT_BG_COLOR = new ColorUIResource(new Color(TEXT_BG_RED, TEXT_BG_GREEN, TEXT_BG_BLUE));
 
-  public static void setup() throws ClassNotFoundException, InstantiationException, IllegalAccessException, UnsupportedLookAndFeelException {
-    Properties p = new Properties();    
-    p.setProperty("logoString", "PrivAS");  
-    p.setProperty("backgroundPattern", "off"); 
-    p.setProperty("userTextFont", "Arial PLAIN 12);");
-    
-    HiFiLookAndFeel.setCurrentTheme(p);    
-    UIManager.setLookAndFeel("com.jtattoo.plaf.hifi.HiFiLookAndFeel");
-    UIManager.put("TextPane.background", LOG_BG_COLOR);
-    UIManager.put("TextPane.inactiveBackground", LOG_BG_COLOR);
-        
-    String[] keys = {          
-      "TextArea.background",
-      "TextArea.inactiveBackground",
-      
-      "TextField.background",
-      "TextField.disabledBackground",
-      "TextField.inactiveBackground",
-      
-      "EditorPane.background",
-      
-      "FormattedTextField.background",
-      "FormattedTextField.inactiveBackground",
+  public static void setup() {
+    try {
+      Properties p = new Properties();
+      p.setProperty("logoString", "PrivAS");
+      p.setProperty("backgroundPattern", "off");
+      p.setProperty("userTextFont", "Arial PLAIN 12);");
 
-      "PasswordField.background"      
-    };
-    
-    for(String key : keys){
-      UIManager.put(key, TEXT_BG_COLOR);
+      HiFiLookAndFeel.setCurrentTheme(p);
+      UIManager.setLookAndFeel("com.jtattoo.plaf.hifi.HiFiLookAndFeel");
+      UIManager.put("TextPane.background", LOG_BG_COLOR);
+      UIManager.put("TextPane.inactiveBackground", LOG_BG_COLOR);
+
+      String[] keys = {
+              "TextArea.background",
+              "TextArea.inactiveBackground",
+
+              "TextField.background",
+              "TextField.disabledBackground",
+              "TextField.inactiveBackground",
+
+              "EditorPane.background",
+
+              "FormattedTextField.background",
+              "FormattedTextField.inactiveBackground",
+
+              "PasswordField.background"
+      };
+
+      for (String key : keys) {
+        UIManager.put(key, TEXT_BG_COLOR);
+      }
+    } catch(ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e){
+      throw new RuntimeException("Unable to Load LookAndFeel", e);
     }
-   
   }
 
-  static Color getBackgroundTextColor() {
+  public static Color getBackgroundTextColor() {
     return TEXT_BG_COLOR;
   }
 }
