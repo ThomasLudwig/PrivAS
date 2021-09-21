@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5 (2021-09-22)
+### Core
+### Client
+### RPP
+### TPS
+
 ## 1.0.4 (2021-09-21)
 ### Core
 * GenotypesFileHandler : *added* `extractCanonicalAndHash` that allows getting hashed values from the original VCF file, in order to debug a session
