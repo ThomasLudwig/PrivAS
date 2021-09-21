@@ -1,12 +1,12 @@
 package fr.inserm.u1078.tludwig.privas.instances;
 
+import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
+import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.utils.*;
 import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 
 /**
  * Dataset parameters
@@ -31,26 +31,15 @@ public class RPPDataset {
   public static RPPDataset parse(String string) throws RPP.ConfigFileParsingException {
     String[] f = string.split(":");
     if(f.length != 4)
-      throw new RPP.ConfigFileParsingException("Could not parse dataset parameters from ["+string+"]. Expected : " +
-              "dataset_name:" +
-              "vcf_filename:" +
-              "vcf_size:" +
-              "well_covered_position_bed_filename:");
+      throw new RPP.ConfigFileParsingException(MSG.RPP_DATASET_PARSING_EXCEPTION(string));
     //name
     String name = f[0];
     //vcf file
     String vcfFilename = f[1];
-    checkFile(vcfFilename, "VCF File");
-    //vcf size
-   /* int vcfSize;
-    try{
-      vcfSize = Integer.parseInt(f[2]);
-    } catch(NumberFormatException e){
-      throw new RPP.ConfigFileParsingException("Could not read VCF size ["+f[2]+"].", e);
-    }*/
+    checkFile(vcfFilename, FileFormat.FILETYPE_VCF);
     //bed file
     String bedFilename = f[3];
-    checkFile(bedFilename, "Bed File");
+    checkFile(bedFilename, FileFormat.FILETYPE_BED);
 
     return new RPPDataset(name, vcfFilename, bedFilename);
   }
@@ -58,9 +47,9 @@ public class RPPDataset {
   public static void checkFile(String filename, String type) throws RPP.ConfigFileParsingException {
     File file = new File(filename);
     if(!file.exists())
-      throw new RPP.ConfigFileParsingException(type+" ["+filename+"] does not exist.");
+      throw new RPP.ConfigFileParsingException(MSG.FILE_DOES_NOT_EXIST(type, filename));
     if(file.isDirectory())
-      throw new RPP.ConfigFileParsingException(type+" ["+filename+"] is a directory.");
+      throw new RPP.ConfigFileParsingException(MSG.FILE_IS_DIRECTORY(type, filename));
   }
 
   @Override
@@ -68,11 +57,11 @@ public class RPPDataset {
     return this.getName();
   }
 
-  public VariantExclusionSet getVariantExclusionSet(String sessionHash, QCParam qcParam) throws NoSuchAlgorithmException, InvalidKeyException, IOException {
+  public VariantExclusionSet getVariantExclusionSet(String sessionHash, QCParam qcParam) throws IOException {
     return this.getVariantExclusionSet(sessionHash, qcParam.hashCode());
   }
 
-  public VariantExclusionSet getVariantExclusionSet(String sessionHash, int qcHashCode) throws NoSuchAlgorithmException, InvalidKeyException, IOException {
+  public VariantExclusionSet getVariantExclusionSet(String sessionHash, int qcHashCode) throws IOException {
     return new VariantExclusionSet(this.getExcludedVariantFilename(qcHashCode), sessionHash);
   }
 
@@ -80,12 +69,12 @@ public class RPPDataset {
     return new BedFile(getBedFilename());
   }
 
-  public int getGenotypeSize(QCParam qcParam) throws IOException {
-    return getGenotypeSize(qcParam.hashCode());
+  public int getGenotypeSize(QCParam qcParam, String gnomADVersion) throws IOException {
+    return getGenotypeSize(qcParam.hashCode(), gnomADVersion);
   }
 
-  public int getGenotypeSize(int hashCode) throws IOException {
-    return GenotypesFileHandler.getNumberOfLinesGenotypes(this.getGenotypeFilename(hashCode));
+  public int getGenotypeSize(int hashCode, String gnomADVersion) throws IOException {
+    return GenotypesFileHandler.getNumberOfLinesGenotypes(this.getGenotypeFilename(hashCode, gnomADVersion));
   }
 
   public String getName() {
@@ -101,26 +90,26 @@ public class RPPDataset {
   }
 
   public String getExcludedVariantFilename(QCParam qcParam){
-    return FileUtils.getExcludedVariantFilename(this.getVCFFilename(), qcParam);
+    return FileUtils.excludedVariantFromQCedVCF(getQCVCFFilename(qcParam));
   }
 
   public String getExcludedVariantFilename(int hashCode){
-    return FileUtils.getExcludedVariantFilename(this.getVCFFilename(), hashCode);
+    return FileUtils.excludedVariantFromQCedVCF(getQCVCFFilename(hashCode));
   }
 
   public String getQCVCFFilename(QCParam qcParam){
-    return FileUtils.getQCVCFFilename(this.getVCFFilename(), qcParam);
+    return FileUtils.addQCPrefixToVCFFilename(this.getVCFFilename(), qcParam);
   }
 
   public String getQCVCFFilename(int hashCode){
-    return FileUtils.getQCVCFFilename(this.getVCFFilename(), hashCode);
+    return FileUtils.addQCPrefixToVCFFilename(this.getVCFFilename(), hashCode);
   }
 
-  public String getGenotypeFilename(QCParam qcParam){
-    return FileUtils.getQCGenotypeFilename(this.getVCFFilename(), qcParam);
+  public String getGenotypeFilename(QCParam qcParam, String gnomADVersion){
+    return FileUtils.addGnomADAndQCToVCFFilename(this.getVCFFilename(), qcParam, gnomADVersion);
   }
 
-  public String getGenotypeFilename(int hashCode){
-    return FileUtils.getQCGenotypeFilename(this.getVCFFilename(), hashCode);
+  public String getGenotypeFilename(int hashCode, String gnomADVersion){
+    return FileUtils.addGnomADAndQCToVCFFilename(this.getVCFFilename(), hashCode, gnomADVersion);
   }
 }

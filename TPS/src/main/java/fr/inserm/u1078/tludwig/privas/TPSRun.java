@@ -3,6 +3,7 @@ package fr.inserm.u1078.tludwig.privas;
 import fr.inserm.u1078.tludwig.privas.algorithms.Utils;
 import fr.inserm.u1078.tludwig.privas.algorithms.wss.WSS;
 import fr.inserm.u1078.tludwig.privas.algorithms.wss.WSSHandler;
+import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.documentation.TPSDocumentation;
 import fr.inserm.u1078.tludwig.privas.instances.ThirdPartyServer;
@@ -20,7 +21,6 @@ import java.util.Random;
  * Unit Test defined on   XXXX-XX-XX
  */
 public class TPSRun {
-
   private TPSRun() {
     //This class may not be instantiated
   }
@@ -30,114 +30,59 @@ public class TPSRun {
    *
    * @param args the command line arguments
    */
-  public static void main(String[] args) throws Exception {
-    System.err.println(MSG.MSG_WELCOME);
+  public static void main(String[] args) {
+    Main.CommandExecutor cmd = new Main.CommandExecutor(args, Main.Party.TPS);
     if (args.length < 1) {
-      usage();
+      cmd.getInstance().logInfo(Main.getUsage(Main.Party.TPS));
       return;
     }
 
     if(args[0].startsWith("-")) {
-      switch (args[0].toLowerCase()) {
-        case MSG.ARG_DEBUG:
-          debugTPServer(args);
+      switch (cmd.getCommand()) {
+        case DEBUG:
+          debugTPServer(cmd);
           break;
-        case MSG.ARG_DOC:
-          doc(args);
+        case DOC:
+          doc(cmd);
           break;
-        case MSG.ARG_KEYGEN:
-          generateTPSKeyPair(args);
+        case KEYGEN:
+          generateTPSKeyPair(cmd);
           break;
-        case MSG.ARG_WSSKEY:
-          computeWSS(args);
+        case WSS:
+          computeWSS(cmd);
           break;
-        case MSG.ARG_RANKSUMKEY:
-          computeWSSRanksum(args);
+        case RANKSUM:
+          computeWSSRanksum(cmd);
           break;
         default:
-          usage();
+          cmd.getInstance().logError(MSG.cat(MSG.UNKNOWN_COMMAND, args[0]));
+          cmd.getInstance().logInfo(Main.getUsage(Main.Party.TPS));
       }
     } else {
-      launchTPServer(args);
+      launchTPServer(cmd);
     }
   }
 
-  /**
-   * Prints the various usages of this program
-   */
-  private static void usage() {
-    System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_INSTANCES);
-    usageTPS(false);
-    System.err.println();
-    System.err.println(MSG.MSG_TOOLS);
-    usageKeygen(false);
-    usageComputeWSS(false);
-    usageComputeWSSRanksum(false);
-  }
-
-  public static void doc(String[] args) throws Exception {
-    String outFile = "TPS.rst";
-    PrintWriter out = new PrintWriter(new FileWriter(outFile));
-    out.println(TPSDocumentation.getDocumentation());
-    out.close();
-  }
-
-  /**
-   * Prints the usage message for launching an instance of TPS server
-   *
-   * @param prefix - should print the "Usage :" prefix ?
-   */
-  private static void usageTPS(boolean prefix) {
-    if (prefix)
-      System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_DESC_TPS);
-    System.err.println(MSG.MSG_CMD_TPS);
+  public static void doc(Main.CommandExecutor cmd) {
+    try {
+      String outFile = FileFormat.FILE_TPS_DOC;
+      PrintWriter out = new PrintWriter(new FileWriter(outFile));
+      out.println(TPSDocumentation.getDocumentation());
+      out.close();
+    } catch(IOException | RuntimeException e) {
+      cmd.fail(e);
+    }
   }
 
   /**
    * Launching an instance of TPS Server
-   *
-   * @param args - the command line arguments
    */
-  private static void launchTPServer(String[] args) throws Exception {
+  private static void launchTPServer(Main.CommandExecutor cmd) {
     String sessionId;
     String workingDir;
     int nbCore;
     long randomSeed;
-    try {
-      sessionId = args[0];
-      workingDir = args[1];
-      nbCore = new Integer(args[2]);
-      String seed = args[3];
-      if (MSG.TPS_RANDOM.equals(seed.toLowerCase()))
-        randomSeed = (new Random()).nextLong();
-      else
-        randomSeed = new Long(seed);
-    } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
-      usageTPS(true);
-      return;
-    }
-    ThirdPartyServer tps = new ThirdPartyServer(sessionId, workingDir, randomSeed);
-    tps.addLogListener(new StandardErrorLogger());
-    try {
-      tps.start(nbCore);
-    } catch (Exception e) {
-      try {
-        tps.statusError(MSG.MSG_FAIL_TPS + e.getMessage());
-      } catch (IOException ex) {
-        //Ignore
-      }
-      System.err.println(MSG.MSG_FAIL_TPS + e.getMessage());
-      throw e;
-    }
-  }
-
-  private static void debugTPServer(String[] args) throws Exception {
-    String sessionId;
-    String workingDir;
-    int nbCore;
-    long randomSeed;
+    String[] args = cmd.getArgs();
     try {
       sessionId = args[1];
       workingDir = args[2];
@@ -147,22 +92,45 @@ public class TPSRun {
         randomSeed = (new Random()).nextLong();
       else
         randomSeed = new Long(seed);
-    } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
-      usageTPS(true);
+    } catch (RuntimeException e) {
+      cmd.fail(e);
+      return;
+    }
+    ThirdPartyServer tps = new ThirdPartyServer(sessionId, workingDir, randomSeed);
+    tps.addLogListener(new StandardErrorLogger());
+    try {
+      tps.start(nbCore);
+    } catch (RuntimeException | IOException e) {
+      tps.statusError(cmd.getCommand().getFail() + e.getMessage());
+      cmd.fail(e);
+    }
+  }
+
+  private static void debugTPServer(Main.CommandExecutor cmd) {
+    String sessionId;
+    String workingDir;
+    int nbCore;
+    long randomSeed;
+    String[] args = cmd.getArgs();
+    try {
+      sessionId = args[1];
+      workingDir = args[2];
+      nbCore = new Integer(args[3]);
+      String seed = args[4];
+      if (MSG.TPS_RANDOM.equalsIgnoreCase(seed))
+        randomSeed = (new Random()).nextLong();
+      else
+        randomSeed = new Long(seed);
+    } catch (RuntimeException e) {
+      cmd.fail(e);
       return;
     }
     ThirdPartyServer tps = new ThirdPartyServer(sessionId, workingDir, randomSeed);
     tps.addLogListener(new StandardErrorLogger());
     try {
       tps.debug(nbCore);
-    } catch (Exception e) {
-      try {
-        tps.statusError(MSG.MSG_FAIL_TPS + e.getMessage());
-      } catch (IOException ex) {
-        //Ignore
-      }
-      System.err.println(MSG.MSG_FAIL_TPS + e.getMessage());
-      throw e;
+    } catch (RuntimeException |IOException e) {
+      cmd.fail(e);
     }
   }
 
@@ -172,58 +140,27 @@ public class TPSRun {
    * Stores the private key in a file
    * The Private key will be deleted the first time it is used, ensuring that it is not reusable
    */
-  private static void generateTPSKeyPair(String[] args) {
+  private static void generateTPSKeyPair(Main.CommandExecutor cmd) {
+    String[] args = cmd.getArgs();
     try {
       String dir = args[1];
       String session = args[2];
-      ThirdPartyServer.generateKeyPair(dir, session);
-    } catch (ArrayIndexOutOfBoundsException e) {
-      usageKeygen(true);
+      ThirdPartyServer.generateKeyPair(dir, session, cmd.getInstance());
+    } catch (IOException | RuntimeException e) {
+      cmd.fail(e);
     }
   }
 
   /**
-   * Prints the usage message for generating an RSA keypair
-   *
-   * @param prefix - should print the "Usage :" prefix ?
-   */
-  private static void usageKeygen(boolean prefix) {
-    if (prefix)
-      System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_DESC_KEYGEN);
-    System.err.println(MSG.MSG_CMD_KEYGEN);
-  }
-
-  /**
-   * Prints the usage message for compute a WSS association test
-   *
-   * @param prefix - should print the "Usage :" prefix ?
-   */
-  private static void usageComputeWSS(boolean prefix) {
-    if (prefix)
-      System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_DESC_WSS);
-    System.err.println(MSG.MSG_CMD_WSS);
-  }
-
-  private static void usageComputeWSSRanksum(boolean prefix) {
-    if (prefix)
-      System.err.println(MSG.MSG_USAGE);
-    System.err.println(MSG.MSG_DESC_RANKSUM);
-    System.err.println(MSG.MSG_CMD_RANKSUM);
-  }
-
-  /**
    * Compute a WSS association test (locally)
-   *
-   * @param args
    */
-  private static void computeWSS(String[] args) {
+  private static void computeWSS(Main.CommandExecutor cmd) {
     String resultFile;
     int nbThreads;
     long randomSeed;
     String genotypeListFilename;
     String phenotypeFilename;
+    String[] args = cmd.getArgs();
     try {
       genotypeListFilename = args[1];
       phenotypeFilename = args[2];
@@ -231,39 +168,36 @@ public class TPSRun {
       randomSeed = new Long(args[4]);
       resultFile = args[5];
       try {
-        WSSHandler wss = new WSSHandler(nbThreads, randomSeed);
+        WSSHandler wss = new WSSHandler(nbThreads, randomSeed, cmd.getInstance());
         FileOutputStream out = new FileOutputStream(resultFile);
         byte[] results = wss.start(genotypeListFilename, phenotypeFilename);
         out.write(results);
         out.close();
       } catch (Exception e1) {
-        System.err.println(MSG.MSG_FAIL_WSS + e1.getMessage());
-        e1.printStackTrace();
+        cmd.fail(e1);
       }
-    } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
-      usageComputeWSS(true);
-      e.printStackTrace();
+    } catch (RuntimeException e) {
+      cmd.fail(e);
     }
   }
 
-  private static void computeWSSRanksum(String[] args){
+  private static void computeWSSRanksum(Main.CommandExecutor cmd){
+    String[] args = cmd.getArgs();
     try {
       String gene = args[1];
       String genotypeFile = args[2];
       boolean[] phenotypes = Utils.parsePhenotypes(args[3]);
 
       int affected = 0;
-      for(int i = 0 ; i < phenotypes.length; i++)
-        if(phenotypes[i])
+      for (boolean phenotype : phenotypes)
+        if (phenotype)
           affected++;
       int unaffected = phenotypes.length - affected;
 
-      WSS wss = new WSS(gene, phenotypes, genotypeFile);
-      System.out.println(gene+"\tpheno="+Utils.getTextPhenotype(phenotypes)+"\taff="+affected+"\tunaff="+unaffected+"\tranksum="+wss.start(phenotypes)+"\toriginal="+wss.testUnoptimized(phenotypes));
-    } catch (Exception e) {
-      e.printStackTrace();
+      WSS wss = new WSS(gene, phenotypes, genotypeFile, cmd.getInstance());
+      cmd.getInstance().logDebug(gene+"\tphenotype="+Utils.getTextPhenotype(phenotypes)+"\taffected="+affected+"\tunaffected="+unaffected+"\tranksum="+wss.start(phenotypes)+"\toriginal="+wss.testUnoptimized(phenotypes));
+    } catch (RuntimeException | IOException e) {
+      cmd.fail(e);
     }
   }
-
-
 }

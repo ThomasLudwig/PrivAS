@@ -12,6 +12,7 @@ public class SendClientData extends SessionMessage {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public SendClientData() {
   }
 
@@ -36,7 +37,7 @@ public class SendClientData extends SessionMessage {
   /**
    * Gets the AES Key, encrypted with the TPS Public RSA Key
    *
-   * @return
+   * @return the AES Key, encrypted with the TPS Public RSA Key
    */
   public final String getEncryptedAESKey() {
     return this.getValue(Key.ENCRYPTED_AES);
@@ -55,7 +56,7 @@ public class SendClientData extends SessionMessage {
   /**
    * Gets the Client Data, encrypted with the AES Key
    *
-   * @return
+   * @return the Client Data, encrypted with the AES Key
    */
   public final String getEncryptedClientData() {
     return this.getValue(Key.ENCRYPTED_CLIENT_DATA);
@@ -74,7 +75,7 @@ public class SendClientData extends SessionMessage {
   /**
    * Gets the selected algorithm, and its parameters
    *
-   * @return
+   * @return the selected algorithm, and its parameters
    */
   public final String getAlgorithm() {
     return this.getValue(Key.ALGORITHM);
@@ -92,8 +93,8 @@ public class SendClientData extends SessionMessage {
 
   /**
    * Sets the encryptedClientExcludedVariants parameter
-   * @param encryptedClientExcludedVariants
-   * @throws EmptyParameterException
+   * @param encryptedClientExcludedVariants the encrypted Client Excluded Variants parameter
+   * @throws EmptyParameterException if the value is null
    */
   private void setEncryptedClientExcludedVariants(String encryptedClientExcludedVariants) throws EmptyParameterException {
     this.set(Key.ENCRYPTED_CLIENT_EXCLUDED_VARIANT, encryptedClientExcludedVariants);
@@ -101,7 +102,7 @@ public class SendClientData extends SessionMessage {
   
   /**
    * Gets the encryptedClientExcludedVariants parameter
-   * @return 
+   * @return the encryptedClientExcludedVariants parameter
    */
   public final String getEncryptedClientExcludedVariants() {
     return this.getValue(Key.ENCRYPTED_CLIENT_EXCLUDED_VARIANT);

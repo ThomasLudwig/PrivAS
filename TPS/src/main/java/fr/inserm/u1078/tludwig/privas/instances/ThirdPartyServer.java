@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,7 +38,7 @@ import java.util.HashMap;
  *
  * Javadoc complete on 2019-08-06
  */
-public class ThirdPartyServer extends Instance {
+public class ThirdPartyServer extends CommandLineInstance {
 
   public static final int IDX_VARIANT = 0;
   public static final int IDX_GENE = 1;
@@ -128,7 +127,7 @@ public class ThirdPartyServer extends Instance {
     String tmpDir = directory + File.separator + FileFormat.DIRECTORY_TMP;
     File dir = new File(tmpDir);
     if (!dir.exists() && !dir.mkdirs())
-      System.err.println(MSG.cat(MSG.FAIL_MKDIR, dir.getAbsolutePath()));
+      logError(MSG.cat(MSG.FAIL_MKDIR, dir.getAbsolutePath()));
     this.statusFilename = sessionDir + File.separator + FileFormat.FILE_TPS_STATUS;
     this.randomSeed = randomSeed;
   }
@@ -140,24 +139,21 @@ public class ThirdPartyServer extends Instance {
    *
    * @param directory the path to the directory containing the sessions
    * @param session   the ID of the session
+   * @param log the instance that will log events
    */
-  public static void generateKeyPair(String directory, String session) {
-    try {
-      KeyPair kp = Crypto.generateRSAKeyPair();
-      String sessionDir = directory + File.separator + session;
-      File file = new File(sessionDir);
-      if (!file.exists() && !file.mkdirs())
-        throw new IOException(MSG.cat(MSG.FAIL_MKDIR, sessionDir));
-      String privateFile = sessionDir + File.separator + FileFormat.FILE_PRIVATE_RSA_KEY;
-      String publicFile = sessionDir + File.separator + FileFormat.FILE_PUBLIC_RSA_KEY;
-      Crypto.savePrivateRSAKey(kp, privateFile);
-      System.err.println("Saving private [" + privateFile + "]");
-      Crypto.savePublicRSAKey(kp, publicFile);
-      System.err.println("Saving public [" + publicFile + "]");
-      System.out.println(Crypto.getPublicRSAKeyAsString(kp));
-    } catch (IOException | NoSuchAlgorithmException e) {
-      System.err.println(MSG.cat(MSG.MSG_FAIL_KEYGEN, e));
-    }
+  public static void generateKeyPair(String directory, String session, Instance log) throws IOException {
+    KeyPair kp = Crypto.generateRSAKeyPair();
+    String sessionDir = directory + File.separator + session;
+    File file = new File(sessionDir);
+    if (!file.exists() && !file.mkdirs())
+      throw new IOException(MSG.cat(MSG.FAIL_MKDIR, sessionDir));
+    String privateFile = sessionDir + File.separator + FileFormat.FILE_PRIVATE_RSA_KEY;
+    String publicFile = sessionDir + File.separator + FileFormat.FILE_PUBLIC_RSA_KEY;
+    Crypto.savePrivateRSAKey(kp, privateFile);
+    log.logInfo(MSG.cat(MSG.TPS_SAVING_PRIVATE_KEY, privateFile));
+    Crypto.savePublicRSAKey(kp, publicFile);
+    log.logInfo(MSG.cat(MSG.TPS_SAVING_PUBLIC_KEY, publicFile));
+    System.out.println(Crypto.getPublicRSAKeyAsString(kp));
   }
 
   /**
@@ -165,9 +161,9 @@ public class ThirdPartyServer extends Instance {
    * The selected algorithm will be performed with its provided parameters
    *
    * @param nbThreads the maximum number of cores to use
-   * @throws Exception
+   * @throws IOException If an I/O error occurs while writing status to the file
    */
-  public void start(int nbThreads) throws Exception { //DONE trycatch all errors coming from the algorithm and propagate through TPStatus.ERROR
+  public void start(int nbThreads) throws IOException { //DONE trycatch all errors coming from the algorithm and propagate through TPStatus.ERROR
     this.started = new Date().getTime();
     this.statusStarted(MSG.TPS_STARTED, false);
     PrivateKey privateKey = Crypto.readAndDeletePrivateRSAKey(privateKeyFilename);
@@ -195,10 +191,10 @@ public class ThirdPartyServer extends Instance {
         }
         if (permutation != -1) {
           HashMap<String, ArrayList<String>> genotypes = prepareWSSData(frqThreshold);
-          WSSHandler wssHandler = new WSSHandler(permutation, nbThreads, randomSeed);
+          WSSHandler wssHandler = new WSSHandler(permutation, nbThreads, randomSeed, this);
           wssHandler.setThirdPartyServer(this);
           if (genotypes == null) {
-            System.err.println(MSG.WSS_NO_COMMON_GENE);
+            logError(MSG.WSS_NO_COMMON_GENE);
             //this.done();
             return;
           }
@@ -218,15 +214,22 @@ public class ThirdPartyServer extends Instance {
           out.close();
         }
         break;
-
-      default:
-        this.statusError("Unexpected Algorithm ["+algo[0]+"]");
+      case Constants.ALGO_RAVAGES_WSS:
+        this.statusError(MSG.cat(MSG.TPS_UNSUPPORTED_ALGORITHM, Constants.ALGO_RAVAGES_WSS));
         break;
+      case Constants.ALGO_RAVAGES_SKAT:
+        this.statusError(MSG.cat(MSG.TPS_UNSUPPORTED_ALGORITHM, Constants.ALGO_RAVAGES_SKAT));
+        break;
+      case Constants.ALGO_RAVAGES_SKAT_O:
+        this.statusError(MSG.cat(MSG.TPS_UNSUPPORTED_ALGORITHM, Constants.ALGO_RAVAGES_SKAT_O));
+        break;
+      default:
+        this.statusError(MSG.cat(MSG.TPS_UNKNOWN_ALGORITHM, algo[0]));
     }
     this.statusDone();
   }
   
-  public void debug(int nbThreads) throws Exception {
+  public void debug(int nbThreads) throws IOException {
     this.started = new Date().getTime();
     this.statusStarted(MSG.TPS_STARTED, false);
     this.statusStarted(MSG.TPS_RSA, false);
@@ -253,10 +256,10 @@ public class ThirdPartyServer extends Instance {
         }
         if (permutation != -1) {
           HashMap<String, ArrayList<String>> genotypes = prepareWSSData(frqThreshold);
-          WSSHandler wssHandler = new WSSHandler(permutation, nbThreads, randomSeed);
+          WSSHandler wssHandler = new WSSHandler(permutation, nbThreads, randomSeed, this);
           wssHandler.setThirdPartyServer(this);
           if (genotypes == null) {
-            System.err.println(MSG.WSS_NO_COMMON_GENE);
+            logError(MSG.WSS_NO_COMMON_GENE);
             //this.done();
             return;
           }
@@ -275,10 +278,17 @@ public class ThirdPartyServer extends Instance {
           out.close();
         }
         break;
-
-      default:
-        this.statusError("Unexpected Algorithm ["+algo[0]+"]");
+      case Constants.ALGO_RAVAGES_WSS:
+        this.statusError(MSG.cat(MSG.TPS_UNSUPPORTED_ALGORITHM, Constants.ALGO_RAVAGES_WSS));
         break;
+      case Constants.ALGO_RAVAGES_SKAT:
+        this.statusError(MSG.cat(MSG.TPS_UNSUPPORTED_ALGORITHM, Constants.ALGO_RAVAGES_SKAT));
+        break;
+      case Constants.ALGO_RAVAGES_SKAT_O:
+        this.statusError(MSG.cat(MSG.TPS_UNSUPPORTED_ALGORITHM, Constants.ALGO_RAVAGES_SKAT_O));
+        break;
+      default:
+        this.statusError(MSG.cat(MSG.TPS_UNKNOWN_ALGORITHM, algo[0]));
     }
     this.statusDone();
   }
@@ -289,9 +299,8 @@ public class ThirdPartyServer extends Instance {
    * @param key         Key of the Status
    * @param msg         Message of the Status
    * @param addDuration do we add elapsed time since start ?
-   * @throws IOException
    */
-  private void updateStatusFile(TPStatus.State key, String msg, boolean addDuration) throws IOException {
+  private void updateStatusFile(TPStatus.State key, String msg, boolean addDuration) {
     String details = msg;
     if (addDuration) {
       long diff = new Date().getTime() - started;
@@ -299,11 +308,16 @@ public class ThirdPartyServer extends Instance {
       details += " (in " + duration + ")";
     }
     TPStatus tpStatus = new TPStatus(new Date().getTime(), key, details);
-    System.err.println(tpStatus);
+    logInfo(tpStatus.toString());
 
-    PrintWriter out = new PrintWriter(new FileWriter(this.statusFilename, true));
-    out.println(tpStatus);
-    out.close();
+    try {
+      PrintWriter out = new PrintWriter(new FileWriter(this.statusFilename, true));
+      out.println(tpStatus);
+      out.close();
+    } catch(IOException e){
+      logError(MSG.TPS_STATUS_UPDATE_KO);
+      logError(e);
+    }
   }
 
   /**
@@ -311,9 +325,8 @@ public class ThirdPartyServer extends Instance {
    *
    * @param msg         Message of the Status
    * @param addDuration do we add elapsed time since start ?
-   * @throws IOException
    */
-  public void statusRunning(String msg, boolean addDuration) throws IOException {
+  public void statusRunning(String msg, boolean addDuration) {
     this.updateStatusFile(TPStatus.State.RUNNING, msg, addDuration);
   }
   
@@ -322,9 +335,8 @@ public class ThirdPartyServer extends Instance {
    *
    * @param msg         Message of the Status
    * @param addDuration do we add elapsed time since start ?
-   * @throws IOException
    */
-  public void statusStarted(String msg, boolean addDuration) throws IOException {
+  public void statusStarted(String msg, boolean addDuration) {
     this.updateStatusFile(TPStatus.State.STARTED, msg, addDuration);
   }
   
@@ -332,18 +344,16 @@ public class ThirdPartyServer extends Instance {
    * Sets the ThirdPartyServer status as ERROR
    * 
    * @param msg Message of the Status
-   * @throws IOException 
    */
-  public void statusError(String msg) throws IOException{
+  public void statusError(String msg) {
     this.updateStatusFile(TPStatus.State.ERROR, msg, false);
   }
 
   /**
    * Sets the ThirdPartyServer status as DONE
    *
-   * @throws IOException
    */
-  private void statusDone() throws IOException {
+  private void statusDone() {
     this.updateStatusFile(TPStatus.State.DONE, MSG.TPS_DONE, true);
   }
   
@@ -358,9 +368,9 @@ public class ThirdPartyServer extends Instance {
    * Prepare the WSS Input Data by parsing the session's files
    *
    * @return Map of genotypes for each genomic region (gene), the first columns are relative to the affected individuals, the last ones to the unaffected
-   * @throws Exception
+   * @throws IOException If an I/O error occurs while reading from the RPP's data file or the client's excluded variants file
    */
-  private HashMap<String, ArrayList<String>> prepareWSSData(double frqThreshold) throws Exception {
+  private HashMap<String, ArrayList<String>> prepareWSSData(double frqThreshold) throws IOException {
     UniversalReader in = new UniversalReader(this.rppExcludedVariantsFilename);
     VariantExclusionSet rppExcludedVariants = VariantExclusionSet.deserialize(in.readLine());
     in.close();
@@ -396,6 +406,7 @@ public class ThirdPartyServer extends Instance {
 
       //here we populate the genotypes for each variant in each gene
       HashMap<String, ArrayList<String>> genotypes = new HashMap<>();
+      HashMap<String, ArrayList<String>> variants = new HashMap<>();
       statusStarted(MSG.WSS_OK_PARSE, true);
       int pooledFrequencyFiltered = 0;
       failedFisher = 0;
@@ -405,17 +416,28 @@ public class ThirdPartyServer extends Instance {
         HashMap<String, String> variantLineControl = extractVariantLines(rppData.get(gene));
 
         ArrayList<String> merge = merge(variantLineCase, variantLineControl, missingCases, missingControl);
+        //PrintWriter out = null;
         pooledFrequencyFiltered += removeAlleleFrequency(merge, frqThreshold);
+        ArrayList<String> mergedGenotypes = new ArrayList<>();
+        ArrayList<String> variantNames = new ArrayList<>();
 
-        if(!merge.isEmpty())
-          genotypes.put(gene, merge);
+        for(String line : merge){
+          int i =  line.indexOf('\t');
+          variantNames.add(line.substring(0, i));
+          mergedGenotypes.add(line.substring(i+1));
+        }
+
+        if(!mergedGenotypes.isEmpty()) {
+          genotypes.put(gene, mergedGenotypes);
+          variants.put(gene, variantNames);
+        }
       }
       statusStarted(MSG.cat(MSG.WSS_FILTERED_FREQUENCY, pooledFrequencyFiltered), false);
       statusStarted(MSG.cat(MSG.WSS_FILTERED_FISHER, failedFisher), false);
       statusStarted(MSG.WSS_OK_FILTER, true);
 
       //debug export input data !
-      export(genotypes);
+      export(genotypes, variants);
       
       return genotypes;
     }
@@ -428,7 +450,8 @@ public class ThirdPartyServer extends Instance {
     double an = 0;
     double ac = 0;
 
-    for(String g : f){
+    for(int i = 1 ; i < f.length; i++){
+      String g = f[i];
       int v = new Integer(g);
       if(v != -1){
         an += 2;
@@ -438,34 +461,49 @@ public class ThirdPartyServer extends Instance {
     return ac/an > frq;
   }
 
+  /**
+   * Remove lines where the frequency is KO
+   * @param lines the lines to prune
+   * @param frq the theshold frequency
+   * @return the number of lines filtered out
+   */
   private int removeAlleleFrequency(ArrayList<String> lines, double frq){
-    ArrayList<String> filtered = new ArrayList<>();
-    for(String line : lines)
-      if(filterPooledFrequency(line, frq))
-        filtered.add(line);
+    ArrayList<Integer> filtered = new ArrayList<>();
+    for(int i = 0 ; i < lines.size(); i++)
+      if(filterPooledFrequency(lines.get(i), frq))
+        filtered.add(i);
 
-    lines.removeAll(filtered);
+    //remove lines, by INDEX, in desc order
+    for(int i = filtered.size() - 1 ; i >= 0; i--) {
+      lines.remove((int)filtered.get(i));//here ignore warning on String != Integer, remove has 2 signature
+    }
     return filtered.size();
   }
-  
-  private void export(HashMap<String, ArrayList<String>> genotypes) throws IOException{
+
+  @SuppressWarnings("ResultOfMethodCallIgnored")
+  private void export(HashMap<String, ArrayList<String>> genotypes, HashMap<String, ArrayList<String>> variants) throws IOException{
     String debugDir = this.sessionDir + File.separator + "debug";
     new File(debugDir).mkdirs();
     
     for(String gene : genotypes.keySet()){
-        PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator + "debug."+gene+".geno"));
-        for(String line : genotypes.get(gene))
-          out.println(line);
-        out.close();
+      PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator + "debug."+gene+".geno"));
+      ArrayList<String> vs = variants.get(gene);
+      ArrayList<String> gs = genotypes.get(gene);
+      for(int i = 0 ; i < vs.size(); i++){
+        String v = vs.get(i);
+        String g = gs.get(i);
+        out.println(v + "\t" + g);
       }
-      PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator +"debug.pheno"));
-      StringBuilder sb = new StringBuilder();
-      for(int i = 0 ; i < nbAffected; i++)
-        sb.append("\t1");
-      for(int i = 0 ; i < nbUnaffected; i++)
-        sb.append("\t0");
-      out.println(sb.substring(1));
       out.close();
+    }
+    PrintWriter out = new PrintWriter(new FileWriter(debugDir + File.separator +"debug.pheno"));
+    StringBuilder sb = new StringBuilder();
+    for(int i = 0 ; i < nbAffected; i++)
+      sb.append("\t1");
+    for(int i = 0 ; i < nbUnaffected; i++)
+      sb.append("\t0");
+    out.println(sb.substring(1));
+    out.close();
   }
 
   /**
@@ -476,7 +514,7 @@ public class ThirdPartyServer extends Instance {
    * @param vUnaffected       genotypes for the unaffected individuals
    * @param missingAffected   String of nbAffected "-1" columns, if a variants is not present in the affected dataset
    * @param missingUnaffected String of nbUnaffected "-1" columns, if a variants is not present in the unaffected dataset
-   * @return
+   * @return the merged lines
    */
   private ArrayList<String> merge(HashMap<String, String> vAffected, HashMap<String, String> vUnaffected, String missingAffected, String missingUnaffected) {
     ArrayList<String> merge = new ArrayList<>();
@@ -486,12 +524,12 @@ public class ThirdPartyServer extends Instance {
       String lCase = vAffected.get(variant);
       String lControl = vUnaffected.get(variant);
       if (lControl == null) //add if only on the client's side
-        merge.add(lCase + "\t" + missingUnaffected);
+        merge.add(variant+ "\t" + lCase + "\t" + missingUnaffected);
       else {  // if variant is common to both groups, perform a fisher test
         if(fet == null)
           fet = new FisherExactTest(lCase.split("\t").length + lControl.split("\t").length);
         if(checkCallrate(fet, lCase, lControl))
-          merge.add(lCase + "\t" + lControl);
+          merge.add(variant+ "\t" + lCase + "\t" + lControl);
         else
           failedFisher++;
       }
@@ -499,11 +537,11 @@ public class ThirdPartyServer extends Instance {
 
     for (String variant : vUnaffected.keySet()) //process rpp variants that aren't common to client
       if (vAffected.get(variant) == null) 
-        merge.add(missingAffected + "\t" + vUnaffected.get(variant));      
+        merge.add(variant+ "\t" + missingAffected + "\t" + vUnaffected.get(variant));
     
     return merge;
   }
-  
+
   private static boolean checkCallrate(FisherExactTest fet, String lCase, String lControl){
     int missingCase = 0;
     int missingControl = 0;
@@ -517,15 +555,15 @@ public class ThirdPartyServer extends Instance {
       if(new Integer(s) == -1)      
         missingControl++;
     
-    double pval = fet.twoTailed(fCase.length - missingCase, missingCase, fControl.length - missingControl, missingControl);
-    return pval > 0.001;
+    double pvalue = fet.twoTailed(fCase.length - missingCase, missingCase, fControl.length - missingControl, missingControl);
+    return pvalue > 0.001;
   }
 
   /**
    * A String nb x "-1" columns, representation missing data for nb individuals
    *
    * @param nb number of missing individuals
-   * @return
+   * @return the line for nb missing individual
    */
   private static String missingLine(int nb) {
     StringBuilder sb = new StringBuilder();
@@ -538,7 +576,7 @@ public class ThirdPartyServer extends Instance {
    * Builds a Map associating a genomic region (gene) as Key to as line of genotypes as value
    *
    * @param lines lines from a Genotype File
-   * @return
+   * @return association map
    */
   private static HashMap<String, String> extractVariantLines(ArrayList<String> lines) {
     HashMap<String, String> map = new HashMap<>();
@@ -556,7 +594,7 @@ public class ThirdPartyServer extends Instance {
    * Reads the data from the RPP
    * @param  excluded Variants Excluded by the Client and/or the Server in hashed values
    * @return A map of genotypes for each genomic region (gene)
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while reading from the file of excluded variants
    */
   private HashMap<String, ArrayList<String>> readRPPData(VariantExclusionSet excluded) throws IOException {
     HashMap<String, ArrayList<String>> map = new HashMap<>();
@@ -582,9 +620,9 @@ public class ThirdPartyServer extends Instance {
    * The input file the decrypted using the AES key
    * @param  excluded Variants Excluded by the Client and/or the Server in hashed values
    * @return A map of genotypes for each genomic region (gene)
-   * @throws Exception
+   * @throws IOException If an I/O error occurs while reading from the client data file
    */
-  private HashMap<String, ArrayList<String>> readClientData(VariantExclusionSet excluded) throws Exception {
+  private HashMap<String, ArrayList<String>> readClientData(VariantExclusionSet excluded) throws IOException {
     UniversalReader in = new UniversalReader(this.clientFilename);
 
     HashMap<String, ArrayList<String>> map = new HashMap<>();

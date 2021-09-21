@@ -12,6 +12,7 @@ public class SendResults extends SessionMessage {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public SendResults() {
   }
 
@@ -30,7 +31,7 @@ public class SendResults extends SessionMessage {
   /**
    * Gets the Computation Results, encrypted with the AES Key
    *
-   * @return
+   * @return the Computation Results, encrypted with the AES Key
    */
   public final String getEncryptedResults() {
     return this.getValue(Key.ENCRYPTED_RESULTS);

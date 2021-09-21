@@ -55,7 +55,7 @@ public class CompressedBlockOutputStream extends FilterOutputStream {
    * Constructs a CompressedBlockOutputStream that writes to the given underlying output stream 'os' and sends a compressed block once 'size' byte have been
    * written. The default compression strategy and level are used.
    *
-   * @param os the outputstream to write to.
+   * @param os the outputStream to write to.
    */
   public CompressedBlockOutputStream(final OutputStream os) {
     this(os, SIZE, Deflater.DEFAULT_COMPRESSION, Deflater.DEFAULT_STRATEGY);
@@ -65,7 +65,7 @@ public class CompressedBlockOutputStream extends FilterOutputStream {
    * Constructs a CompressedBlockOutputStream that writes to the given underlying output stream 'os' and sends a compressed block once 'size' byte have been
    * written. The compression level and strategy should be specified using the constants defined in {#link #Deflator}.
    *
-   * @param os       the outputstream to write to.
+   * @param os       the outputStream to write to.
    * @param size     the buffer size to use.
    * @param level    the compression level.
    * @param strategy the compression strategy.
@@ -117,17 +117,17 @@ public class CompressedBlockOutputStream extends FilterOutputStream {
   }
 
   @Override
-  public void write(final byte[] b, int boff, int blen) throws IOException {
-    while (this.len + blen > this.inBuf.length) {
+  public void write(final byte[] b, int bOffset, int bLength) throws IOException {
+    while (this.len + bLength > this.inBuf.length) {
       final int toCopy = this.inBuf.length - this.len;
-      System.arraycopy(b, boff, this.inBuf, this.len, toCopy);
+      System.arraycopy(b, bOffset, this.inBuf, this.len, toCopy);
       this.len += toCopy;
       this.compressAndSend();
-      boff += toCopy;
-      blen -= toCopy;
+      bOffset += toCopy;
+      bLength -= toCopy;
     }
-    System.arraycopy(b, boff, this.inBuf, this.len, blen);
-    this.len += blen;
+    System.arraycopy(b, bOffset, this.inBuf, this.len, bLength);
+    this.len += bLength;
   }
 
   @Override

@@ -12,6 +12,7 @@ public class AckClientData extends SessionMessage {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public AckClientData() {
   }
 

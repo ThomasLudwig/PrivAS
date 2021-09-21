@@ -70,7 +70,7 @@ public final class Crypto {
   /**
    * Generates a random AES key of AES_BITS bits
    *
-   * @return
+   * @return a random AES key
    */
   public static String generateAESKey() {
     byte[] key = new byte[AES_BITS / 8];
@@ -85,14 +85,9 @@ public final class Crypto {
    * @param key     the AES Key
    * @param message the message
    * @return the encrypted message
-   * @throws NoSuchAlgorithmException
-   * @throws NoSuchPaddingException
-   * @throws InvalidKeyException
-   * @throws InvalidAlgorithmParameterException
-   * @throws IllegalBlockSizeException
-   * @throws BadPaddingException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static String encryptAES(String key, String message) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
+  public static String encryptAES(String key, String message) throws CryptoException {
     //Convert String to AES SecretKey
     SecretKey secretKey = new SecretKeySpec(Base64.getDecoder().decode(key), AES);
 
@@ -100,22 +95,26 @@ public final class Crypto {
     byte[] iv = new byte[12]; //For GCM a 12 byte (not 16!) random (or counter) byte-array is recommend by NIST because it’s faster and more secure.
     new SecureRandom().nextBytes(iv); //NEVER REUSE THIS IV WITH SAME KEY
 
-    //Create a Cipher and init to parameters
-    final Cipher cipher = Cipher.getInstance(AES_CIPHER);
-    cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(AES_BITS, iv));
+    try {
+      //Create a Cipher and init to parameters
+      final Cipher cipher = Cipher.getInstance(AES_CIPHER);
+      cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(AES_BITS, iv));
 
-    //Encrypt the message
-    byte[] cipherText = cipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
+      //Encrypt the message
+      byte[] cipherText = cipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
 
-    //Concat everything into a Message
-    ByteBuffer byteBuffer = ByteBuffer.allocate(4 + iv.length + cipherText.length);
-    byteBuffer.putInt(iv.length);
-    byteBuffer.put(iv);
-    byteBuffer.put(cipherText);
-    byte[] cipherMessage = byteBuffer.array();
+      //Concat everything into a Message
+      ByteBuffer byteBuffer = ByteBuffer.allocate(4 + iv.length + cipherText.length);
+      byteBuffer.putInt(iv.length);
+      byteBuffer.put(iv);
+      byteBuffer.put(cipherText);
+      byte[] cipherMessage = byteBuffer.array();
 
-    //Encode the message as a String
-    return Base64.getEncoder().withoutPadding().encodeToString(cipherMessage);
+      //Encode the message as a String
+      return Base64.getEncoder().withoutPadding().encodeToString(cipherMessage);
+    } catch(BadPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException | InvalidKeyException |InvalidAlgorithmParameterException | NoSuchPaddingException e) {
+      throw new CryptoException("Could not encrypt message", e);
+    }
   }
 
   /**
@@ -124,14 +123,9 @@ public final class Crypto {
    * @param key              the AES key
    * @param encryptedMessage the encrypted message
    * @return the decrypted message
-   * @throws NoSuchAlgorithmException
-   * @throws NoSuchPaddingException
-   * @throws InvalidKeyException
-   * @throws InvalidAlgorithmParameterException
-   * @throws IllegalBlockSizeException
-   * @throws BadPaddingException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static String decryptAES(String key, String encryptedMessage) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
+  public static String decryptAES(String key, String encryptedMessage) throws CryptoException {
     //Convert String to AES SecretKey
     SecretKey secretKey = new SecretKeySpec(Base64.getDecoder().decode(key), AES);
 
@@ -145,19 +139,23 @@ public final class Crypto {
     byte[] iv = new byte[ivLength];
     byteBuffer.get(iv);
 
-    //Create a Cipher and init to parameters
-    final Cipher cipher = Cipher.getInstance(AES_CIPHER);
-    cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(AES_BITS, iv));
+    try {
+      //Create a Cipher and init to parameters
+      final Cipher cipher = Cipher.getInstance(AES_CIPHER);
+      cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(AES_BITS, iv));
 
-    //Recover the encryptedText
-    byte[] cipherText = new byte[byteBuffer.remaining()];
-    byteBuffer.get(cipherText);
+      //Recover the encryptedText
+      byte[] cipherText = new byte[byteBuffer.remaining()];
+      byteBuffer.get(cipherText);
 
-    //Decrypt the Message
-    byte[] plainText = cipher.doFinal(cipherText);
+      //Decrypt the Message
+      byte[] plainText = cipher.doFinal(cipherText);
 
-    //return as a String
-    return new String(plainText);
+      //return as a String
+      return new String(plainText);
+    } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidAlgorithmParameterException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+      throw new CryptoException("Could not decrypt message", e);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +165,7 @@ public final class Crypto {
    * Format bytes array to String in Hex Format (0-9A-F) (For an array of N bytes, the resulting String has 2*N Bits)
    *
    * @param bytes bytes array to be formatted
-   * @return
+   * @return String in Hex Format (0-9A-F)
    */
   private static String bytes2Hex(byte[] bytes) {
     StringBuilder sb = new StringBuilder();
@@ -203,13 +201,20 @@ public final class Crypto {
    * @param salt    the salt used to hash
    * @param message the message
    * @return the hashed message
-   * @throws NoSuchAlgorithmException          - when Mac.getInstance(SHA256) fails
-   * @throws java.security.InvalidKeyException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static String hashSHA256(String salt, String message) throws NoSuchAlgorithmException, InvalidKeyException {
-    Mac sha256_HMAC = Mac.getInstance(SHA256);
-    sha256_HMAC.init(new SecretKeySpec(salt.getBytes(StandardCharsets.UTF_8), SHA256));
-    return bytes2Hex(sha256_HMAC.doFinal(message.getBytes(StandardCharsets.UTF_8)));
+  public static String hashSHA256(String salt, String message) throws CryptoException {
+    //DONE START DEBUGGING PLUG - REMOVE BEFORE COMMITTING 1.0.4
+    //if(true)
+    //  return message;
+    //DONE END DEBUGGING PLUG
+    try {
+      Mac sha256_HMAC = Mac.getInstance(SHA256);
+      sha256_HMAC.init(new SecretKeySpec(salt.getBytes(StandardCharsets.UTF_8), SHA256));
+      return bytes2Hex(sha256_HMAC.doFinal(message.getBytes(StandardCharsets.UTF_8)));
+    } catch(NoSuchAlgorithmException | InvalidKeyException e) {
+      throw new CryptoException("Could not hash the message with "+SHA256, e);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -219,7 +224,7 @@ public final class Crypto {
    * Converts bytes in pem String
    *
    * @param bytes the bytes array to be converted
-   * @return
+   * @return a pem String representing the bytes
    */
   private static String bytes2Pem(byte[] bytes) {
     bytes = Base64.getEncoder().encode(bytes);
@@ -238,7 +243,7 @@ public final class Crypto {
    * Convert bytes in pem String, as a unique line
    *
    * @param bytes the bytes array to be converted
-   * @return
+   * @return a one line string representing the bytes
    */
   public static String bytes2OneLinePem(byte[] bytes) {
     return bytes2Pem(bytes).replace(N, NOTHING);
@@ -250,16 +255,16 @@ public final class Crypto {
    * @param key     the RSA Encryption Key
    * @param message the message to encrypted
    * @return the encrypted message in bytes
-   * @throws BadPaddingException
-   * @throws IllegalBlockSizeException
-   * @throws InvalidKeyException
-   * @throws NoSuchPaddingException
-   * @throws NoSuchAlgorithmException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  private static byte[] encryptRSAAsBytes(PublicKey key, String message) throws BadPaddingException, IllegalBlockSizeException, InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
-    Cipher cipher = Cipher.getInstance(RSA_CIPHER);
-    cipher.init(Cipher.ENCRYPT_MODE, key);
-    return cipher.doFinal(message.getBytes());
+  private static byte[] encryptRSAAsBytes(PublicKey key, String message) throws CryptoException {
+    try {
+      Cipher cipher = Cipher.getInstance(RSA_CIPHER);
+      cipher.init(Cipher.ENCRYPT_MODE, key);
+      return cipher.doFinal(message.getBytes());
+    } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+      throw new CryptoException("Could not encrypt message with RSA", e);
+    }
   }
 
   /**
@@ -268,13 +273,9 @@ public final class Crypto {
    * @param key     the RSA Encryption Key
    * @param message the message to encrypted
    * @return the encrypted message as a String
-   * @throws BadPaddingException
-   * @throws IllegalBlockSizeException
-   * @throws InvalidKeyException
-   * @throws NoSuchPaddingException
-   * @throws NoSuchAlgorithmException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static String encryptRSA(PublicKey key, String message) throws BadPaddingException, IllegalBlockSizeException, InvalidKeyException, NoSuchPaddingException, NoSuchAlgorithmException {
+  public static String encryptRSA(PublicKey key, String message) throws CryptoException {
     return Base64.getEncoder().encodeToString(encryptRSAAsBytes(key, message));
   }
 
@@ -284,13 +285,9 @@ public final class Crypto {
    * @param key              the RSA Decryption Key
    * @param encryptedMessage the encrypted message
    * @return the encrypted message as a String
-   * @throws NoSuchPaddingException
-   * @throws NoSuchAlgorithmException
-   * @throws InvalidKeyException
-   * @throws BadPaddingException
-   * @throws IllegalBlockSizeException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static String decryptRSA(PrivateKey key, String encryptedMessage) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+  public static String decryptRSA(PrivateKey key, String encryptedMessage) throws CryptoException {
     return decryptRSA(key, java.util.Base64.getDecoder().decode(encryptedMessage.getBytes()));
   }
 
@@ -300,28 +297,32 @@ public final class Crypto {
    * @param privateKey       the RSA Decryption Key
    * @param encryptedMessage the encrypted message
    * @return the encrypted message in bytes
-   * @throws NoSuchPaddingException
-   * @throws NoSuchAlgorithmException
-   * @throws InvalidKeyException
-   * @throws BadPaddingException
-   * @throws IllegalBlockSizeException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  private static String decryptRSA(PrivateKey privateKey, byte[] encryptedMessage) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-    Cipher cipher = Cipher.getInstance(RSA);
-    cipher.init(Cipher.DECRYPT_MODE, privateKey);
-    return new String(cipher.doFinal(encryptedMessage));
+  private static String decryptRSA(PrivateKey privateKey, byte[] encryptedMessage) throws CryptoException {
+    try{
+      Cipher cipher = Cipher.getInstance(RSA);
+      cipher.init(Cipher.DECRYPT_MODE, privateKey);
+      return new String(cipher.doFinal(encryptedMessage));
+    } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+      throw new CryptoException("Could not decrypt message with RSA", e);
+    }
   }
 
   /**
    * Generates an RSA Key Pair
    *
    * @return The Key Pair, containing the Public Encryption Key and the Private Decryption Key
-   * @throws NoSuchAlgorithmException - if the RSA Algorithm is unavailable
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static KeyPair generateRSAKeyPair() throws NoSuchAlgorithmException {
-    KeyPairGenerator kpg = KeyPairGenerator.getInstance(RSA);
-    kpg.initialize(RSA_BITS);
-    return kpg.generateKeyPair();
+  public static KeyPair generateRSAKeyPair() throws CryptoException {
+    try {
+      KeyPairGenerator kpg = KeyPairGenerator.getInstance(RSA);
+      kpg.initialize(RSA_BITS);
+      return kpg.generateKeyPair();
+    } catch(NoSuchAlgorithmException e) {
+      throw new CryptoException("Could not generate a keypair for algorithm: "+RSA, e);
+    }
   }
 
   /**
@@ -329,7 +330,7 @@ public final class Crypto {
    *
    * @param kp       the KeyPair containing the Public Key
    * @param filename the name of the file that will store the Key
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while writing to the file
    */
   public static void savePublicRSAKey(KeyPair kp, String filename) throws IOException {
     PrintWriter out = new PrintWriter(new FileWriter(filename));
@@ -344,7 +345,7 @@ public final class Crypto {
    *
    * @param kp       the KeyPair containing the Public Key
    * @param filename the name of the file that will store the Key
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while writing to the file
    */
   public static void savePrivateRSAKey(KeyPair kp, String filename) throws IOException {
     PrintWriter out = new PrintWriter(new FileWriter(filename));
@@ -358,7 +359,7 @@ public final class Crypto {
    * Gets the Public Key from an RSA Keypair as a one line pem String
    *
    * @param kp the KeyPair containing the public key
-   * @return
+   * @return the Public Key from an RSA Keypair as a one line pem String
    */
   public static String getPublicRSAKeyAsString(KeyPair kp) {
     return Crypto.bytes2OneLinePem(kp.getPublic().getEncoded());
@@ -369,7 +370,7 @@ public final class Crypto {
    *
    * @param filename the name of the file containing the Key
    * @return the key as a pem String
-   * @throws Exception
+   * @throws IOException If an I/O error occurs while reading the file
    */
   private static String readRSA(String filename) throws IOException {
     BufferedReader in = new BufferedReader(new FileReader(filename));
@@ -387,11 +388,10 @@ public final class Crypto {
    *
    * @param filename the name of the file containing the key
    * @return the Private Key
-   * @throws java.io.IOException
-   * @throws NoSuchAlgorithmException                   if the RSA Algorithm is unavailable
-   * @throws java.security.spec.InvalidKeySpecException
+   * @throws java.io.IOException If an I/O error occurs while reading from the file, or if the file cannot be deleted (missing)
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static PrivateKey readAndDeletePrivateRSAKey(String filename) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+  public static PrivateKey readAndDeletePrivateRSAKey(String filename) throws IOException, CryptoException {
     String privKeyPEM = readRSA(filename);
     File file = new File(filename);
     if (file.delete())
@@ -404,14 +404,17 @@ public final class Crypto {
    *
    * @param privateKeyPEM the pem String representation of the Key
    * @return the PrivateKey object
-   * @throws NoSuchAlgorithmException if the RSA Algorithm is unavailable
-   * @throws InvalidKeySpecException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static PrivateKey buildPrivateRSAKey(String privateKeyPEM) throws NoSuchAlgorithmException, InvalidKeySpecException {
+  public static PrivateKey buildPrivateRSAKey(String privateKeyPEM) throws CryptoException {
     byte[] decoded = Base64.getDecoder().decode(privateKeyPEM);
     PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
-    KeyFactory kf = KeyFactory.getInstance(RSA);
-    return kf.generatePrivate(spec);
+    try{
+      KeyFactory kf = KeyFactory.getInstance(RSA);
+      return kf.generatePrivate(spec);
+    } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+      throw new CryptoException("Could not generate a new RSA PrivateKey", e);
+    }
   }
 
   /**
@@ -419,13 +422,36 @@ public final class Crypto {
    *
    * @param publicKeyPEM the pem String representation of the Key
    * @return the PublicKey object
-   * @throws NoSuchAlgorithmException if the RSA Algorithm is unavailable
-   * @throws InvalidKeySpecException
+   * @throws CryptoException if there if anything wrong with the underlying cryptographic libraries
    */
-  public static PublicKey buildPublicRSAKey(String publicKeyPEM) throws NoSuchAlgorithmException, InvalidKeySpecException {
+  public static PublicKey buildPublicRSAKey(String publicKeyPEM) throws CryptoException {
     byte[] decoded = Base64.getDecoder().decode(publicKeyPEM);
     X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
-    KeyFactory kf = KeyFactory.getInstance(RSA);
-    return kf.generatePublic(spec);
+    try{
+      KeyFactory kf = KeyFactory.getInstance(RSA);
+      return kf.generatePublic(spec);
+    } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+      throw new CryptoException("Could not generate a new RSA PublicKey", e);
+    }
+  }
+
+  /**
+   * RuntimeException thrown if anything is wrong with the underlying Cryptographic libraries
+   * These Exception are not recoverable and are thus RuntimeException
+   */
+  @SuppressWarnings("unused")
+  public static class CryptoException extends RuntimeException {
+
+    public CryptoException(String message, Throwable cause) {
+      super(message, cause);
+    }
+
+    public CryptoException(Throwable cause) {
+      super(cause);
+    }
+
+    public CryptoException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+      super(message, cause, enableSuppression, writableStackTrace);
+    }
   }
 }

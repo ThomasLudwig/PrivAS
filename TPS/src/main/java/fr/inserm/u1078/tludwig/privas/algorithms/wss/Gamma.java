@@ -72,10 +72,6 @@ class Gamma {
 
   @Override
   public String toString() {
-    return "Gamma{" +
-            "gamma=" + gamma +
-            ", nbAffected=" + nbAffected +
-            ", nbUnaffected=" + nbUnaffected +
-            '}';
+    return gamma + " [" + nbAffected + '/' + nbUnaffected +']';
   }
 }

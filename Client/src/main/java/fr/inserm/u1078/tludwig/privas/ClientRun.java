@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas;
 
+import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.documentation.ClientDocumentation;
 import fr.inserm.u1078.tludwig.privas.gui.ClientWindow;
@@ -9,6 +10,7 @@ import fr.inserm.u1078.tludwig.privas.listener.StandardErrorLogger;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
@@ -30,95 +32,66 @@ public class ClientRun {
    *
    * @param args the command line arguments
    */
-  public static void main(String[] args) throws Exception {
-    //String devComputer = "DESKTOP-VRJB1QR";
+  public static void main(String[] args) {
     String dir = MSG.GUI_DEFAULT_DIRECTORY;
-    String devDir = "C:\\Users\\user\\Documents\\Projet\\PrivGene\\privas";
+    String devDir = "C:\\Users\\user\\Documents\\Projet\\PrivGene\\privas\\moyamoya";
     File file = new File(devDir);
     if(file.exists() && file.isDirectory())
       dir = devDir;
 
-    System.err.println(MSG.MSG_WELCOME);
+    String[] newArgs = args.length < 1 ? new String[]{dir} : args;
+    Main.CommandExecutor cmd = new Main.CommandExecutor(newArgs, Main.Party.CLIENT);
 
-    if (args.length < 1) {
-      launchGUI(dir);
-      return;
-    }
-
-    if(args[0].startsWith("-")){
-      switch (args[0].toLowerCase()) {
-        case MSG.ARG_CONVERT_VCF:
-          Main.convertVCF(args, true);
+    if(newArgs[0].startsWith("-")){
+      switch (cmd.getCommand()) {
+        case QC2GENOTYPES:
+          Main.convertVCF(cmd);
           break;
-        case MSG.ARG_DOC:
-          doc(args);
+        case DOC:
+          doc(cmd);
           break;
-        case MSG.ARG_QC:
-          Main.qc(args, true);
+        case VCF2QC:
+          Main.qc(cmd);
+          break;
+        case EXTRACT_HASH:
+          Main.extractAndHash(cmd);
+          break;
+        case GNOMAD:
+          Main.extractGnomAD(cmd);
           break;
         default:
-          usage();
+          cmd.getInstance().logError(MSG.cat(MSG.UNKNOWN_COMMAND, args[0]));
+          cmd.getInstance().logInfo(Main.getUsage(Main.Party.CLIENT));
       }
     } else {
-      launchGUI(args[0]);
+      launchGUI(cmd);
     }
   }
 
-  public static void doc(String[] args) throws Exception {
-    String outFile = "Client.rst";
-    PrintWriter out = new PrintWriter(new FileWriter(outFile));
-    out.println(ClientDocumentation.getClientDocumentation());
-    out.close();
-  }
-
-  /**
-   * Prints the various usages of this program
-   */
-  public static String getUsage() {
-    char N = '\n';
-    StringBuilder ret = new StringBuilder(MSG.MSG_USAGE).append(N);
-    ret.append(usageGUI(false)).append(N);
-    ret.append(MSG.MSG_QC).append(N);
-    ret.append(Main.usageQualityControl(false, true)).append(N);
-    ret.append(MSG.MSG_TOOLS).append(N);
-    ret.append(Main.usageConvertVCF(false, true));
-    return ret.toString();
-  }
-
-  public static void usage(){
-    System.err.println(getUsage());
-  }
-
-  /**
-   * Prints the usage message for launching an instance of GUI client
-   *
-   * @param prefix - should print the "Usage :" prefix ?
-   */
-  private static String usageGUI(boolean prefix) {
-    StringBuilder ret = new StringBuilder();
-    if (prefix)
-      ret.append(MSG.MSG_USAGE).append("\n");
-    ret.append(MSG.MSG_DESC_GUI).append("\n");
-    ret.append(MSG.MSG_CMD_GUI).append("\n");
-    return ret.toString();
+  public static void doc(Main.CommandExecutor cmd) {
+    try {
+      PrintWriter out = new PrintWriter(new FileWriter(FileFormat.FILE_CLIENT_DOC));
+      out.println(ClientDocumentation.getClientDocumentation());
+      out.close();
+    } catch(IOException | RuntimeException e) {
+      cmd.fail(e);
+    }
   }
 
   /**
    * Starts a GUI Client
-   *
-   * @param dir - the working directory (default directory the browser when loading/saving files)
    */
-  private static void launchGUI(String dir) throws Exception {
+  private static void launchGUI(Main.CommandExecutor cmd) {
+    String[] args = cmd.getArgs();
     try {
-
+      String dir = args[1];
       LookAndFeel.setup();
       Client client = new Client();
       ClientWindow clientWindow = new ClientWindow(dir, client);
       client.setWindow(clientWindow);
       clientWindow.getClient().addLogListener(new StandardErrorLogger());
-    } catch (Exception e) {
-      System.err.println(MSG.MSG_FAIL_GUI + e.getMessage());
-      throw e;
+    } catch (RuntimeException e) {
+      cmd.fail(e);
     }
   }
 }

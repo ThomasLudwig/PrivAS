@@ -1,5 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.constants;
 
+import fr.inserm.u1078.tludwig.privas.gui.LookAndFeel;
+
 import java.awt.*;
 
 /**
@@ -36,6 +38,11 @@ public class GUI {
 
   //TPSLogPane
   public static final String TPS_TITLE = "Third Party Server Log";
+  public static final String TPS_LABEL_MESSAGES = "Messages from Third-Party Server";
+  public static final String TPS_COL_NUM = "#";
+  public static final String TPS_COL_TIME = "Time";
+  public static final String TPS_COL_STATE = "Status";
+  public static final String TPS_COL_MESSAGE = "Message";
 
   //Results Columns names
   public static final String RP_COL_NUM = "#";
@@ -117,15 +124,17 @@ public class GUI {
   
   public static final String CRIT_RADIO_WSS = "Perform WSS ?";
   public static final String CRIT_LABEL_DATASET = "Available Datasets";
+  public static final String CRIT_LABEL_AVAILABLE_GNOMAD_VERSION = "Available GnomAD versions";
   public static final String CRIT_LABEL_MAF = "Minor Allele Frequency Threshold (in GnomAD)";
-  public static final String CRIT_LABEL_MAF_NFE = "Minor Allele Frequency Threshold (in GnomAD_NFE)";
+  public static final String CRIT_LABEL_SUBPOP = "GnomAD Subpopulation";
+  public static final String CRIT_LABEL_MAF_SUBPOP = "Minor Allele Frequency Threshold (in Subpopulation)";
   public static final String CRIT_LABEL_CSQ = "Least Severe Consequence";
   public static final String CRIT_LABEL_BEDFILE = "Bed File of well covered positions";
   public static final String CRIT_LABEL_EXCLUDED_VARIANTS = "List of excluded Variants";
   public static final String CRIT_LABEL_QC_PARAMETERS = "QC Parameters File";
   public static final String CRIT_LABEL_PERM = "Number of Permutations";
   public static final String CRIT_LABEL_FRQ = "Maximum Allele Frequency Threshold (in pooled data)";
-  public static final String CRIT_LABEL_MIN_PVAL = "Minimal p-value";
+  public static final String CRIT_LABEL_MIN_PVALUE = "Minimal p-value";
   public static final String CRIT_LABEL_DURATION = "Estimated Duration";
   public static final String CRIT_TOOLTIP_DISCLAIMER = "Duration is roughly estimated and will depend on the number of variants, number of genes, p-value associated to genes....";
 
@@ -145,15 +154,22 @@ public class GUI {
   public static final String APQC_TITLE = "Apply Quality Control to a VCF File";
   public static final String APQC_LABEL_INPUT_VCF = "Input VCF File";
   public static final String APQC_LABEL_QC_PARAM = "QC Parameters";
+  public static final String APQC_LABEL_GNOMAD = "GnomAD File";
   public static final String APQC_TIT_VCF_NULL = "No VCF File";
   public static final String APQC_TIT_VCF_MISSING = "VCF File does not exist";
   public static final String APQC_TIT_QC_NULL = "No QC Parameters File";
   public static final String APQC_TIT_QC_MISSING = "QC Parameters File does not exist";
+  public static final String APQC_TIT_GNOMAD_NULL = "No GnomAD File";
+  public static final String APQC_TIT_GNOMAD_MISSING = "GnomAD File does not exist";
+  public static final String APQC_TIT_QC_SAVE_FAILED = "Could not save QC Parameters";
+  public static final String APQC_MSG_QC_SAVE_FAILED = "Could not save QC Parameters";
 
   public static final String APQC_MSG_VCF_NULL = "No VCF File specified";
-  public static String APQC_MSG_VCF_MISSING(String inputVCF){ return "Specified VCF File ["+inputVCF+"] does not exist";}
   public static final String APQC_MSG_QC_NULL = "No QC Parameters File specified";
+  public static final String APQC_MSG_GNOMAD_NULL = "No GnomAD File specified";
+  public static String APQC_MSG_VCF_MISSING(String inputVCF){ return "Specified VCF File ["+inputVCF+"] does not exist";}
   public static String APQC_MSG_QC_MISSING(String qcParamFilename) {return "Specified QC Parameters File ["+qcParamFilename+"] does not exist";}
+  public static String APQC_MSG_GNOMAD_MISSING(String gnomadFilename) {return "Specified GnomAD File ["+gnomadFilename+"] does not exist";}
 
   //SessionPanel
   public static final String SP_LABEL_ID = "Session ID";
@@ -162,8 +178,10 @@ public class GUI {
   public static final String SP_LABEL_PRIVATE = "Private RSA Key";
   public static final String SP_LABEL_AES = "AES Key";
   public static final String SP_LABEL_DATASET = "Dataset";
+  public static final String SP_LABEL_GNOMAD_VERSION = "GnomAD Version";
   public static final String SP_LABEL_MAF = "Max. MAF (GnomAD)";
-  public static final String SP_LABEL_MAF_NFE = "Max. MAF (GnomAD_NFE)";
+  public static final String SP_LABEL_SUBPOP = "GnomAD Subpopulation";
+  public static final String SP_LABEL_MAF_SUBPOP = "Max. MAF (GnomAD Subpopulation)";
   public static final String SP_LABEL_CSQ = "Least Severe Consequence";
   public static final String SP_LABEL_LIMIT_SNV = "Limit variants to SNVs ?";
   public static final String SP_LABEL_RPP = "RPP Server";
@@ -172,6 +190,13 @@ public class GUI {
   public static final String SP_LABEL_STATUS = "Last Known Status";
   public static final String SP_LABEL_ALGORITHM = "Algorithm Parameters";
   public static final String SP_LABEL_GENOTYPE = "Genotype Filename";
+  public static final String SP_LABEL_GNOMAD_FILENAME = "GnomAD filename";
+  public static final String SP_LABEL_BED_FILENAME = "Bed of well covered position";
+  public static final String SP_LABEL_EXCLUDED_VARIANTS_FILENAME = "File containing the list of Excluded Variants";
+  public static final String SP_LABEL_QC_PARAM_FILENAME = "File containing the Quality Control Parameters";
+
+  public static final String SP_TIT_RPP_ERROR = "RPP reported an error";
+  public static final String SP_TIT_RPP_MESSAGE = "Message from RPP";
 
   public static final String SP_HTML_YOU = "<font color=\"green\">the <b>Client</b></font>";
   public static final String SP_HTML_RPP = "<font color=\"blue\">the <b>Reference Panel Provider</b></font>";
@@ -200,8 +225,11 @@ public class GUI {
           + "<p>Data exchanged are encrypted/decrypted using this key.<br/>"
           + "Thus " + SP_HTML_RPP + " (that serves as a bridge) cannot read these data.</p>";
   public static final String SP_TOOLTIP_DATASET = "Name of the reference Dataset";
+  public static final String SP_TOOLTIP_GNOMAD_VERSION = "Version of the GnomAD Version on "+SP_HTML_RPP;
   public static final String SP_TOOLTIP_MAF = "<b>Maximum Minor Allele Frequency Threshold</b>"
           + "<p>When selecting variants, " + SP_HTML_YOU + " and " + SP_HTML_RPP + " will only keep variants with MAF below or equal to this threshold.</p>";
+  public static final String SP_TOOLTIP_SUBPOP = "Selected subpopulation on GnomAD";
+  public static final String SP_TOOLTIP_MAF_SUBPOP = "Maximum Minor Allele Frequency Threshold for GnomAD subpopulation";
   public static final String SP_TOOLTIP_CSQ = "<b>Least Severe Consequence</b>"
           + "<p>When selecting variants, " + SP_HTML_YOU + " and " + SP_HTML_RPP + " will only keep variants with Consequence above or equal to this threshold.</p>";
   public static final String SP_TOOLTIP_LIMIT_SNV = "<b>Limit To SNVs ?</b>"
@@ -221,13 +249,18 @@ public class GUI {
   public static final String SP_TOOLTIP_ALGORITHM = "<b>Algorithm Parameters</b>"
           + "<p>The algorithm and parameters that will be used by " + SP_HTML_TPS + ".</p>";
   public static final String SP_TOOLTIP_GENOTYPE = "<p>The Genotype File that was/will be used to extract/hash the data matching selection criteria.</p>";
+  public static final String SP_TOOLTIP_GNOMAD_FILENAME = "<p>GnomAD binary file</p>";
+  public static final String SP_TOOLTIP_BED_FILENAME = "<p>Bed file of well covered positions</p>";
+  public static final String SP_TOOLTIP_EXCLUDED_VARIANTS_FILENAME = "<p>File that contains the list of Variants Excluded by the QC</p>";
+  public static final String SP_TOOLTIP_QC_PARAM_FILENAME = "<p>File that contains the Quality Control Parameters</p>";
 
   //Client Window
   public static final String CW_MN_FILE = "File";
   public static final String CW_MN_SERVER = "Server";
-  public static final String CW_MI_APPLY_QC_VCF = "Load VCF and Apply QC...";
-  public static final String CW_MI_LOAD_VCF = "Load QCed VCF...";
-  public static final String CW_MI_LOAD_GENO = "Load QCed Genotypes...";
+  public static final String CW_MI_APPLY_QC_VCF_ANNOTATE = "Load VCF, Apply QC and Annotate...";
+  public static final String CW_MI_APPLY_QC_VCF_ONLY = "Apply QC to VCF...";
+  public static final String CW_MI_LOAD_QCED_VCF_ANNOTATE = "Load QCed VCF and Annotate...";
+  public static final String CW_MI_LOAD_GENO = "Load Annotated QCed Genotypes...";
   public static final String CW_MI_LOAD_SSS = "Load Session...";
   public static final String CW_MI_SAVE_SSS = "Save Session...";
   public static final String CW_MI_LOAD_RES = "Load Results...";
@@ -266,13 +299,6 @@ public class GUI {
   public static final String CW_DG_MSG_QUIT = "Would you like to save your Session before exiting ?";
   public static final String CW_DG_QUIT = "Save Session and Exit ?";
 
-  public static String CW_DG_MSG_CONVERT(String filename) {
-    return "Would you like to convert the VCF File [" + filename + "] now ?\n"
-            + "This may take some time.\n"
-            + "The file has to be converted only once, the resulting Genotype file will be reusable as needed.";
-  }
-
-  public static final String CW_DG_CONVERT = "Convert VCF to Genotype File ?";
   public static final String CW_CONVERTING_TITLE = "Converting VCF to Genotype File";
   public static final String CW_CONVERTING_NORTH = "Converting VCF to Genotype File";
   public static final String CW_CONVERTING_SOUTH = "This may take some time";
@@ -333,4 +359,7 @@ public class GUI {
   public static final Color COLOR_ERROR = new Color(220,100,100);
   public static final Color COLOR_UNREACHABLE = new Color(230,130,80);
   public static final Color COLOR_UNKNOWN = new Color(200,160,120);
+
+  public static final Color BACKGROUND_COLOR_KO = COLOR_ERROR;
+  public static final Color BACKGROUND_COLOR_OK = LookAndFeel.getBackgroundTextColor();
 }

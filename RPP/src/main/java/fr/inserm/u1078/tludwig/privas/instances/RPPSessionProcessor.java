@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.instances;
 
+import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
@@ -13,8 +14,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,13 +56,21 @@ public class RPPSessionProcessor {
    */
   private final String datasetName;
   /**
+   * the selected version of GnomAD
+   */
+  private final String gnomADVersion;
+  /**
    * the Maximum Allele Frequencies threshold (for the extraction)
    */
   private final double maxMaf;
   /**
-   * the Maximum Allele Frequencies threshold (for the extraction)
+   * the selected subpopulation
    */
-  private final double maxMafNFE;
+  private final String subpop;
+  /**
+   * the Maximum Allele in the subpopulation Frequencies threshold (for the extraction)
+   */
+  private final double maxMafSubpop;
   /**
    * the least severe vep consequence (for the extraction)
    */
@@ -111,60 +118,69 @@ public class RPPSessionProcessor {
   /**
    * Constructor for a new session
    *
-   * @param session     the Session ID
-   * @param datasetName the selected Dataset name (for the extraction)
-   * @param maxMaf      the Maximum Allele Frequencies threshold (for the extraction)
-   * @param maxMafNFE   the Maximum Allele Frequencies threshold (for the extraction)
-   * @param minCsq      the least severe vep consequence (for the extraction)
-   * @param limitToSNVs is variant selection limited to SNVs ?
-   * @param kHash       the Hash Salt (to hash fields during the extraction)
+   * @param session       the Session ID
+   * @param datasetName   the selected Dataset name (for the extraction)
+   * @param version       the selected version of GnomAD
+   * @param maxMaf        the Maximum Allele Frequencies threshold (for the extraction)
+   * @param subpop        the selected subpopulation
+   * @param maxMafSubpop  the Maximum Allele Frequencies threshold in the subpopulation (for the extraction)
+   * @param minCsq        the least severe vep consequence (for the extraction)
+   * @param limitToSNVs   is variant selection limited to SNVs ?
+   * @param kHash         the Hash Salt (to hash fields during the extraction)
    */
-  RPPSessionProcessor(RPP rpp, String session, String datasetName, double maxMaf, double maxMafNFE, String minCsq, boolean limitToSNVs, BedFile bed, QCParam qcParam, String kHash) {
+  RPPSessionProcessor(RPP rpp, String session, String datasetName, String version, double maxMaf, String subpop, double maxMafSubpop, String minCsq, boolean limitToSNVs, BedFile bed, QCParam qcParam, String kHash) {
     this.rpp = rpp;
     this.session = session;
     this.datasetName = datasetName;
+    this.gnomADVersion = version;
     this.maxMaf = maxMaf;
-    this.maxMafNFE = maxMafNFE;
+    this.subpop = subpop;
+    this.maxMafSubpop = maxMafSubpop;
     this.minCsq = minCsq;
     this.limitToSNVs = limitToSNVs;
     this.bed = bed;
     this.qcParam = qcParam;
     this.kHash = kHash;
     this.tpStatuses = new ArrayList<>();
-    rpp.logDebug("SessionProcessor created");
+    rpp.logDebug(MSG.RPP_DEBUG_CREATED);
   }
 
+  //TODO check/test this and it's opposite (serial)
   RPPSessionProcessor(RPP rpp, String session) throws IOException, BedRegion.BedRegionException, QCException, NumberFormatException {
     this.rpp = rpp;
     this.session = session;
     UniversalReader in = new UniversalReader(rpp.getFilenameFor(session, FileFormat.FILE_SESSION_PARAMETERS));
     this.datasetName = in.readLine();
+    this.gnomADVersion = in.readLine();
     this.kHash = in.readLine();
     this.maxMaf = new Double(in.readLine());
-    this.maxMafNFE = new Double(in.readLine());
+    this.subpop = in.readLine();
+    this.maxMafSubpop = new Double(in.readLine());
     this.minCsq = in.readLine();
-    this.limitToSNVs = "TRUE".equalsIgnoreCase(in.readLine());
+    this.limitToSNVs = Constants.parseBoolean(in.readLine());
     this.bed = BedFile.deserialize(in.readLine());
     this.qcParam = QCParam.deserialize(in.readLine());
     in.close();
     this.tpStatuses = new ArrayList<>();
-    rpp.logDebug("SessionProcessor restored");
+    rpp.logDebug(MSG.RPP_DEBUG_RESTORED);
   }
 
   void serialize() {
     try {
       PrintWriter out = new PrintWriter(new FileWriter(rpp.getFilenameFor(session, FileFormat.FILE_SESSION_PARAMETERS)));
       out.println(this.datasetName);
+      out.println(this.gnomADVersion);
       out.println(this.kHash);
       out.println(this.maxMaf);
-      out.println(this.maxMafNFE);
+      out.println(this.subpop);
+      out.println(this.maxMafSubpop);
       out.println(this.minCsq);
       out.println(this.limitToSNVs);
       out.println(this.bed.serialize());
       out.println(this.qcParam.serialize());
       out.close();
     } catch (IOException e) {
-      rpp.logError("Unable to save session parameters");
+      rpp.logError(MSG.RPP_SAVE_KO);
       rpp.logError(e);
     }
   }
@@ -329,35 +345,55 @@ public class RPPSessionProcessor {
 
     rpp.submitNow(() -> {
       RPPDataset rppDataset = rpp.getRPPDataset(datasetName);
-      String genotypeFilename = rppDataset.getGenotypeFilename(qcParam);
+      String genotypeFilename = rppDataset.getGenotypeFilename(qcParam, gnomADVersion);
       String excludedVariantFilename = rppDataset.getExcludedVariantFilename(qcParam);
 
       boolean exists = FileUtils.exists(genotypeFilename) && FileUtils.exists(excludedVariantFilename);
 
 
       ProgressListener progress = percent -> rpp.setStatus(session, RPPStatus.extracting(rpp.getStatus(session), percent));
-      int nbRec;
+      long nbRec;
       try {
         File d = new File(rpp.getFilenameFor(session, DIRECTORY));
         if (!d.exists() && !d.mkdirs())
           rpp.logError(MSG.cat(MSG.FAIL_MKDIR, d.getAbsolutePath()));
+        String[] genoExc = {genotypeFilename, excludedVariantFilename};
+        if(exists)
+          rpp.logDebug(MSG.RPP_FILE_FOUND(genoExc));
+        else
+          rpp.logDebug(MSG.RPP_FILE_MISSING(genoExc));
         if(exists){
-          nbRec = rpp.getRPPDataset(datasetName).getGenotypeSize(qcParam);
+          nbRec = rpp.getRPPDataset(datasetName).getGenotypeSize(qcParam, gnomADVersion);
         } else {
           String inputVCFFilename = rppDataset.getVCFFilename();
-          String outputVCFFilename = rppDataset.getQCVCFFilename(qcParam);
-          //applyQC
-          rpp.logInfo(MSG.action(MSG.SP_QC, session));
-          QualityControl.applyQC(inputVCFFilename, this.qcParam, outputVCFFilename, excludedVariantFilename, false);
+          String qcVCFFilename = rppDataset.getQCVCFFilename(qcParam);
+          if(new File(qcVCFFilename).exists()) {
+            rpp.logDebug(MSG.RPP_FILE_FOUND(qcVCFFilename));
+          } else {
+            //applyQC
+            rpp.logInfo(MSG.action(MSG.SP_QC, session));
+            QualityControl.applyQC(inputVCFFilename, this.qcParam, qcVCFFilename, excludedVariantFilename);
+          }
           //convertToGenotype
           rpp.logInfo(MSG.action(MSG.SP_CONVERT, session));
-          nbRec = GenotypesFileHandler.convertVCF2Genotypes(outputVCFFilename, genotypeFilename);
-          File del = new File(outputVCFFilename);
-          del.delete();
+          nbRec = GenotypesFileHandler.convertVCF2Genotypes(qcVCFFilename, rpp.getGnomADReferences().get(gnomADVersion), rpp).getSize();
         }
         //Extract genotype
         rpp.logInfo(MSG.action(MSG.SP_RPP, session));
-        int nbLines = GenotypesFileHandler.extractGenotypesToFile(genotypeFilename, rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA), nbRec, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, kHash, rpp, progress);
+        int nbLines = GenotypesFileHandler.extractGenotypesToFile(
+                genotypeFilename,
+                rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA),
+                nbRec,
+                maxMaf,
+                subpop,
+                maxMafSubpop,
+                minCsq,
+                limitToSNVs,
+                bed,
+                kHash,
+                rpp,
+                progress
+        );
         PrintWriter out = new PrintWriter(new FileWriter(rpp.getFilenameFor(session, FileFormat.FILE_RPP_DATA_OK)));
         out.println(nbLines);
         out.close();
@@ -369,7 +405,7 @@ public class RPPSessionProcessor {
           rpp.setStatus(session, RPPStatus.rppDataExtracted(rpp.getStatus(session)));
         }
         rppExtracted = true;
-      } catch (GenotypesFileHandler.GenotypeFileException | IOException | InvalidKeyException | NoSuchAlgorithmException ex) {
+      } catch (GenotypesFileHandler.GenotypeFileException | IOException ex) {
         rpp.logError(MSG.done(MSG.SP_KO_RPP, ex));
         rpp.logError(ex);
         rppExtractionFailed = ex.getMessage();

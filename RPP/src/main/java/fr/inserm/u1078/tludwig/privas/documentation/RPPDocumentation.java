@@ -1,6 +1,10 @@
 package fr.inserm.u1078.tludwig.privas.documentation;
 
+import fr.inserm.u1078.tludwig.privas.Main;
+import fr.inserm.u1078.tludwig.privas.constants.Command;
 import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
+import fr.inserm.u1078.tludwig.privas.constants.Tag;
+import fr.inserm.u1078.tludwig.privas.utils.GenotypesFileHandler;
 
 /**
  * Generates an Up-to-date documentation for the RPP
@@ -16,9 +20,9 @@ public class RPPDocumentation extends Documentation {
     LineBuilder doc = new LineBuilder();
     getTitle(doc);
     chooseSet(doc);
-    defaultQC(doc);
     configurationFile(doc);
-
+    defaultQC(doc);
+    getCommandLines(doc, Main.Party.RPP);
     return doc.toString();
   }
 
@@ -29,74 +33,47 @@ public class RPPDocumentation extends Documentation {
   public static void chooseSet(LineBuilder doc){
     doc.rstSection("Choose a data set");
     doc.rstItemize(
-            "a VCF File (must be VEP annotated with annotation : GnomAD frequencies, Symbol names and allele numbers)",
-            "a Bed of well covered position (capture kit - minus badly coverage positions)"
+            "a VCF File (must be VEP annotated, with the following annotations : "+code(GenotypesFileHandler.VEP_GENE)+", "+code(GenotypesFileHandler.VEP_SOURCE)+" and "+code(GenotypesFileHandler.VEP_ALLELE_NUM)+")",
+            "a Bed of well covered position (capture kit - minus positions with low coverage)"
     );
     doc.newLine();
   }
 
   public static void defaultQC(LineBuilder doc){
-    String qc = "QC1352166484";
+    String qc = FileFormat.QC_PREFIX+"122186898";
     String prefix = "my_precious_data";
     doc.rstSection("Run the default QC");
-    doc.append(paragraph("In order for the quality control to work optimally, it is recommended to split multiallelic variants."));
-    doc.rstCode(BASH,
-            "#Execute QC",
-            "java -jar PrivAS.RPP.jar --defaultqc "+prefix+".vcf.gz "
-    );
+    doc.append(paragraph("To speed-up session times for your Client, you can run the default QC prior to launching your server. " +
+            "This has top be done for each of your GnomAD versions. "));
+    doc.append(paragraph("In order for the Quality Control to work optimally, it is recommended to split multiallelic variants."));
+
+    doc.rstCode(BASH, Command.VCF2GENOTYPES.getJavaCommand(Main.Party.RPP.getJar()));
+    doc.rstTable(Command.VCF2GENOTYPES.getArguments(), false);
     doc.newLine();
     doc.newLine("This will produce the following files");
     doc.rstItemize(
-            code(qc+"."+FileFormat.FILE_QC_PARAM_EXTENSION),
-            code(qc+"."+prefix+"."+ FileFormat.FILE_GENO_EXTENSION +".gz"),
-            code(qc+"."+prefix+"."+ FileFormat.FILE_EXCLUSION_EXTENSION)
+            code(qc+"."+prefix+"."+ FileFormat.FILE_VCF_EXTENSION +"."+FileFormat.FILE_GZ_EXTENSION)+" "+italic("The VCF file of variants that PASS the QC"),
+            code(qc+"."+prefix+"."+ FileFormat.FILE_EXCLUSION_EXTENSION)+" "+italic("The list of variants that FAIL the QC"),
+            code("GnomAD.Version."+qc+"."+prefix+"."+ FileFormat.FILE_GENO_EXTENSION +"."+FileFormat.FILE_GZ_EXTENSION)+" "+italic("The variants in the "+FileFormat.FILE_GENO_EXTENSION+" file format, annotated with the frequencies from GnomAD")
+
     );
     doc.newLine();
     doc.rstNote("QC Parameters files are named according to the hash of their content. So the file containing the default parameters is named "+qc);
     doc.newLine();
-    doc.newLine("When a Client ask for different parameters, a new QC will be automatically performed and the resulting files will be stored for future use.");
+    doc.newLine("If a Client runs a session with a new combination of QC Parameters / GnomAD Versions, this operation will be performed at the beginning of the session and the resulting files will be stored for future use.");
     doc.newLine();
   }
 
   public static void configurationFile(LineBuilder doc){
-    int pad = 2+getMax(FileFormat.RPP_TAG_PORT, FileFormat.RPP_TAG_DATA, FileFormat.RPP_TAG_RPP_SESSION_DIR, FileFormat.RPP_TAG_RRP_EXPIRED_SESSION, FileFormat.RPP_TAG_TPS_NAME,
-            FileFormat.RPP_TAG_TPS_ADDRESS, FileFormat.RPP_TAG_TPS_USER, FileFormat.RPP_TAG_TPS_LAUNCH_COMMAND, FileFormat.RPP_TAG_TPS_GETKEY_COMMAND, FileFormat.RPP_TAG_TPS_SESSION_DIR);
+
     doc.rstSection("The Server configuration file");
-    doc.newLine("To launch an RPP server to need to execute the command:");
-    doc.rstCode(BASH,
-            "java -jar PrivAS.RPP.jar config.rpp"
-    );
-    doc.newLine();
-    doc.newLine("where the TSV configuration file "+code("config.rpp")+" (or any other name) has the following format:");
-    doc.rstCode("text",
-            pad(FileFormat.RPP_TAG_PORT, pad)+"6666",
-            pad(FileFormat.RPP_TAG_DATA, pad)+"Data_Name1:/path/to/file1.vcf.gz:65147:/path/to/coverage1.bed.gz,Data_Name2:/path/to/file2.vcf.gz:81791:/path/to/coverage2.bed.gz ",
-            pad(FileFormat.RPP_TAG_RPP_SESSION_DIR, pad)+"/path/to/rpp_working_directory/sessions",
-            pad(FileFormat.RPP_TAG_RRP_EXPIRED_SESSION, pad)+"/path/to/rpp_working_directory/expired.session.lst",
-            pad(FileFormat.RPP_TAG_TPS_NAME, pad)+"The name of the TPS Super computer",
-            pad(FileFormat.RPP_TAG_TPS_ADDRESS, pad)+"supercomputer.domain.ext",
-            pad(FileFormat.RPP_TAG_TPS_USER, pad)+"username",
-            pad(FileFormat.RPP_TAG_TPS_LAUNCH_COMMAND, pad)+"/path/to/PrivAS.TPS.sh",
-            pad(FileFormat.RPP_TAG_TPS_GETKEY_COMMAND, pad)+"/path/to/PrivAS.getPublicKey.sh",
-            pad(FileFormat.RPP_TAG_TPS_SESSION_DIR, pad)+"/path/to/tps_working_directory/sessions"
-    );
+    doc.newLine("Each RPP server needs a TSV configuration file "+code("config.rpp")+" (or any other name), that has the following format:");
+    doc.rstCode("text", Tag.getWholeCodeBlock());
 
     doc.newLine();
     doc.newLine("The content of this file is:");
 
-    doc.rstTable(new String[][]{
-            {"key", "description"},
-            {code(FileFormat.RPP_TAG_PORT), "the port on which the RPP server will listen"},
-            {code(FileFormat.RPP_TAG_DATA), "Comma-separated dataset description"},
-            {code(FileFormat.RPP_TAG_RPP_SESSION_DIR), "the directory where RPP will store the files for each session"},
-            {code(FileFormat.RPP_TAG_RRP_EXPIRED_SESSION), "the file where RPP will list expired sessions"},
-            {code(FileFormat.RPP_TAG_TPS_NAME), "Name and description of the Third Party Server"},
-            {code(FileFormat.RPP_TAG_TPS_ADDRESS), "fully qualified hostname.domain name or IP address"},
-            {code(FileFormat.RPP_TAG_TPS_USER), "the SSH username that will be used on the TPS"},
-            {code(FileFormat.RPP_TAG_TPS_LAUNCH_COMMAND), "the unix command execute by "+code(FileFormat.RPP_TAG_TPS_USER)+" on TPS to launch an Association Test"},
-            {code(FileFormat.RPP_TAG_TPS_GETKEY_COMMAND), "tps_get_key_command: the unix command execute by "+code(FileFormat.RPP_TAG_TPS_USER)+" on TPS to generate of unique RSA keypair for each new session"},
-            {code(FileFormat.RPP_TAG_TPS_SESSION_DIR), "the directory where TPS will store the files for each session"}
-    }, true);
+    doc.rstTable(Tag.getWholeDocTable(), true);
     doc.newLine();
     doc.newLine("The following fields for each dataset description are separated by colons (:)");
     doc.rstItemize(
@@ -105,5 +82,6 @@ public class RPPDocumentation extends Documentation {
             "number of variants sites in the VCF file",
             code("/path/to/coverage.bed.gz")+" the Bed file defining the well covered positions (any variants found in regions outside this scope will be ignored)"
     );
+    doc.newLine();
   }
 }

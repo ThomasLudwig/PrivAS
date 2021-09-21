@@ -48,7 +48,7 @@ public class ConnectionPane extends JPanel {
 
   /**
    * Gets the selected address of the RPP
-   * @return 
+   * @return the selected address of the RPP
    */
   public String getAddress() {
     return this.addressJTF.getText();
@@ -56,7 +56,7 @@ public class ConnectionPane extends JPanel {
 
   /**
    * Gets the selected port number of the RPP
-   * @return 
+   * @return the selected port number of the RPP
    */
   public int getPort() {
     try {
@@ -68,7 +68,7 @@ public class ConnectionPane extends JPanel {
 
   /**
    * Show inside a JOptionPane
-   * @return 
+   * @return the return of JOptionPane.showConfirmDialog(...)
    */
   public int display() {
     return JOptionPane.showConfirmDialog(null, this, GUI.CP_TITLE, JOptionPane.OK_CANCEL_OPTION);

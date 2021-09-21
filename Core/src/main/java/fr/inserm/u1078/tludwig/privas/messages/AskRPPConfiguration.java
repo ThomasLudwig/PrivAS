@@ -13,6 +13,7 @@ public class AskRPPConfiguration extends Message {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public AskRPPConfiguration() {
   }
 }

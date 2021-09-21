@@ -5,7 +5,6 @@ import fr.inserm.u1078.tludwig.privas.constants.FileFormat;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.utils.*;
 import fr.inserm.u1078.tludwig.privas.listener.SessionListener;
-import fr.inserm.u1078.tludwig.privas.utils.qc.QCParam;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -13,10 +12,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -82,6 +79,10 @@ public class ClientSession {
    */
   private String availableDatasets = null;
   /**
+   * List of GnomAD versions available on the RPP
+   */
+  private String availableGnomADVersions = null;
+  /**
    * Name of the RPP Dataset selected by the Client
    */
   private String selectedDataset = null;
@@ -91,10 +92,25 @@ public class ClientSession {
   private double maxMAF = -1;
   
   /**
-   * Maximum Allele Frequency in Gnomad_NFE allowed in the variant selection
+   * Maximum Allele Frequency in Gnomad for the selected Subpopulation allowed in the variant selection
    */
-  private double maxMAFNFE = -1;
-  
+  private double maxMAFSubpop = -1;
+
+  /**
+   * selected GnomAD subpopulation
+   */
+  private String selectedSubpop = null;
+
+  /**
+   * GnomAD Version selected for this Session
+   */
+  private String selectedGnomADVersion = null;
+
+  /**
+   * Filename for the binary GnomAD file
+   */
+  private String gnomadFilename = null;
+
   /**
    * Least Severe vep consequence allowed in the variant selection
    */
@@ -104,14 +120,21 @@ public class ClientSession {
    */
   private boolean limitToSNVs = false;
   /**
-   * List of all well covered positions
+   * Name of the File listing all the Client's well covered positions
    */
-  private BedFile bedFile = null;
-
+  private String bedFilename = null;
   /**
-   * QC Parameters
+   * Bed File that is the intersection of the Client's and RPP's bed files
    */
-  private QCParam qcParam; //TODO (de)serialize, listener
+  private BedFile intersectBedFile = null;
+  /**
+   * Name of the Excluded Variants File
+   */
+  private String excludedVariantsFilename = null;
+  /**
+   * Name of the File containing the Quality Control Parameters
+   */
+  private String qcParamFilename = null;
   /**
    * Third Party Server's Public RSA Key
    */
@@ -143,11 +166,8 @@ public class ClientSession {
 
   /**
    * Empty Constructor
-   *
-   * @throws NoSuchAlgorithmException
-   * @throws IOException
    */
-  public ClientSession() throws NoSuchAlgorithmException, IOException {
+  public ClientSession() {
     this.sessionListeners = new ArrayList<>();
     this.init();
     KeyPair kp = Crypto.generateRSAKeyPair();
@@ -160,7 +180,7 @@ public class ClientSession {
    * Registers a Session Listener, which will be alerted if some Session's parameters change<p>
    * Mainly used to update GUI in real time
    *
-   * @param sessionListener
+   * @param sessionListener a Session Listener that will be registered
    */
   public void addSessionListener(SessionListener sessionListener) {
     this.sessionListeners.add(sessionListener);
@@ -171,9 +191,8 @@ public class ClientSession {
    * Object : null
    * Numerical : -1
    *
-   * @throws IOException
    */
-  private void init() throws IOException {
+  private void init() {
     this.setLastFilename(null);
     this.setId(null);
     this.setHash(null);
@@ -182,13 +201,22 @@ public class ClientSession {
     this.setClientPrivateRSA(null);
     this.setThirdPartyName(null);
     this.setThirdPartyPublicKey(null);
-    this.setClientGenotypeFile(null);
+    try {
+      this.setClientGenotypeFile(null);
+    } catch(IOException ignore){
+      //cannot happen as the file is null
+    }
     this.setAvailableDatasets(null);
     this.setSelectedDataset(null);
+    this.setAvailableGnomADVersions(null);
+    this.setSelectedGnomADVersion(null);
+    this.setSelectedSubpop(null);
     this.setMaxMAF(-1);
+    this.setMaxMAFSubpop(-1);
     this.setLeastSevereConsequence(null);
     this.setLimitToSNVs(false);
-    this.setBedFile(null);
+    this.setGnomADFilename(null);
+    this.setBedFilename(null);
     this.setRPP(null, -1);
     this.setGeneHashDictionary(null);
     this.setGenePositions(null);
@@ -198,7 +226,7 @@ public class ClientSession {
   /**
    * Sets the Map linking Hashed gene names (key) to their clear text value (values)
    *
-   * @param geneHashDictionary
+   * @param geneHashDictionary  the Map linking Hashed gene names (key) to their clear text value (values)
    */
   public void setGeneHashDictionary(HashMap<String, String> geneHashDictionary) {
     this.geneHashDictionary = geneHashDictionary;
@@ -207,7 +235,7 @@ public class ClientSession {
   /**
    * Sets the Map linking Gene Names (key) to their positions (values)
    *
-   * @param genePositions
+   * @param genePositions the Map linking Gene Names (key) to their positions (values)
    */
   public void setGenePositions(HashMap<String, String> genePositions) {
     this.genePositions = genePositions;
@@ -225,7 +253,7 @@ public class ClientSession {
   /**
    * Sets the name of the last file used to save/load the current Session
    *
-   * @param lastFilename
+   * @param lastFilename the name of the last file used to save/load the current Session
    */
   private void setLastFilename(String lastFilename) {
     this.lastFilename = lastFilename;
@@ -234,7 +262,7 @@ public class ClientSession {
   /**
    * Gets the RPP Server's address
    *
-   * @return
+   * @return the RPP Server's address
    */
   public String getRPP() {
     return rppAddress;
@@ -243,7 +271,7 @@ public class ClientSession {
   /**
    * Gets the address and port number used to access the RPP, as one String
    *
-   * @return
+   * @return the address and port number used to access the RPP, as one String
    */
   public String getRPPFullAddress() {
     return rppAddress + ":" + rppPort;
@@ -266,7 +294,7 @@ public class ClientSession {
   /**
    * Gets the Port number used to access the RPP
    *
-   * @return
+   * @return the Port number used to access the RPP
    */
   public int getPort() {
     return rppPort;
@@ -275,7 +303,7 @@ public class ClientSession {
   /**
    * Gets the name of the Third Party Server
    *
-   * @return
+   * @return the name of the Third Party Server
    */
   public String getThirdPartyName() {
     return thirdPartyName;
@@ -284,7 +312,7 @@ public class ClientSession {
   /**
    * Sets the name of the Third Party Server
    *
-   * @param thirdPartyName
+   * @param thirdPartyName the name of the Third Party Server
    */
   public void setThirdPartyName(String thirdPartyName) {
     this.thirdPartyName = thirdPartyName;
@@ -297,10 +325,20 @@ public class ClientSession {
       listener.sessionReady();
   }
 
+  public String getExcludedVariantsFilename() {
+    return excludedVariantsFilename;
+  }
+
+  public void setExcludedVariantsFilename(String excludedVariantsFilename) {
+    this.excludedVariantsFilename = excludedVariantsFilename;
+    for (SessionListener listener : this.sessionListeners)
+      listener.excludedVariantsFilenameUpdated(excludedVariantsFilename);
+  }
+
   /**
    * Gets the ID of the Session
    *
-   * @return
+   * @return the ID of the Session
    */
   public String getId() {
     if (id == null)
@@ -311,7 +349,7 @@ public class ClientSession {
   /**
    * Sets the ID of the Session
    *
-   * @param id
+   * @param id the ID of the Session
    */
   public void setId(String id) {
     this.id = id;
@@ -322,7 +360,7 @@ public class ClientSession {
   /**
    * Gets the value of the Hash Salt
    *
-   * @return
+   * @return the value of the Hash Salt
    */
   public String getHash() {
     return hash;
@@ -331,7 +369,7 @@ public class ClientSession {
   /**
    * Sets the value of the Hash Salt
    *
-   * @param hash
+   * @param hash the value of the Hash Salt
    */
   public void setHash(String hash) {
     this.hash = hash;
@@ -342,7 +380,7 @@ public class ClientSession {
   /**
    * Gets the path to the Genotype File used by the Client
    *
-   * @return
+   * @return the path to the Genotype File used by the Client
    */
   public String getClientGenotypeFilename() {
     return clientGenotypeFilename;
@@ -351,7 +389,7 @@ public class ClientSession {
   /**
    * Gets the number of variants in the Genotype File used by the Client
    *
-   * @return
+   * @return the number of variants in the Genotype File used by the Client
    */
   public int getClientGenotypeFileSize() {
     return clientGenotypeFileSize;
@@ -360,7 +398,7 @@ public class ClientSession {
   /**
    * Gets the value of the selected RPP dataset
    *
-   * @return
+   * @return the value of the selected RPP dataset
    */
   public String getSelectedDataset() {
     return selectedDataset;
@@ -369,7 +407,7 @@ public class ClientSession {
   /**
    * Sets the value of the selected RPP dataset
    *
-   * @param selectedDataset
+   * @param selectedDataset the value of the selected RPP dataset
    */
   public void setSelectedDataset(String selectedDataset) {
     this.selectedDataset = selectedDataset;
@@ -380,16 +418,20 @@ public class ClientSession {
   /**
    * Gets the lists of Datasets available on the RPP (as one line)
    *
-   * @return
+   * @return the lists of Datasets available on the RPP (as one line)
    */
   public String getAvailableDatasets() {
     return availableDatasets;
   }
 
+  public String getAvailableGnomADVersions() {
+    return availableGnomADVersions;
+  }
+
   /**
    * Sets the lists of Datasets available on the RPP (as one line)
    *
-   * @param availableDatasets
+   * @param availableDatasets the lists of Datasets available on the RPP (as one line)
    */
   public void setAvailableDatasets(String availableDatasets) {
     this.availableDatasets = availableDatasets;
@@ -397,16 +439,23 @@ public class ClientSession {
       listener.availableDatasetsUpdated(this.availableDatasets);
   }
 
+  public void setAvailableGnomADVersions(String availableGnomADVersions) {
+    this.availableGnomADVersions = availableGnomADVersions;
+    for (SessionListener listener : this.sessionListeners)
+      listener.availableGnomADVersionsUpdated(this.availableGnomADVersions);
+  }
+
   /**
    * Sets the path to the Genotype File used by the Client
    *
-   * @param genotypeFile
+   * @param genotypeFile the path to the Genotype File used by the Client
    * @return TRUE - if the File exists and is a valid Genotype File
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while reading the Genotype file
    */
   public boolean setClientGenotypeFile(String genotypeFile) throws IOException {
     this.clientGenotypeFilename = genotypeFile;
     this.clientGenotypeFileSize = GenotypesFileHandler.getNumberOfLinesGenotypes(genotypeFile);
+    this.setGnomADFilename(GenotypesFileHandler.getGnomADFilename(genotypeFile));
     if (this.clientGenotypeFileSize == -1)
       return false;
     for (SessionListener listener : this.sessionListeners)
@@ -417,7 +466,7 @@ public class ClientSession {
   /**
    * Gets the value for the algorithm to execute and its trailing parameters
    *
-   * @return
+   * @return the value for the algorithm to execute and its trailing parameters
    */
   public String getAlgorithm() {
     return algorithm;
@@ -426,7 +475,7 @@ public class ClientSession {
   /**
    * Sets the value for the algorithm to execute and its trailing parameters
    *
-   * @param algorithm
+   * @param algorithm the value for the algorithm to execute and its trailing parameters
    */
   public void setAlgorithm(String algorithm) {
     this.algorithm = algorithm;
@@ -437,7 +486,7 @@ public class ClientSession {
   /**
    * Gets the value for the maximum Allele Frequency allowed in the variants selection
    *
-   * @return
+   * @return the value for the maximum Allele Frequency allowed in the variants selection
    */
   public double getMaxMAF() {
     return maxMAF;
@@ -446,7 +495,7 @@ public class ClientSession {
   /**
    * Sets the value for the maximum Allele Frequency allowed in the variants selection
    *
-   * @param maxMAF
+   * @param maxMAF the value for the maximum Allele Frequency allowed in the variants selection
    */
   public void setMaxMAF(double maxMAF) {
     this.maxMAF = maxMAF;
@@ -457,27 +506,58 @@ public class ClientSession {
   /**
    * Gets the value for the maximum Allele Frequency allowed in the variants selection
    *
-   * @return
+   * @return the value for the maximum Allele Frequency allowed in the variants selection
    */
-  public double getMaxMAFNFE() {
-    return maxMAFNFE;
+  public double getMaxMAFSubpop() {
+    return maxMAFSubpop;
   }
 
   /**
    * Sets the value for the maximum Allele Frequency allowed in the variants selection
    *
-   * @param maxMAFNFE
+   * @param maxMAFSubpop the value for the maximum Allele Frequency allowed in the variants selection
    */
-  public void setMaxMAFNFE(double maxMAFNFE) {
-    this.maxMAFNFE = maxMAFNFE;
+  public void setMaxMAFSubpop(double maxMAFSubpop) {
+    this.maxMAFSubpop = maxMAFSubpop;
     for (SessionListener listener : this.sessionListeners)
-      listener.maxMAFNFEUpdated(this.maxMAFNFE);
+      listener.maxMAFSubpopUpdated(this.maxMAFSubpop);
+  }
+
+  public String getSelectedSubpop() {
+    return selectedSubpop;
+  }
+
+  public void setSelectedSubpop(String selectedSubpop) {
+    this.selectedSubpop = selectedSubpop;
+    for (SessionListener listener : sessionListeners)
+      listener.selectedGnomADSubpopulationUpdated(this.selectedSubpop);
+  }
+
+  public String getSelectedGnomADVersion() {
+    return selectedGnomADVersion;
+  }
+
+  public void setSelectedGnomADVersion(String selectedGnomADVersion) {
+    this.selectedGnomADVersion = selectedGnomADVersion;
+    for (SessionListener listener : sessionListeners)
+      listener.selectedGnomADVersionUpdated(this.selectedGnomADVersion);
+  }
+
+  @SuppressWarnings("unused")
+  public String getGnomadFilename() {
+    return gnomadFilename;
+  }
+
+  public void setGnomADFilename(String gnomadFilename) {
+    this.gnomadFilename = gnomadFilename;
+    for (SessionListener listener : sessionListeners)
+      listener.selectedGnomADFilenameUpdated(this.gnomadFilename);
   }
 
   /**
    * Gets the value for the Least Severe Consequence allowed in the variants selection
    *
-   * @return
+   * @return the value for the Least Severe Consequence allowed in the variants selection
    */
   public String getLeastSevereConsequence() {
     return leastSevereConsequence;
@@ -486,7 +566,7 @@ public class ClientSession {
   /**
    * Sets the value for the Least Severe Consequence allowed in the variants selection
    *
-   * @param leastSevereConsequence
+   * @param leastSevereConsequence the value for the Least Severe Consequence allowed in the variants selection
    */
   public void setLeastSevereConsequence(String leastSevereConsequence) {
     this.leastSevereConsequence = leastSevereConsequence;
@@ -504,26 +584,38 @@ public class ClientSession {
       listener.limitToSNVsUpdated(limitToSNVs);
   }
 
-  public BedFile getBedFile() {
-    return bedFile;
+  public String getBedFilename() {
+    return bedFilename;
   }
 
-  public void setBedFile(BedFile bedFile) {
-    this.bedFile = bedFile;
+  public void setBedFilename(String bedFilename) {
+    this.bedFilename = bedFilename;
+    for (SessionListener listener : this.sessionListeners)
+      listener.bedFilenameUpdated(bedFilename);
   }
 
-  public QCParam getQCParam() {
-    return qcParam;
+  public BedFile getIntersectBedFile() {
+    return intersectBedFile;
   }
 
-  public void setQCParam(QCParam qcParam) {
-    this.qcParam = qcParam;
+  public void setIntersectBedFile(BedFile intersectBedFile) {
+    this.intersectBedFile = intersectBedFile;
+  }
+
+  public String getQCParamFilename() {
+    return qcParamFilename;
+  }
+
+  public void setQCParamFilename(String qcParamFilename) {
+    this.qcParamFilename = qcParamFilename;
+    for (SessionListener listener : this.sessionListeners)
+      listener.qcParamFilenameUpdated(qcParamFilename);
   }
 
   /**
    * Gets the value of the Client AES Key
    *
-   * @return
+   * @return the value of the Client AES Key
    */
   public String getAesKey() {
     return aesKey;
@@ -532,7 +624,7 @@ public class ClientSession {
   /**
    * Gets the Client's Public RSA Key
    *
-   * @return
+   * @return the Client's Public RSA Key
    */
   public PublicKey getClientPublicRSA() {
     return clientPublicRSA;
@@ -541,7 +633,7 @@ public class ClientSession {
   /**
    * Gets the Client's Private RSA Key
    *
-   * @return
+   * @return the Client's Private RSA Key
    */
   public PrivateKey getClientPrivateRSA() {
     return clientPrivateRSA;
@@ -550,7 +642,7 @@ public class ClientSession {
   /**
    * Gets the value of the Client Private RSA Key (as a one-line pem String)
    *
-   * @return
+   * @return the value of the Client Private RSA Key (as a one-line pem String)
    */
   public String getClientPrivateRSAAsString() {
     if (this.clientPrivateRSA == null)
@@ -561,7 +653,7 @@ public class ClientSession {
   /**
    * Gets the value of the Client Public RSA Key (as a one-line pem String)
    *
-   * @return
+   * @return the value of the Client Public RSA Key (as a one-line pem String)
    */
   public String getClientPublicRSAAsString() {
     if (this.clientPublicRSA == null)
@@ -572,7 +664,7 @@ public class ClientSession {
   /**
    * Gets the value of the Third Party Server Public RSA Key (as a one-line pem String)
    *
-   * @return
+   * @return the value of the Third Party Server Public RSA Key (as a one-line pem String)
    */
   public String getThirdPartyPublicKeyAsString() {
     if (this.thirdPartyPublicKey == null)
@@ -616,7 +708,7 @@ public class ClientSession {
   /**
    * Gets the value of the Third Party Public Key
    *
-   * @return
+   * @return the value of the Third Party Public Key
    */
   public PublicKey getThirdPartyPublicKey() {
     return thirdPartyPublicKey;
@@ -625,7 +717,7 @@ public class ClientSession {
   /**
    * Sets the value of the Third Party Public Key (as a one-line pem String)
    *
-   * @param thirdPartyPublicKey
+   * @param thirdPartyPublicKey the value of the Third Party Public Key (as a one-line pem String)
    */
   public void setThirdPartyPublicKey(PublicKey thirdPartyPublicKey) {
     this.thirdPartyPublicKey = thirdPartyPublicKey;
@@ -636,7 +728,7 @@ public class ClientSession {
   /**
    * Gets the value for the last known RPP Status
    *
-   * @return
+   * @return the value for the last known RPP Status
    */
   public String getLastRPPStatus() {
     return lastRPPStatus;
@@ -645,7 +737,7 @@ public class ClientSession {
   /**
    * Sets the value for the last known RPP Status
    *
-   * @param lastRPPStatus
+   * @param lastRPPStatus the value for the last known RPP Status
    */
   public void setLastRPPStatus(String lastRPPStatus) {
     this.lastRPPStatus = lastRPPStatus;
@@ -657,8 +749,8 @@ public class ClientSession {
    * Load a Session File into memory, as the current Session
    *
    * @param filename the name of the Session File
-   * @throws fr.inserm.u1078.tludwig.privas.instances.ClientSession.SessionFileException
-   * @throws java.io.IOException
+   * @throws fr.inserm.u1078.tludwig.privas.instances.ClientSession.SessionFileException if the session file cannot be parsed
+   * @throws java.io.IOException If an I/O error occurs while reading the file
    */
   public void load(String filename) throws SessionFileException, IOException { 
     this.init();
@@ -709,11 +801,20 @@ public class ClientSession {
         case FileFormat.SESSION_AVAILABLE_DATASETS:
           this.setAvailableDatasets(f[1]);
           break;
+        case FileFormat.SESSION_SELECTED_GNOMAD_VERSION:
+          this.setSelectedGnomADVersion(f[1]);
+          break;
+        case FileFormat.SESSION_AVAILABLE_GNOMAD_VERSIONS:
+          this.setAvailableGnomADVersions(f[1]);
+          break;
         case FileFormat.SESSION_MAF:
           this.setMaxMAF(parser.parseMaxMAF(f[1]));
           break;
-        case FileFormat.SESSION_MAF_NFE:
-          this.setMaxMAFNFE(parser.parseMaxMAF(f[1]));
+        case FileFormat.SESSION_SUBPOP_INDEX:
+          this.setSelectedSubpop(f[1]);
+          break;
+        case FileFormat.SESSION_MAF_SUBPOP:
+          this.setMaxMAFSubpop(parser.parseMaxMAF(f[1]));
           break;
         case FileFormat.SESSION_CSQ:
           this.setLeastSevereConsequence(parser.parseConsequence(f[1]));
@@ -722,8 +823,20 @@ public class ClientSession {
           this.setLimitToSNVs("true".equalsIgnoreCase(f[1]));
           foundLimitToSNVs = true;
           break;
-        case FileFormat.SESSION_BEDFILE:
-          this.bedFile = parser.parseBedFile(f[1]);
+        case FileFormat.SESSION_GNOMAD_FILENAME:
+          this.setGnomADFilename(f[1]);
+          break;
+        case FileFormat.SESSION_EXCLUDED_VARIANTS:
+          this.setExcludedVariantsFilename(f[1]);
+          break;
+        case FileFormat.SESSION_QC_PARAM_FILENAME:
+          this.setQCParamFilename(f[1]);
+          break;
+        case FileFormat.SESSION_BED_FILENAME:
+          this.setBedFilename(f[1]);
+          break;
+        case FileFormat.SESSION_INTERSECT_BED:
+          this.intersectBedFile = parser.parseBedFile(f[1]);
           break;
         case FileFormat.SESSION_STATUS:
           this.setLastRPPStatus(parser.parserRPPStatus(f[2]));//here it is f[2] because the value contains a TAB
@@ -763,16 +876,28 @@ public class ClientSession {
       err.append(MSG.SS_NO_KEY(FileFormat.SESSION_SELECTED_DATASET, filename));
     if (this.availableDatasets == null)
       err.append(MSG.SS_NO_KEY(FileFormat.SESSION_AVAILABLE_DATASETS, filename));
+    if (this.selectedGnomADVersion == null)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_SELECTED_GNOMAD_VERSION, filename));
+    if (this.availableGnomADVersions == null)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_AVAILABLE_GNOMAD_VERSIONS, filename));
+    if (this.selectedSubpop == null)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_SUBPOP_INDEX, filename));
     if (this.maxMAF == -1)
       err.append(MSG.SS_NO_KEY(FileFormat.SESSION_MAF, filename));
-    if (this.maxMAFNFE == -1)
-      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_MAF_NFE, filename));
+    if (this.maxMAFSubpop == -1)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_MAF_SUBPOP, filename));
     if (this.leastSevereConsequence == null)
       err.append(MSG.SS_NO_KEY(FileFormat.SESSION_CSQ, filename));
     if (!foundLimitToSNVs)
       err.append(MSG.SS_NO_KEY(FileFormat.SESSION_LIMIT_SNV, filename));
-    if (this.bedFile == null)
-      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_BEDFILE, filename));
+    if (this.gnomadFilename == null)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_GNOMAD_FILENAME, filename));
+    if (this.bedFilename == null)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_BED_FILENAME, filename));
+    if (this.intersectBedFile == null)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_INTERSECT_BED, filename));
+    if (this.excludedVariantsFilename == null)
+      err.append(MSG.SS_NO_KEY(FileFormat.SESSION_EXCLUDED_VARIANTS, filename));
     if (this.rppAddress == null)
       err.append(MSG.SS_NO_KEY(FileFormat.SESSION_RPP, filename));
     if (this.geneHashDictionary == null)
@@ -797,7 +922,7 @@ public class ClientSession {
     private PublicKey parseClientPublicRSA(String input) throws SessionFileException {
       try {
         return Crypto.buildPublicRSAKey(input);
-      } catch (NoSuchAlgorithmException | InvalidKeySpecException ex) {
+      } catch (Crypto.CryptoException ex) {
         throw new SessionFileException(MSG.cat(MSG.SS_PARSE_CLIENT_PUBLIC_RSA, input), ex);
       }
     }
@@ -805,7 +930,7 @@ public class ClientSession {
     private PublicKey parseThirdPartyPublicKey(String input) throws SessionFileException {
       try {
         return Crypto.buildPublicRSAKey(input);
-      } catch (NoSuchAlgorithmException | InvalidKeySpecException ex) {
+      } catch (Crypto.CryptoException ex) {
         throw new SessionFileException(MSG.cat(MSG.SS_PARSE_TPS_PUBLIC_RSA, input), ex);
       }
     }
@@ -835,7 +960,7 @@ public class ClientSession {
     private PrivateKey parseClientPrivateRSA(String input) throws SessionFileException {
       try {
         return Crypto.buildPrivateRSAKey(input);
-      } catch (NoSuchAlgorithmException | InvalidKeySpecException ex) {
+      } catch (Crypto.CryptoException ex) {
         throw new SessionFileException(MSG.cat(MSG.SS_PARSE_CLIENT_PRIVATE_RSA, input), ex);
       }
     }
@@ -846,12 +971,10 @@ public class ClientSession {
     }
   }
 
+  /**
+   * Exception thrown if there if a problem with the Session File
+   */
   public static class SessionFileException extends Exception {
-
-    public SessionFileException() {
-      super();
-    }
-
     public SessionFileException(String message) {
       super(message);
     }
@@ -859,42 +982,46 @@ public class ClientSession {
     public SessionFileException(String message, Throwable cause) {
       super(message, cause);
     }
-
-    public SessionFileException(Throwable cause) {
-      super(cause);
-    }
   }
 
   /**
    * Save the current Session to a File
    *
    * @param filename the name of the Session File
-   * @throws Exception
+   * @throws SessionFileException if the sessionId is null
+   * @throws IOException If an I/O error occurs while writing to the file
    */
-  public void save(String filename) throws Exception {
+  public void save(String filename) throws IOException, SessionFileException {
     if (id == null)
-      throw new Exception(MSG.SS_UNDEFINED);
+      throw new SessionFileException(MSG.SS_UNDEFINED);
     PrintWriter out = new PrintWriter(new FileWriter(filename));
-    out.println(FileFormat.SESSION_ID + T + this.id);
+    out.println(FileFormat.SESSION_ID + T + this.getId());
     out.println(FileFormat.SESSION_PUBLIC + T + this.getClientPublicRSAAsString());
     out.println(FileFormat.SESSION_PRIVATE + T + this.getClientPrivateRSAAsString());
-    out.println(FileFormat.SESSION_THIRD_PARTY_NAME + T + this.thirdPartyName);
+    out.println(FileFormat.SESSION_THIRD_PARTY_NAME + T + this.getThirdPartyName());
     out.println(FileFormat.SESSION_THIRD_PARTY_KEY + T + this.getThirdPartyPublicKeyAsString());
-    out.println(FileFormat.SESSION_AES + T + this.aesKey);
-    out.println(FileFormat.SESSION_RPP + T + this.rppAddress + ":" + this.rppPort);
-    out.println(FileFormat.SESSION_HASH + T + this.hash);
-    out.println(FileFormat.SESSION_GENOTYPE + T + this.clientGenotypeFilename);
-    out.println(FileFormat.SESSION_AVAILABLE_DATASETS + T + this.availableDatasets);
-    out.println(FileFormat.SESSION_SELECTED_DATASET + T + this.selectedDataset);
-    out.println(FileFormat.SESSION_MAF + T + this.maxMAF);
-    out.println(FileFormat.SESSION_MAF_NFE + T + this.maxMAFNFE);
-    out.println(FileFormat.SESSION_CSQ + T + this.leastSevereConsequence);
-    out.println(FileFormat.SESSION_LIMIT_SNV + T + this.limitToSNVs);
-    out.println(FileFormat.SESSION_BEDFILE + T + this.bedFile.serialize());
-    out.println(FileFormat.SESSION_STATUS + T + this.lastRPPStatus);
+    out.println(FileFormat.SESSION_AES + T + this.getAesKey());
+    out.println(FileFormat.SESSION_RPP + T + this.getRPPFullAddress());
+    out.println(FileFormat.SESSION_HASH + T + this.getHash());
+    out.println(FileFormat.SESSION_GENOTYPE + T + this.getClientGenotypeFilename());
+    out.println(FileFormat.SESSION_GNOMAD_FILENAME + T + this.getGnomadFilename());
+    out.println(FileFormat.SESSION_EXCLUDED_VARIANTS + T + this.getExcludedVariantsFilename());
+    out.println(FileFormat.SESSION_QC_PARAM_FILENAME + T + this.getQCParamFilename());
+    out.println(FileFormat.SESSION_BED_FILENAME + T + this.bedFilename);
+    out.println(FileFormat.SESSION_INTERSECT_BED + T + this.intersectBedFile.serialize());
+    out.println(FileFormat.SESSION_AVAILABLE_DATASETS + T + this.getAvailableDatasets());
+    out.println(FileFormat.SESSION_SELECTED_DATASET + T + this.getSelectedDataset());
+    out.println(FileFormat.SESSION_AVAILABLE_GNOMAD_VERSIONS + T + this.getAvailableGnomADVersions());
+    out.println(FileFormat.SESSION_SELECTED_GNOMAD_VERSION + T + this.getSelectedGnomADVersion());
+    out.println(FileFormat.SESSION_MAF + T + this.getMaxMAF());
+    out.println(FileFormat.SESSION_SUBPOP_INDEX + T + this.getSelectedSubpop());
+    out.println(FileFormat.SESSION_MAF_SUBPOP + T + this.getMaxMAFSubpop());
+    out.println(FileFormat.SESSION_CSQ + T + this.getLeastSevereConsequence());
+    out.println(FileFormat.SESSION_LIMIT_SNV + T + this.getLimitToSNVs());
+    out.println(FileFormat.SESSION_STATUS + T + this.getLastRPPStatus());
     out.println(FileFormat.SESSION_DICTIONARY + T + dictionaryToString(this.geneHashDictionary));
     out.println(FileFormat.SESSION_POSITIONS + T + positionsToString(this.genePositions));
-    out.println(FileFormat.SESSION_ALGORITHM + T + this.algorithm);
+    out.println(FileFormat.SESSION_ALGORITHM + T + this.getAlgorithm());
     out.close();
     this.setLastFilename(filename);
   }
@@ -985,7 +1112,7 @@ public class ClientSession {
    * Convert a String from a Session file to a Map of the Hashed Gene names (Keys) and their clear text name (values)
    *
    * @param line the line from the Session File
-   * @return
+   * @return the dictionary
    */
   private static HashMap<String, String> stringToDictionary(String line) {
     HashMap<String, String> ret = new HashMap<>();
@@ -1003,7 +1130,7 @@ public class ClientSession {
    * Converts a Map of the Hashed Gene names (Keys) and their clear text name (values) to a Single String. (When saving the session)
    *
    * @param dictionary Map of Genes to their positions
-   * @return
+   * @return the string representing the dictionary
    */
   private static String dictionaryToString(HashMap<String, String> dictionary) {
     StringBuilder sb = new StringBuilder();
@@ -1020,7 +1147,7 @@ public class ClientSession {
    * Convert a String from a Session file to a Map of the Gene names (Keys) and positions (values)
    *
    * @param line the line from the Session File
-   * @return
+   * @return the genes/positions map
    */
   private static HashMap<String, String> stringToPositions(String line) {
     HashMap<String, String> ret = new HashMap<>();
@@ -1036,7 +1163,7 @@ public class ClientSession {
    * Converts a Map of the Gene names (Keys) and positions (values) to a Single String. (When saving the session)
    *
    * @param positions Map of Genes to their positions
-   * @return
+   * @return the string representing the genes/positions map
    */
   private static String positionsToString(HashMap<String, String> positions) {
     StringBuilder sb = new StringBuilder();

@@ -20,7 +20,7 @@ public class BedRegion implements Comparable<BedRegion> {
    * @param start start of the region (in base 0)
    * @param end   end of the region (in base 1)
    * Due to the mixing between base0 and base1 coordinates, variant at position 17:45 would be located on a region 17 44 45
-   * @throws BedRegion.BedRegionException
+   * @throws BedRegion.BedRegionException if end <= start
    */
   public BedRegion(int start, int end) throws BedRegionException { 
     if(end < start)
@@ -37,7 +37,7 @@ public class BedRegion implements Comparable<BedRegion> {
   /**
    * Return true if the given position to contained in the BedRegion
    * @param pos the position to lookup
-   * @return 
+   * @return true if the given position to contained in the BedRegion
    */
   public boolean contains(int pos){
     return this.start < pos && pos <= this.end;
@@ -45,8 +45,8 @@ public class BedRegion implements Comparable<BedRegion> {
   
   /**
    * Returns true if this BedRegion and r overlaps
-   * @param r
-   * @return 
+   * @param r the other region to test
+   * @return true if this BedRegion and r overlaps
    */
   public boolean overlap(BedRegion r) {
     //either this.start is in r or r.start is in this0
@@ -58,7 +58,7 @@ public class BedRegion implements Comparable<BedRegion> {
 
   /**
    * Gets the Start of the BedRegion (0-based)
-   * @return 
+   * @return the Start of the BedRegion (0-based)
    */
   public int getStart() {
     return start;
@@ -66,7 +66,7 @@ public class BedRegion implements Comparable<BedRegion> {
 
   /**
    * Gets the End of the BedRegion (1-based)
-   * @return 
+   * @return  the End of the BedRegion (1-based)
    */
   public int getEnd() {
     return end;
@@ -85,7 +85,7 @@ public class BedRegion implements Comparable<BedRegion> {
 
   /**
    * extends this BedRegion to its union with BedRegion r
-   * @param r
+   * @param r the other region
    * @throws BedRegion.BedRegionException if this BedRegion and r do not overlap
    */
   public void applyUnion(BedRegion r) throws BedRegionException {
@@ -97,9 +97,10 @@ public class BedRegion implements Comparable<BedRegion> {
   
   /**
    * limits this BedRegion to its intersection with BedRegion r
-   * @param r
+   * @param r the other region
    * @throws BedRegion.BedRegionException if this BedRegion and r do not overlap
    */
+  @SuppressWarnings("unused")
   public void applyIntersection(BedRegion r) throws BedRegionException{
     if(!this.overlap(r))
       throw new BedRegionException("Cannot get intersection between "+this+" and "+r+", regions do not overlap");
@@ -114,6 +115,7 @@ public class BedRegion implements Comparable<BedRegion> {
    * @return the union of r1 and r2
    * @throws BedRegion.BedRegionException if r1 and r2 do not overlap
    */
+  @SuppressWarnings("unused")
   public static BedRegion getUnion(BedRegion r1, BedRegion r2) throws BedRegionException {
     if(!r1.overlap(r2))
       throw new BedRegionException("Cannot get union between "+r1+" and "+r2+", regions do not overlap");

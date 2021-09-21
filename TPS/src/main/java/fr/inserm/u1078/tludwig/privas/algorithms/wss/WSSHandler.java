@@ -4,6 +4,7 @@ import fr.inserm.u1078.tludwig.privas.algorithms.Utils;
 import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.constants.Parameters;
+import fr.inserm.u1078.tludwig.privas.instances.Instance;
 import fr.inserm.u1078.tludwig.privas.instances.ThirdPartyServer;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 import java.io.ByteArrayOutputStream;
@@ -25,6 +26,10 @@ import java.util.HashMap;
 public class WSSHandler {
   //parameters
   /**
+   * The Instance that will log events
+   */
+  private final Instance instance;
+  /**
    * maximum number of cores to use
    */
   private final int nbThreads;
@@ -35,7 +40,7 @@ public class WSSHandler {
   /**
    * maximum number of permutations
    */
-  private final long maxK; //needs to be long, otherwise computation results might get negative (if >  maxint=2147483647)
+  private final long maxK; //needs to be long, otherwise computation results might get negative (if >  MAX_INTEGER=2147483647)
   /**
    * if the p-value is above this value, the permutations stop, no need to continue
    */
@@ -80,8 +85,8 @@ public class WSSHandler {
    * @param nbThreads  maximum number of cores to use
    * @param randomSeed initial random seed
    */
-  public WSSHandler(int nbThreads, long randomSeed) {
-    this(nbThreads, Parameters.WSS_DEFAULT_MIN_K0, Parameters.WSS_DEFAULT_MAX_K, Parameters.WSS_DEFAULT_REJECTION_PVALUE, Parameters.WSS_DEFAULT_MIN_PVALUE_MINUS_LOG, randomSeed);
+  public WSSHandler(int nbThreads, long randomSeed, Instance instance) {
+    this(nbThreads, Parameters.WSS_DEFAULT_MIN_K0, Parameters.WSS_DEFAULT_MAX_K, Parameters.WSS_DEFAULT_REJECTION_PVALUE, Parameters.WSS_DEFAULT_MIN_PVALUE_MINUS_LOG, randomSeed, instance);
   }
 
   /**
@@ -91,8 +96,8 @@ public class WSSHandler {
    * @param nbThreads  maximum number of cores to use
    * @param randomSeed initial random seed
    */
-  public WSSHandler(long maxPerm, int nbThreads, long randomSeed) {
-    this(nbThreads, Parameters.WSS_DEFAULT_MIN_K0, maxPerm, Parameters.WSS_DEFAULT_REJECTION_PVALUE, Parameters.WSS_DEFAULT_MIN_PVALUE_MINUS_LOG, randomSeed);
+  public WSSHandler(long maxPerm, int nbThreads, long randomSeed, Instance instance) {
+    this(nbThreads, Parameters.WSS_DEFAULT_MIN_K0, maxPerm, Parameters.WSS_DEFAULT_REJECTION_PVALUE, Parameters.WSS_DEFAULT_MIN_PVALUE_MINUS_LOG, randomSeed, instance);
   }
 
   /**
@@ -105,7 +110,8 @@ public class WSSHandler {
    * @param minPValueMinusLog the permutations stop if k0 &ge; 1 + this.minPValueMinusLog + Math.log10(pvalue)
    * @param randomSeed        initial random seed
    */
-  public WSSHandler(int nbThreads, int minKo, long kMax, double rejectionPValue, double minPValueMinusLog, long randomSeed) {
+  public WSSHandler(int nbThreads, int minKo, long kMax, double rejectionPValue, double minPValueMinusLog, long randomSeed, Instance instance) {
+    this.instance = instance;
     this.nbThreads = nbThreads;
     this.minK0 = minKo;
     this.maxK = kMax;
@@ -121,9 +127,10 @@ public class WSSHandler {
    * @param phenotypeFilename    name of the file containing the affected/unaffected phenotypes of the samples
    *
    * @return the results of WSS. A result file, in clear text, stored in a byte array
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while reading the phenotype file
    */
   public byte[] start(String genotypeListFilename, String phenotypeFilename) throws IOException {
+    this.statusStarted();
     this.loadData(genotypeListFilename, phenotypeFilename);
     return this.run();
   }
@@ -137,9 +144,8 @@ public class WSSHandler {
    * @param nbUnaffected    number of unaffected individuals
    *
    * @return the results of WSS. A result file, in clear text, stored in a byte array
-   * @throws IOException
    */
-  public byte[] start(HashMap<String, ArrayList<String>> mergedGenotypes, int nbAffected, int nbUnaffected) throws IOException {
+  public byte[] start(HashMap<String, ArrayList<String>> mergedGenotypes, int nbAffected, int nbUnaffected) {
     if (mergedGenotypes == null) {
       statusError(MSG.WH_MAP_NULL);
       return null;
@@ -152,7 +158,7 @@ public class WSSHandler {
   /**
    * Sets the ThirdPartyServer that will receiver the status updates
    *
-   * @param tps
+   * @param tps the ThirdPartyServer that will receiver the status updates
    */
   public void setThirdPartyServer(ThirdPartyServer tps) {
     this.tps = tps;
@@ -165,35 +171,23 @@ public class WSSHandler {
    */
   private void statusRunning(String s) {
     if (tps != null)
-      try {
-        tps.statusRunning(s, false);
-      } catch (IOException e) {
-        //Nothing
-      }
+      tps.statusRunning(s, false);
     else
-      System.err.println(s);
+      instance.logError(s);
   }
 
-  private void statusStarted(String s) {
+  private void statusStarted() {
     if (tps != null)
-      try {
-        tps.statusStarted(s, false);
-      } catch (IOException e) {
-        //Nothing
-      }
+      tps.statusStarted(MSG.WH_LOADING, false);
     else
-      System.err.println(s);
+      instance.logError(MSG.WH_LOADING);
   }
 
   private void statusError(String s) {
     if (tps != null)
-      try {
-        tps.statusError(s);
-      } catch (IOException e) {
-        //Nothing
-      }
+      tps.statusError(s);
     else
-      System.err.println(s);
+      instance.logError(s);
   }
 
   /**
@@ -201,7 +195,7 @@ public class WSSHandler {
    *
    * @param genotypeListFilename name of the file containing the genotypes
    * @param phenotypeFilename    name of the file containing the affected/unaffected phenotypes of the samples
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while reading either the genotype or the phenotype file
    */
   private void loadData(String genotypeListFilename, String phenotypeFilename) throws IOException {
     //reading phenotype
@@ -226,7 +220,7 @@ public class WSSHandler {
     while ((line = in.readLine()) != null) {
       String[] f = line.split("\t");
       //f[0] - gene name /  f[1] - filename
-      wss.add(new WSS(f[0], phenotypes, f[1]));
+      wss.add(new WSS(f[0], phenotypes, f[1], instance));
     }
     in.close();
     statusRunning(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size()));
@@ -241,24 +235,6 @@ public class WSSHandler {
    * @param nbUnaffected    number of unaffected individuals
    */
   private void loadData(HashMap<String, ArrayList<String>> mergedGenotypes, int nbAffected, int nbUnaffected) {
-
-    //TODO for debugging purpose only remove before release !
-   /*
-
-   String id = "debug."+new Date().getTime();
-    PrintWriter out = null;
-    if(Main.DEBUG){
-      out = new PrintWriter(new FileWriter("/PROJECTS/PrivGene/PrivAS/debug/"+id+".pheno"));
-      StringBuilder sb = new StringBuilder();
-      for(int i = 0 ; i < nbAffected; i++)
-        sb.append("\t1");
-      for(int i = 0 ; i < nbUnaffected; i++)
-        sb.append("\t0");
-      out.println(sb.substring(1));
-      out.close();
-      out = new PrintWriter(new FileWriter("/PROJECTS/PrivGene/PrivAS/debug/"+id+".geno"));
-    }*/
-
     //number of affected individuals in the dataset
     this.nbAffected = nbAffected;
     this.nbUnaffected = nbUnaffected;
@@ -270,16 +246,11 @@ public class WSSHandler {
     for (String gene : mergedGenotypes.keySet()) {
       ArrayList<String> genotypes = mergedGenotypes.get(gene);
       if (genotypes == null)
-        statusError(MSG.cat(MSG.WH_NO_GENOTYPE, gene));  //TODO exit ?
-      /*else if(out != null)
-        for(String ge : genotypes) 
-          out.println(gene+"\t"+ge);*/
-      wss.add(new WSS(gene, phenotypes, genotypes));
+        statusError(MSG.cat(MSG.WH_NO_GENOTYPE, gene));  //QUESTION exit ?
+      wss.add(new WSS(gene, phenotypes, genotypes, instance));
     }
 
     statusRunning(MSG.cat(MSG.WH_GENO_LIST_LOADED, wss.size()));
-   /* if(out != null)
-      out.close();*/
   }
 
   /**
@@ -295,13 +266,12 @@ public class WSSHandler {
    */
   private byte[] run() {
     long startComp = new Date().getTime();
-    statusRunning(/*Constants.DF_TPS.format(new Date()) + */MSG.WH_START);
+    statusRunning(MSG.WH_START);
     //init
     Shuffler shuffler = new Shuffler(nbUnaffected, nbAffected, randomSeed);
     final long start = new Date().getTime();
 
     //print results header
-    //PrintWriter out = new PrintWriter(new FileWriter(this.resultFile));
     ByteArrayOutputStream resultStream = new ByteArrayOutputStream();
     PrintWriter out = new PrintWriter(resultStream);
     out.println(Constants.WWS_HEADER);
@@ -311,7 +281,6 @@ public class WSSHandler {
     int minIteration = (int) Math.ceil(((Parameters.WSS_DEFAULT_LOOP_SIZE / this.rejectionPValue) + 1));
     while(minIteration % this.nbThreads != 0)
       minIteration++;
-    //final int shuffleSize = minIteration / this.nbThreads;
     final boolean[][] shuffled = shuffler.getNext(minIteration);
     //k is the number of permutations done so far
     int k = minIteration;
@@ -360,8 +329,8 @@ public class WSSHandler {
       if ((previousRemaining != wss.size()) || (k - previousK > 10000)) {
         long now = new Date().getTime(); //now
         double ms = now - previousTime;
-        long nbIterDone = (k - previousK) * previousRemaining; //long in case it is more than maxint=2147483647 
-        long nbIterLeft = (this.maxK - k) * wss.size(); //long in case it is more than maxint=2147483647                 
+        long nbIterDone = (k - previousK) * previousRemaining; //long in case it is more than MAX_INTEGER=2147483647
+        long nbIterLeft = (this.maxK - k) * wss.size(); //long in case it is more than MAX_INTEGER=2147483647
         double iterByMs = nbIterDone / ms;
         long msLeft = (long) (nbIterLeft / iterByMs);
         statusRunning(MSG.WH_PROGRESS(k, wss.size(), totalGenes, msLeft));

@@ -16,7 +16,7 @@ import java.util.Date;
  */
 public class Testgui {
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     LookAndFeel.setup();
 
     TPSLogWindow logWindow = new TPSLogWindow();
@@ -42,7 +42,7 @@ public class Testgui {
 
   public static String getRandomWord(){
     double newLetter = 0.65;
-    StringBuilder word = new StringBuilder(getRandomLetter());
+    StringBuilder word = new StringBuilder(""+getRandomLetter());
     while(Math.random()< newLetter)
       word.append(getRandomLetter());
     return word.toString();

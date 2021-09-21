@@ -38,7 +38,7 @@ public abstract class SessionMessage extends Message {
   /**
    * Gets the Session ID
    *
-   * @return
+   * @return the Session ID
    */
   public final String getSession() {
     return this.getValue(Key.SESSION);

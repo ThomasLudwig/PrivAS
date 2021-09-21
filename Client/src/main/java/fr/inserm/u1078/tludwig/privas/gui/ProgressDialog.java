@@ -30,7 +30,7 @@ public class ProgressDialog implements ProgressListener {
    * the Frame owning (calling) this Dialog
    */
   private final Frame owner;
-  private SwingWorker worker;
+  private SwingWorker<Object, Object> worker;
   /**
    * the Text shown at the top of the Dialog
    */
@@ -78,10 +78,10 @@ public class ProgressDialog implements ProgressListener {
   }
 
   /**
-   * The SwingWorker with the task being performed
-   * @param worker 
+   * Sets the SwingWorker with the task being performed
+   * @param worker the SwingWorker with the task being performed
    */
-  public void setWorker(SwingWorker worker) {
+  public void setWorker(SwingWorker<Object, Object> worker) {
     this.worker = worker;
     this.init(northText, southText);
   }
@@ -90,7 +90,7 @@ public class ProgressDialog implements ProgressListener {
    * Activates this ProgressDialog's SwingWorker and start the worker of the actual Task
    */
   private void activate() {
-    SwingWorker t = new SwingWorker(){
+    SwingWorker<Object, Object> t = new SwingWorker<Object, Object>(){
       @Override
       protected Object doInBackground() {
         dlg.setVisible(true);

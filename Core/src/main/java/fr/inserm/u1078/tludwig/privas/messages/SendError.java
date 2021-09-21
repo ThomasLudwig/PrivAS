@@ -13,13 +13,14 @@ public class SendError extends Message {
   /**
    * Mandatory Empty Constructor, used through Java Reflection
    */
+  @SuppressWarnings("unused")
   public SendError() {
   }
 
   /**
    * Constructor from the error parameter's value
    *
-   * @param error
+   * @param error the error message from the RPP to the Client
    */
   public SendError(String error) {
     super();
@@ -45,7 +46,7 @@ public class SendError extends Message {
   /**
    * Gets the Error Message from the RPP to the Client
    *
-   * @return
+   * @return the Error Message from the RPP to the Client
    */
   public final String getErrorMessage() {
     return this.getValue(Key.ERROR_MESSAGE);

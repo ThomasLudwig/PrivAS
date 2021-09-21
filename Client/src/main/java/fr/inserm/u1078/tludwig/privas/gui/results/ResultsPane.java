@@ -6,6 +6,7 @@ import fr.inserm.u1078.tludwig.privas.constants.MSG;
 import fr.inserm.u1078.tludwig.privas.gui.ClientWindow;
 import fr.inserm.u1078.tludwig.privas.gui.FileExtensionChooser;
 import fr.inserm.u1078.tludwig.privas.gui.TableColumnAdjuster;
+import fr.inserm.u1078.tludwig.privas.utils.CanonicalVariant;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -66,21 +67,21 @@ public class ResultsPane extends JFrame {
   static final int COL_SHARED = 8;
   static final int COL_TIME = 9;
 
-  private static final int PWIDTH = Toolkit.getDefaultToolkit().getScreenSize().width - 200;
-  private static final int PHEIGHT = (Toolkit.getDefaultToolkit().getScreenSize().height - 170) / 2;
+  private static final int PANEL_WIDTH = Toolkit.getDefaultToolkit().getScreenSize().width - 200;
+  private static final int PANEL_HEIGHT = (Toolkit.getDefaultToolkit().getScreenSize().height - 170) / 2;
 
   /**
    * numerical comparator
    */
-  private static final Comparator COMPARATOR_NUMERICAL = (o1, o2) -> {
+  private static final Comparator<String> COMPARATOR_NUMERICAL = (o1, o2) -> {
     double d1 = Double.MAX_VALUE;
     double d2 = d1;
     try {
-      d1 = new Double((String) o1);
+      d1 = new Double(o1);
     } catch (NumberFormatException e) {/*Nothing*/
     }
     try {
-      d2 = new Double((String) o2);
+      d2 = new Double(o2);
     } catch (NumberFormatException e) {/*Nothing*/
     }
     return Double.compare(d1, d2);
@@ -89,15 +90,15 @@ public class ResultsPane extends JFrame {
   /**
    * duration comparator
    */
-  private static final Comparator COMPARATOR_TIME = (o1, o2) -> {
+  private static final Comparator<String> COMPARATOR_TIME = (o1, o2) -> {
     double d1 = 0;
     double d2 = 0;
     try {
-      d1 = new Double(((String) o1).replace("s", ""));
+      d1 = new Double((o1).replace("s", ""));
     } catch (NumberFormatException e) {/*Nothing*/
     }
     try {
-      d2 = new Double(((String) o2).replace("s", ""));
+      d2 = new Double((o2).replace("s", ""));
     } catch (NumberFormatException e) {/*Nothing*/
     }
     return Double.compare(d1, d2);
@@ -106,7 +107,7 @@ public class ResultsPane extends JFrame {
   /**
    * position comparator
    */
-  private static final Comparator COMPARATOR_POSITION = (o1, o2) -> new Position((String) o1).compareTo(new Position((String) o2));
+  private static final Comparator<String> COMPARATOR_POSITION = Comparator.comparing(Position::new);
 
   //private HashMap<String, Region> ccds;
   //DONE  manhattan plot view (dot size as a factor of gene size ?)
@@ -120,6 +121,7 @@ public class ResultsPane extends JFrame {
    * The File from which the results are read
    */
   private File resultFile;
+  private JTable table;
   public static final String TEMPLATE_URL = "http://lysine.univ-brest.fr/privas/results.template.html";
 
   /**
@@ -186,17 +188,10 @@ public class ResultsPane extends JFrame {
     }
   }
 
-  /**
-   * Updates this Panel according to a Results File
-   *
-   * @param results the Results File to load
-   * @throws ResultsPane.ParsingException if the File could not be parsed
-   */
-  public void setResults(File results) throws ParsingException {
-    this.resultFile = results;
+  public void setTable() throws ParsingException {
     try {
       DefaultTableModel model = new DefaultTableModel();
-      JTable table = new JTable(model) {
+      table = new JTable(model) {
         @Override
         public boolean isCellEditable(int row, int column) {
           return false;
@@ -251,25 +246,13 @@ public class ResultsPane extends JFrame {
       table.setAutoCreateRowSorter(true);
       table.setRowSorter(sorter);
 
-      UniversalReader in = new UniversalReader(results.getAbsolutePath());
+      UniversalReader in = new UniversalReader(resultFile.getAbsolutePath());
       String line;
       while ((line = in.readLine()) != null)
         model.addRow(parseLine(line));
       in.close();
-      final TableColumnModel cModel = table.getColumnModel();
-      for (int c = 0; c < table.getColumnCount(); c++) {
-        int width = 15; // Min width
-        for (int row = 0; row < table.getRowCount(); row++) {
-          TableCellRenderer renderer = table.getCellRenderer(row, c);
-          Component cp = table.prepareRenderer(renderer, row, c);
-          width = Math.max(cp.getPreferredSize().width, width);
-        }
-        cModel.getColumn(c).setPreferredWidth(width);
-      }
-
-      buildGUI(table);
     } catch (IOException e) {
-      String msg = MSG.cat(GUI.RP_KO_LOAD, results.getAbsolutePath());
+      String msg = MSG.cat(GUI.RP_KO_LOAD, resultFile.getAbsolutePath());
       mainPanel.add(new JLabel(msg), BorderLayout.CENTER);
       this.clientWindow.getClient().logError(msg);
       this.clientWindow.getClient().logError(e);
@@ -277,24 +260,48 @@ public class ResultsPane extends JFrame {
   }
 
   /**
+   * Updates this Panel according to a Results File
+   *
+   * @param results the Results File to load
+   * @throws ResultsPane.ParsingException if the File could not be parsed
+   */
+  public void setResults(File results) throws ParsingException {
+    this.resultFile = results;
+    this.setTable();
+
+    final TableColumnModel cModel = table.getColumnModel();
+    for (int c = 0; c < table.getColumnCount(); c++) {
+      int width = 15; // Min width
+      for (int row = 0; row < table.getRowCount(); row++) {
+        TableCellRenderer renderer = table.getCellRenderer(row, c);
+        Component cp = table.prepareRenderer(renderer, row, c);
+        width = Math.max(cp.getPreferredSize().width, width);
+      }
+      cModel.getColumn(c).setPreferredWidth(width);
+    }
+
+    buildGUI(table);
+  }
+
+  /**
    * Builds the Panel and adjusts the Results Table
    *
    * @param table the Table that holds the Results
    */
-  private void buildGUI(JTable table) {
+  private void buildGUI(final JTable table) {
     //resizing
     TableColumnAdjuster.adjustColumns(table);
-    //table.setPreferredSize(new Dimension(table.getPreferredSize().width, PHEIGHT));
+    //table.setPreferredSize(new Dimension(table.getPreferredSize().width, PANEL_HEIGHT));
     JScrollPane scrollPane = new JScrollPane(table, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-    scrollPane.setPreferredSize(new Dimension(table.getPreferredSize().width + 50, PHEIGHT));
+    scrollPane.setPreferredSize(new Dimension(table.getPreferredSize().width + 50, PANEL_HEIGHT));
 
     JPanel south = new JPanel();
     south.setLayout(new BoxLayout(south, BoxLayout.LINE_AXIS));
-    south.add(getManhattan(table, (int) (0.9 * PWIDTH), PHEIGHT, Manhattan.THEME_DARK));
+    south.add(getManhattan((int) (0.9 * PANEL_WIDTH), PANEL_HEIGHT, Manhattan.THEME_DARK));
 
     mainPanel.removeAll();
     mainPanel.setLayout(new BorderLayout());
-    mainPanel.add(getMenuBar(table), BorderLayout.NORTH);
+    mainPanel.add(createMenuBar(), BorderLayout.NORTH);
     mainPanel.add(scrollPane, BorderLayout.CENTER);
     mainPanel.add(south, BorderLayout.SOUTH);
   }
@@ -302,21 +309,20 @@ public class ResultsPane extends JFrame {
   /**
    * Builds a new MenuBar, the menu of which act on the current table
    *
-   * @param table the Results Table
-   * @return
+   * @return the generated JMenuBar
    */
-  private JMenuBar getMenuBar(JTable table) {
+  private JMenuBar createMenuBar() {
     JMenuBar bar = new JMenuBar();
     JMenu export = new JMenu(GUI.RP_MN_EXPORT);
     JMenuItem tsv = new JMenuItem(GUI.RP_MI_TSV);
     tsv.setToolTipText(GUI.RP_TT_TSV);
-    tsv.addActionListener(e -> exportTSV(table));
+    tsv.addActionListener(e -> exportTSV());
     JMenuItem html = new JMenuItem(GUI.RP_MI_HTML);
     html.setToolTipText(GUI.RP_TT_HTML);
-    html.addActionListener(e -> exportHTML(table));
+    html.addActionListener(e -> exportHTML());
     JMenuItem png = new JMenuItem(GUI.RP_MI_PNG);
     png.setToolTipText(GUI.RP_TT_PNG);
-    png.addActionListener(e -> exportManhattan(table));
+    png.addActionListener(e -> exportManhattan());
 
     export.add(tsv);
     export.add(html);
@@ -334,7 +340,7 @@ public class ResultsPane extends JFrame {
    * Gets the text color according to the p-value
    *
    * @param pvalue a String representing a Double p-value
-   * @return
+   * @return the Color for the p-value
    */
   static Color getColor(Object pvalue) {
     try {
@@ -355,13 +361,12 @@ public class ResultsPane extends JFrame {
   /**
    * Gets a Manhattan plot of the Data in the Table
    *
-   * @param table  the Results Table
    * @param width  the width of the plot (pixels)
    * @param height the height of the plot (pixels)
    * @param theme  the theme (0 for light or 1 for dark)
-   * @return
+   * @return the ManhattanPlot for the table
    */
-  private Manhattan getManhattan(JTable table, int width, int height, int theme) {
+  private Manhattan getManhattan(int width, int height, int theme) {
     Manhattan manhattan = new Manhattan(width, height, theme);
     for (int row = 0; row < table.getRowCount(); row++) {
       String gene = (String) table.getValueAt(row, COL_GENE);
@@ -369,16 +374,15 @@ public class ResultsPane extends JFrame {
       int chr = 0;
       int pos = 0;
       try {
-        chr = new Integer(region[0].replace("X", "23").replace("Y", "24").replace("MT", "25"));
+        chr = CanonicalVariant.getChrAsNumber(region[0]);
         pos = new Integer(region[1]);
       } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
         //Ignore
       }
-      String pvalue = (String) table.getValueAt(row, COL_PVALUE);
       try {
-        double pval = new Double(pvalue);
+        double pvalue = Double.parseDouble((String)table.getValueAt(row, COL_PVALUE));
         if (chr > 0)
-          manhattan.add(gene, chr, pos, pval);
+          manhattan.add(gene, chr, pos, pvalue);
       } catch (NumberFormatException e) {
         //Ignores NA pvalue
       }
@@ -389,10 +393,8 @@ public class ResultsPane extends JFrame {
 
   /**
    * Exports the Manhattan plot of a Table to a PNG file
-   *
-   * @param table the Results Table
    */
-  private void exportManhattan(JTable table) {
+  private void exportManhattan() {
     String defaultName = this.resultFile.getAbsolutePath();
     int idx = defaultName.lastIndexOf(".");
     if (idx != -1)
@@ -406,9 +408,9 @@ public class ResultsPane extends JFrame {
       if (!png.endsWith(FileFormat.FILE_PNG_EXTENSION))
         png += "." + FileFormat.FILE_PNG_EXTENSION;
       try {
-        this.exportManhattan(table, png, Manhattan.THEME_LIGHT);
+        this.exportManhattan(png, Manhattan.THEME_LIGHT);
       } catch (IOException e) {
-        JOptionPane.showMessageDialog(this, MSG.cat(GUI.RP_KO_SAVE, png, e), GUI.RP_KO_SAVE_PNG, JOptionPane.ERROR_MESSAGE);
+        clientWindow.showAndLogError(MSG.cat(GUI.RP_KO_SAVE, png, e), GUI.RP_KO_SAVE_PNG, e);
       }
     }
   }
@@ -416,22 +418,19 @@ public class ResultsPane extends JFrame {
   /**
    * Exports the Manhattan plot of a Table to a PNG file
    *
-   * @param table the Results Table
    * @param png   the name of the PNG File
    * @param theme the theme (0 for light or 1 for dark)
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while writing to the PNG file
    */
-  private void exportManhattan(JTable table, String png, int theme) throws IOException {
-    Manhattan manhattan = getManhattan(table, GUI.RP_PNG_WIDTH, GUI.RP_PNG_HEIGHT, theme);
+  private void exportManhattan(String png, int theme) throws IOException {
+    Manhattan manhattan = getManhattan(GUI.RP_PNG_WIDTH, GUI.RP_PNG_HEIGHT, theme);
     manhattan.exportAsPNG(png);
   }
 
   /**
    * Exports the Results in a TSV File
-   *
-   * @param table
    */
-  private void exportTSV(JTable table) {
+  private void exportTSV() {
     String defaultName = this.resultFile.getAbsolutePath();
     int idx = defaultName.lastIndexOf(".");
     if (idx != -1)
@@ -465,17 +464,50 @@ public class ResultsPane extends JFrame {
 
         out.close();
       } catch (IOException e) {
-        JOptionPane.showMessageDialog(this, MSG.cat(GUI.RP_KO_SAVE, tsv, e), GUI.RP_KO_SAVE_TSV, JOptionPane.ERROR_MESSAGE);
+        clientWindow.showAndLogError(MSG.cat(GUI.RP_KO_SAVE, tsv, e), GUI.RP_KO_SAVE_TSV, e);
       }
     }
   }
 
+  public static final String N = "\n";
+  private static final String TR = "tr";
+  private static final String TD = "td";
+  private static final String TH = "th";
+  private static final String DIV = "div";
+  private static final String CLASS = "class";
+  private static final String SRC = "src";
+  private static final String COLOR = "color";
+  private static final String FONT = "font";
+
+  public static final String ID_MAIN = "maintitle";
+  public static final String ID_HEADER = "tableheader";
+  public static final String ID_BODY = "tableheader";
+  public static final String ID_MANHATTAN = "manhattan";
+  public static final String DOC_TITLE = "Results from : ";
+  public static final String MAIN_TITLE = "PrivAS Association Test Results from file ";
+
+  private static String open(String tag){ return "<"+tag+">";}
+  private static String open(String tag, String[]... attributes){
+    StringBuilder out = new StringBuilder("<" + tag);
+    for(String[] attribute : attributes)
+      out.append(" ").append(attribute[0]).append("=\"").append(attribute[1]).append("\"");
+    out.append(">");
+    return out.toString();
+  }
+  private static String close(String tag){ return "</"+tag+">";}
+
+  private static String openClose(String tag, String content){
+    return open(tag) + content + close(tag);
+  }
+
+  private static String openClose(String tag, String content, String[]... attributes){
+    return open(tag, attributes) + content + close(tag);
+  }
+
   /**
    * Exports the Results Table to an HTML File, which a PNG File containing the Manhattan plot
-   *
-   * @param table
    */
-  private void exportHTML(JTable table) {
+  private void exportHTML() {
     String defaultName = this.resultFile.getAbsolutePath();
     int idx = defaultName.lastIndexOf(".");
     if (idx != -1)
@@ -489,43 +521,40 @@ public class ResultsPane extends JFrame {
       if (!html.endsWith(FileFormat.FILE_HTML_EXTENSION))
         html += "." + FileFormat.FILE_HTML_EXTENSION;
       try {
-        String png = html + ".png";
-        this.exportManhattan(table, png, Manhattan.THEME_DARK);
+        String png = html + "." + FileFormat.FILE_PNG_EXTENSION;
+        this.exportManhattan(png, Manhattan.THEME_DARK);
         Document doc = Jsoup.connect(TEMPLATE_URL).get();
-        doc.title("Results from : " + resultFile.getName());
-        doc.getElementById("maintitle").appendText("PrivAS Association Test Results from file " + resultFile.getName());
+        doc.title(DOC_TITLE + resultFile.getName());
+        doc.getElementById(ID_MAIN).appendText(MAIN_TITLE + resultFile.getName());
 
-        StringBuilder line = new StringBuilder("<tr>");
+        StringBuilder line = new StringBuilder(open(TR));
         for (int col = 1; col < table.getColumnCount(); col++)
-          line.append("<th><div>").append((String) table.getTableHeader().getColumnModel().getColumn(col).getHeaderValue()).append("</div></th>");
-        line.append("</tr>\n<tr>");
+          line.append(openClose(TH, openClose(DIV, (String) table.getTableHeader().getColumnModel().getColumn(col).getHeaderValue())));
+        line.append(close(TR)).append(N).append(open(TR));
         for (int col = 1; col < table.getColumnCount(); col++)
-          line.append("<td class=\"notvisible\">").append((String) table.getTableHeader().getColumnModel().getColumn(col).getHeaderValue()).append("</td>");
-        line.append("</tr>\n");
-        doc.getElementById("tableheader").append(line.toString());
+          line.append(openClose(TD, (String) table.getTableHeader().getColumnModel().getColumn(col).getHeaderValue(), new String[]{CLASS, "notvisible"}));
+        line.append(close(TR)).append(N);
+        doc.getElementById(ID_HEADER).append(line.toString());
 
         line = new StringBuilder();
         for (int row = 0; row < table.getRowCount(); row++) {
-          line.append("\n<tr>");
+          line.append(N).append(open(TR));
           for (int col = 1; col < table.getColumnCount(); col++) {
-            line.append("<td>");
             String val = (String) table.getValueAt(row, col);
             if (col == COL_PVALUE)
-              line.append("<font color=\"").append(getHTMLColor(val)).append("\">").append(val).append("</font>");
-            else
-              line.append(val);
-            line.append("</td>");
+              val = openClose(FONT, val, new String[]{COLOR, getHTMLColor(val)});
+            line.append(openClose(TD, val));
           }
-          line.append("</tr>");
+          line.append(close(TR));
         }
-        doc.getElementById("tablebody").append(line.toString());
-        doc.getElementById("manhattan").attr("src", new File(png).getName());
+        doc.getElementById(ID_BODY).append(line.toString());
+        doc.getElementById(ID_MANHATTAN).attr(SRC, new File(png).getName());
 
         PrintWriter out = new PrintWriter(new FileWriter(html));
         out.println(doc.outerHtml());
         out.close();
       } catch (IOException e) {
-        JOptionPane.showMessageDialog(this, MSG.cat(GUI.RP_KO_SAVE, html, e), GUI.RP_KO_SAVE_HTML, JOptionPane.ERROR_MESSAGE);
+        clientWindow.showAndLogError(MSG.cat(GUI.RP_KO_SAVE, html, e), GUI.RP_KO_SAVE_HTML, e);
       }
     }
   }

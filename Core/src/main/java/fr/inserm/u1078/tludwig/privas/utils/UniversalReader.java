@@ -25,7 +25,7 @@ public class UniversalReader {
    * Constructor from a file name
    *
    * @param filename the name of the file to read
-   * @throws IOException
+   * @throws IOException If an I/O error occurs
    */
   public UniversalReader(String filename) throws IOException {
     BufferedReader tmp;

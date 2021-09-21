@@ -13,6 +13,9 @@ import java.util.Date;
  */
 public class TPStatus {
 
+  /**
+   * Creation time of the status
+   */
   private final long epoch;
 
   /**
@@ -34,10 +37,7 @@ public class TPStatus {
   public TPStatus(long epoch, State state, String details) {
     this.epoch = epoch;
     this.state = state;
-    if(details == null)
-      this.details = "";
-    else
-      this.details = details.replace("\n", Constants.RET).replace("\t",Constants.TAB);
+    this.details = details == null ? "" : details.replace("\n", Constants.RET).replace("\t",Constants.TAB);
   }
 
   public TPStatus(String serialized){
@@ -70,7 +70,7 @@ public class TPStatus {
   /**
    * Gets the State of the TPSStatus
    *
-   * @return
+   * @return the State of the TPSStatus
    */
   public State getState() {
     return state;
@@ -79,7 +79,7 @@ public class TPStatus {
   /**
    * Gets the optional details associated to the TPSStatus
    *
-   * @return
+   * @return the optional details associated to the TPSStatus
    */
   public String getDetails() {
     return details.replace(Constants.TAB,"\t").replace(Constants.RET,"\n");
@@ -101,46 +101,30 @@ public class TPStatus {
     /**
      * Job is Pending
      */
-    PENDING (1, "Job has been submitted."), //TODO how to determine PENDING, since the java instance is not started ?
+    PENDING /*(1, "Job has been submitted.")*/, //QUESTION how to determine PENDING, since the java instance is not started ?
     /**
      * Job is Started
      */
-    STARTED(2, "Job has started, Data validation/preparation."),
+    STARTED/*(2, "Job has started, Data validation/preparation.")*/,
     /**
      * Job is Running
      */
-    RUNNING(3, "Association Tests are running."),
+    RUNNING/*(3, "Association Tests are running.")*/,
     /**
      * Job is Done
      */
-    DONE(4, "Association Tests are complete."),
+    DONE/*(4, "Association Tests are complete.")*/,
     /**
      * Job has encountered an error
      */
-    ERROR(-1, "There was an error on TPS."),
+    ERROR/*(-1, "There was an error on TPS.")*/,
     /**
      * Can't read TPS's status file
      */
-    UNREACHABLE(-2, "RPP was not able to retrieve TPS's status file"),
+    UNREACHABLE/*(-2, "RPP was not able to retrieve TPS's status file")*/,
     /**
      * Job is in an unknown state
      */
-    UNKNOWN(0, "TPS is in an unknown state.");
-
-    private final int code;
-    private final String description;
-
-    State(int code, String description){
-      this.code = code;
-      this.description = description;
-    }
-
-    public int getCode() {
-      return code;
-    }
-
-    public String getDescription() {
-      return description;
-    }
+    UNKNOWN/*(0, "TPS is in an unknown state.")*/
   }
 }

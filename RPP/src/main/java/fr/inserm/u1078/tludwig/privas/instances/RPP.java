@@ -1,7 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.instances;
 
 import fr.inserm.u1078.tludwig.privas.constants.*;
-import fr.inserm.u1078.tludwig.privas.listener.StandardErrorLogger;
 import fr.inserm.u1078.tludwig.privas.messages.*;
 import fr.inserm.u1078.tludwig.privas.utils.*;
 import fr.inserm.u1078.tludwig.privas.utils.qc.QCException;
@@ -14,24 +13,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 /**
  * The RPP is the instance of the program that accesses Reference Panel Datasets, Handles request from the Client and acts as a bridge between the Client and
@@ -41,13 +30,13 @@ import javax.crypto.NoSuchPaddingException;
  *
  * Javadoc complete on 2019-08-08
  */
-public class RPP extends Instance implements Runnable {
+public class RPP extends CommandLineInstance implements Runnable {
 
   //DONE?, when there is a problem with RPP, Client isn't always aware : (ex : from wss filename in the config file leads to FileNotFound)
   private final ArrayList<String> sessions;
   private final RPPThirdPartyConnector thirdPartyConnector;
-  private final ArrayList<String> orderedDatasets;
-  private final HashMap<String, RPPDataset> rppDatasets;
+  private final TreeMap<String, RPPDataset> rppDatasets;
+  private final TreeMap<String, String> gnomADReferences;
   private final ArrayList<String> whitelist;
   private final ArrayList<String> blacklist;
   private final String connectionLog;
@@ -55,13 +44,13 @@ public class RPP extends Instance implements Runnable {
   private final int maxPerWeek;//default 10
   private final int maxPerMonth;//default 30
 
-  private final HashMap<String, String> datasetsBySession;
-  private final HashMap<String, QCParam> qcParamsBySession;
-  private final HashMap<String, String> hashesBySession;
+  private final TreeMap<String, String> datasetsBySession;
+  private final TreeMap<String, QCParam> qcParamsBySession;
+  private final TreeMap<String, String> hashesBySession;
   private final String sessionDirectory;
   private final String expiredSessionList;
-  private final HashMap<String, MessageSocket> rppMonitors;
-  private final HashMap<String, RPPSessionProcessor> rppSessionProcessors;
+  private final TreeMap<String, MessageSocket> rppMonitors;
+  private final TreeMap<String, RPPSessionProcessor> rppSessionProcessors;
   private final String tpsName;
 
   private ServerSocket serverSocket;
@@ -78,19 +67,19 @@ public class RPP extends Instance implements Runnable {
    * Creates and runs a new Instance of RPP from a Configuration File
    *
    * @param configFile the path to the configuration fill
-   * @throws fr.inserm.u1078.tludwig.privas.instances.RPP.ConfigFileParsingException
+   * @throws fr.inserm.u1078.tludwig.privas.instances.RPP.ConfigFileParsingException if unable to parse configuration file
    */
   public RPP(String configFile) throws Exception {
+    super();
     this.repeatingTasks = Executors.newScheduledThreadPool(Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors())));
-    this.rppSessionProcessors = new HashMap<>();
+    this.rppSessionProcessors = new TreeMap<>();
     
     int port = -1;
-    this.addLogListener(new StandardErrorLogger());
-    orderedDatasets = new ArrayList<>();
-    rppDatasets = new HashMap<>();
-    datasetsBySession = new HashMap<>();
-    qcParamsBySession = new HashMap<>();
-    hashesBySession = new HashMap<>();
+    rppDatasets = new TreeMap<>();
+    datasetsBySession = new TreeMap<>();
+    gnomADReferences = new TreeMap<>();
+    qcParamsBySession = new TreeMap<>();
+    hashesBySession = new TreeMap<>();
     whitelist = new ArrayList<>();
     blacklist = new ArrayList<>();
     boolean hasWhitelistTag = false;
@@ -114,96 +103,106 @@ public class RPP extends Instance implements Runnable {
       String line;
       while ((line = in.readLine()) != null)
         try {
-          String[] f = line.split("#")[0].split("\t");
-          switch (f[0].toLowerCase()) {
-            case FileFormat.RPP_TAG_PORT:
+          String[] f = line.split("#")[0].trim().split("\t");
+          Tag tag = Tag.valueOf(f[0].toUpperCase().trim());
+          switch (tag) {
+            case PORT_NUMBER:
               port = new Integer(f[1]);
               break;
-            case FileFormat.RPP_TAG_DATA:
+            case DATA_FILE:
               for (String dataset : f[1].split(",")) {
                 RPPDataset rppDataset = RPPDataset.parse(dataset);
                 String name = rppDataset.getName();
-                if(orderedDatasets.contains(name))
-                  throw new RPP.ConfigFileParsingException("Duplicate dataset name ["+name+"], will be ignored");
-                orderedDatasets.add(name);
+                if(rppDatasets.containsKey(name))
+                  throw new RPP.ConfigFileParsingException(MSG.cat(MSG.RPP_DUPLICATE_DATASET,name));
                 rppDatasets.put(name, rppDataset);
               }
               break;
-            case FileFormat.RPP_TAG_RPP_SESSION_DIR:
+            case GNOMAD:
+              for(String rec : f[1].split(",")) {
+                String[] g = rec.split(":");
+                String name = g[0];
+                if(gnomADReferences.containsKey(name))
+                  throw new RPP.ConfigFileParsingException(MSG.cat(MSG.RPP_DUPLICATE_GNOMAD,name));
+                gnomADReferences.put(name, g[1]);
+                RPPDataset.checkFile(g[1], FileFormat.FILETYPE_GNOMAD);
+              }
+              break;
+            case RPP_SESSION_DIR:
               sessionDir = f[1];
               break;
-            case FileFormat.RPP_TAG_RRP_EXPIRED_SESSION:
+            case RPP_EXPIRED_SESSION:
               expiredList = f[1];
               break;
-            case FileFormat.RPP_TAG_TPS_ADDRESS:
+            case TPS_ADDRESS:
               tpsAddress = f[1];
               break;
-            case FileFormat.RPP_TAG_TPS_NAME:
+            case TPS_NAME:
               tpName = f[1];
               break;
-            case FileFormat.RPP_TAG_TPS_USER:
+            case TPS_USER:
               tpsUser = f[1];
               break;
-            case FileFormat.RPP_TAG_TPS_LAUNCH_COMMAND:
+            case TPS_LAUNCH_COMMAND:
               tpsLaunchCommand = f[1];
               break;
-            case FileFormat.RPP_TAG_TPS_GETKEY_COMMAND:
+            case TPS_GET_KEY_COMMAND:
               tpsGetKeyCommand = f[1];
               break;
-            case FileFormat.RPP_TAG_TPS_SESSION_DIR:
+            case TPS_SESSION_DIR:
               tpsSessionDir = f[1];
               break;
-            case FileFormat.RPP_TAG_CONNECTION_LOG:
+            case CONNECTION_LOG:
               tmpConnectionLog = f[1];
               break;
-            case FileFormat.RPP_TAG_BLACKLIST:
+            case BLACKLIST:
               hasBlacklistTag = true;
               for(String address : f[1].split(",")){
                 try{
                   blacklist.add(address);
                 } catch (Exception e){
-                  logWarning("Unable to parse IP ["+address+"]");
+                  logWarning(MSG.cat(MSG.RPP_UNABLE_TO_PARSE_ADDRESS,address));
                 }
               }
               break;
-            case FileFormat.RPP_TAG_WHITELIST:
+            case WHITELIST:
               hasWhitelistTag = true;
               for(String address : f[1].split(",")){
                 try{
                   whitelist.add(address);
                 } catch (Exception e){
-                  logWarning("Unable to parse IP ["+address+"]");
+                  logWarning(MSG.cat(MSG.RPP_UNABLE_TO_PARSE_ADDRESS,address));
                 }
               }
               break;
-            case FileFormat.RPP_TAG_MAX_PER_DAY:
+            case MAX_PER_DAY:
               try{
                 int val = Integer.parseInt(f[1]);
                 if(val < 1)
                   val = Integer.MAX_VALUE;
                 maxPDay = val;
               } catch(Exception e) {
-                logWarning("Unable to parse line ["+line+"]");
+                logWarning(MSG.cat(MSG.RPP_UNABLE_TO_PARSE_LINE,line));
               }
               break;
-            case FileFormat.RPP_TAG_MAX_PER_WEEK:
+            case MAX_PER_WEEK:
               try{
                 int val = Integer.parseInt(f[1]);
                 if(val < 1)
                   val = Integer.MAX_VALUE;
                 maxPWeek = val;
               } catch(Exception e) {
-                logWarning("Unable to parse line ["+line+"]");//Nothing
+                logWarning(MSG.cat(MSG.RPP_UNABLE_TO_PARSE_LINE,line));//Nothing
               }
               break;
-            case FileFormat.RPP_TAG_MAX_PER_MONTH:
+            case MAX_PER_MONTH:
               try{
                 int val = Integer.parseInt(f[1]);
                 if(val < 1)
                   val = Integer.MAX_VALUE;
                 maxPMonth = val;
               } catch(Exception e) {
-                logWarning("Unable to parse line ["+line+"]");//Nothing
+                logWarning(MSG.cat(MSG.RPP_UNABLE_TO_PARSE_LINE,line));//Nothing
               }
               break;
           }
@@ -218,41 +217,43 @@ public class RPP extends Instance implements Runnable {
     connectionLog = tmpConnectionLog;
 
     if (port == -1)
-      throw missingParameters(MSG.RPP_DESC_PORT, configFile, MSG.RPP_SYNTAX_PORT);
+      throw missingParameters(configFile, Tag.PORT_NUMBER);
     //if (rppData == null)
-    if (orderedDatasets.isEmpty())
-      throw missingParameters(MSG.RPP_DESC_DATA, configFile, MSG.RPP_SYNTAX_DATA);
+    if (rppDatasets.isEmpty())
+      throw missingParameters(configFile, Tag.DATA_FILE);
+    if (gnomADReferences.isEmpty())
+      throw missingParameters(configFile, Tag.GNOMAD);
     if (sessionDir == null)
-      throw missingParameters(MSG.RPP_DESC_RPP_SESSION_DIR, configFile, MSG.RPP_SYNTAX_RPP_SESSION_DIR);
+      throw missingParameters(configFile, Tag.RPP_SESSION_DIR);
     if (expiredList == null)
-      throw missingParameters(MSG.RPP_DESC_RPP_EXPIRED_SESSION_LIST, configFile, MSG.RPP_SYNTAX_RPP_EXPIRED_SESSION_LIST);
+      throw missingParameters(configFile, Tag.RPP_EXPIRED_SESSION);
     if (tpName == null)
-      throw missingParameters(MSG.RPP_DESC_TPS_NAME, configFile, MSG.RPP_SYNTAX_TPS_NAME);
+      throw missingParameters(configFile, Tag.TPS_NAME);
     if (tpsAddress == null)
-      throw missingParameters(MSG.RPP_DESC_TPS_ADDRESS, configFile, MSG.RPP_SYNTAX_TPS_ADDRESS);
+      throw missingParameters(configFile, Tag.TPS_ADDRESS);
     if (tpsUser == null)
-      throw missingParameters(MSG.RPP_DESC_TPS_USER, configFile, MSG.RPP_SYNTAX_TPS_USER);
+      throw missingParameters(configFile, Tag.TPS_USER);
     if (tpsLaunchCommand == null)
-      throw missingParameters(MSG.RPP_DESC_TPS_LAUNCH_COMMAND, configFile, MSG.RPP_SYNTAX_TPS_LAUNCH_COMMAND);
+      throw missingParameters(configFile, Tag.TPS_LAUNCH_COMMAND);
     if (tpsGetKeyCommand == null)
-      throw missingParameters(MSG.RPP_DESC_TPS_GETKEY_COMMAND, configFile, MSG.RPP_SYNTAX_TPS_GETKEY_COMMAND);
+      throw missingParameters(configFile, Tag.TPS_GET_KEY_COMMAND);
     if (tpsSessionDir == null)
-      throw missingParameters(MSG.RPP_DESC_TPS_SESSION_DIR, configFile, MSG.RPP_SYNTAX_TPS_SESSION_DIR);
+      throw missingParameters(configFile, Tag.TPS_SESSION_DIR);
     if (connectionLog == null)
-      throw missingParameters(MSG.RPP_DESC_CONNECTION_LOG, configFile, MSG.RPP_SYNTAX_CONNECTION_LOG);
+      throw missingParameters(configFile, Tag.CONNECTION_LOG);
     if(!hasBlacklistTag)
-      throw missingParameters(MSG.RPP_DESC_BACKLIST, configFile, MSG.RPP_SYNTAX_BLACKLIST);
+      throw missingParameters(configFile, Tag.BLACKLIST);
     if(!hasWhitelistTag)
-      throw missingParameters(MSG.RPP_DESC_WHITELIST, configFile, MSG.RPP_SYNTAX_WHITELIST);
+      throw missingParameters(configFile, Tag.WHITELIST);
     if(maxPDay == unknown)
-      throw missingParameters(MSG.RPP_DESC_MAX_PER_DAY, configFile, MSG.RPP_SYNTAX_MAX_PER_DAY);
+      throw missingParameters(configFile, Tag.MAX_PER_DAY);
     if(maxPWeek == unknown)
-      throw missingParameters(MSG.RPP_DESC_MAX_PER_WEEK, configFile, MSG.RPP_SYNTAX_MAX_PER_WEEK);
+      throw missingParameters(configFile, Tag.MAX_PER_WEEK);
     if(maxPMonth == unknown)
-      throw missingParameters(MSG.RPP_DESC_MAX_PER_MONTH, configFile, MSG.RPP_SYNTAX_MAX_PER_MONTH);
+      throw missingParameters(configFile, Tag.MAX_PER_MONTH);
 
     this.tpsName = tpName;
-    this.rppMonitors = new HashMap<>();
+    this.rppMonitors = new TreeMap<>();
     this.thirdPartyConnector = new RPPThirdPartyConnector(this, tpsAddress, tpsUser, tpsLaunchCommand, tpsGetKeyCommand, tpsSessionDir);
     this.sessionDirectory = sessionDir;
     this.expiredSessionList = expiredList;
@@ -262,23 +263,26 @@ public class RPP extends Instance implements Runnable {
     this.sessions = new ArrayList<>();
 
     init(port);
-    logInfo("RPP server listening on port : " + port);
-    logInfo("Session directory : " + sessionDir);
-    logInfo("Expired Session list : " + expiredList);
-    logInfo("Available Datasets :");
-    for (String key : orderedDatasets)
+    logInfo(MSG.cat(MSG.RPP_LOG_PORT,port));
+    logInfo(MSG.cat(MSG.RPP_LOG_DIR,sessionDir));
+    logInfo(MSG.cat(MSG.RPP_LOG_EXPIRED,expiredList));
+    logInfo(MSG.RPP_LOG_DATASETS);
+    for (String key : rppDatasets.navigableKeySet())
       logInfo("\t" + key + " : " + rppDatasets.get(key));
-    logInfo("Connection log : "+ connectionLog);
-    logInfo("Maximum number of connections per day/week/month : "+maxPDay+"/"+maxPWeek+"/"+maxPMonth);
-    logInfo("Blacklisted addresses");
+    logInfo(MSG.RPP_LOG_GNOMAD);
+    for(String key : gnomADReferences.navigableKeySet())
+      logInfo("\t" + key + " : " + gnomADReferences.get(key));
+    logInfo(MSG.cat(MSG.RPP_LOG_CONNECTION_LOG,connectionLog));
+    logInfo(MSG.cat(MSG.RPP_LOG_MAX_CONNECT,maxPDay+"/"+maxPWeek+"/"+maxPMonth));
+    logInfo(MSG.RPP_LOG_BLACKLIST);
     for(String bl : blacklist)
       logInfo("\t" + bl);
-    logInfo("Whitelisted addresses");
+    logInfo(MSG.RPP_LOG_WHITELIST);
     for(String wh : whitelist)
       logInfo("\t" + wh);
-    logInfo("TPS : " + tpName + "(" + tpsUser + "@" + tpsAddress + ":" + tpsSessionDir + ")");
-    logInfo("TPS Launch : " + tpsLaunchCommand);
-    logInfo("TPS Get : " + tpsGetKeyCommand);
+    logInfo(MSG.RPP_LOG_TPS(tpName, tpsUser, tpsAddress, tpsSessionDir));
+    logInfo(MSG.cat(MSG.RPP_LOG_TPS_LAUNCH,tpsLaunchCommand));
+    logInfo(MSG.cat(MSG.RPP_LOG_TPS_GET_KEY,tpsGetKeyCommand));
   }
 
   /**
@@ -293,29 +297,19 @@ public class RPP extends Instance implements Runnable {
   }
 
   public void tryToConnect(String address) throws UnauthorizedConnectionException {
-    logDebug("Trying to connect from "+address);
-
     if (isWhitelisted(address))
       return;
-    logDebug("No whitelist "+address);
     if (isBlacklisted(address))
-      throw new UnauthorizedConnectionException("Your address has been blacklisted. Contact the administrator for more information");
-    logDebug("No blacklist "+address);
+      throw new UnauthorizedConnectionException(MSG.RPP_ADDRESS_IS_BLACKLISTED);
     Instant now = Instant.now();
-    logDebug("Now "+now);
     Instant day = now.minus(1, ChronoUnit.DAYS);
-    logDebug("last day "+day);
     Instant week = now.minus(7, ChronoUnit.DAYS);//ChronoUnit.WEEKS not supported by minus
-    logDebug("last week "+week);
     Instant month = now.minus(31, ChronoUnit.DAYS);//ChronoUnit.MONTHS not supported by minus
-    logDebug("last month "+month);
     int nDay = 0;
     int nWeek = 0;
     int nMonth = 0;
     try {
-      logDebug("will get connections "+address);
       for (Instant connect : getConnections(address)) {
-        logDebug("found ["+connect+"] "+address);
         if (connect.isAfter(day))
           nDay++;
         if (connect.isAfter(week))
@@ -323,22 +317,25 @@ public class RPP extends Instance implements Runnable {
         if (connect.isAfter(month))
           nMonth++;
         if (nDay >= this.maxPerDay)
-          throw new UnauthorizedConnectionException("You cannot connect to this server more than " + maxPerDay + " times per day");
+          throw new UnauthorizedConnectionException(MSG.RPP_EXCEEDED_MAX_CONNECTION_PER_DAY(maxPerDay));
         if (nWeek >= this.maxPerWeek)
-          throw new UnauthorizedConnectionException("You cannot connect to this server more than " + maxPerWeek + " times per week");
+          throw new UnauthorizedConnectionException(MSG.RPP_EXCEEDED_MAX_CONNECTION_PER_WEEK(maxPerWeek));
         if (nMonth >= this.maxPerMonth)
-          throw new UnauthorizedConnectionException("You cannot connect to this server more than " + maxPerMonth + " times per month");
+          throw new UnauthorizedConnectionException(MSG.RPP_EXCEEDED_MAX_CONNECTION_PER_MONTH(maxPerMonth));
       }
     } catch (IOException e) {
-      logError("Could not check / write connection log");
+      logError(MSG.RPP_NO_CONNECTION_LOG);
       logError(e);
     }
+  }
+
+  public TreeMap<String, String> getGnomADReferences() {
+    return gnomADReferences;
   }
 
   private boolean isWhitelisted(String address){
     return ipAddressMatch(address, whitelist);
   }
-
 
   private boolean isBlacklisted(String address){
     return ipAddressMatch(address, blacklist);
@@ -350,7 +347,7 @@ public class RPP extends Instance implements Runnable {
       out.println(address + "\t" + new Date().getTime());
       out.close();
     } catch (IOException e){
-      logWarning("Could not log Session in connection log");
+      logWarning(MSG.RPP_LOG_SESSION_FAILED);
       logWarning(e);
     }
   }
@@ -418,20 +415,24 @@ public class RPP extends Instance implements Runnable {
   /**
    * End the RPP Thread, and so exits to Program
    */
+  @SuppressWarnings("unused")
   private void kill() {
     alive = false;
   }
-  
-  public ScheduledFuture<?> submitRepeating(Runnable task, long msDelay){
-    return this.repeatingTasks.scheduleWithFixedDelay(task, 0, msDelay, TimeUnit.MILLISECONDS);
+
+  //public ScheduledFuture<?> submitRepeating(Runnable task, long msDelay){
+  public void submitRepeating(Runnable task, long msDelay){
+    /*return*/ this.repeatingTasks.scheduleWithFixedDelay(task, 0, msDelay, TimeUnit.MILLISECONDS);
   }
-  
-  public ScheduledFuture<?> submitLater(Runnable task, long msDelay) {
-    return this.repeatingTasks.schedule(task, msDelay, TimeUnit.MILLISECONDS);
+
+  //public ScheduledFuture<?> submitLater(Runnable task, long msDelay) {
+  public void submitLater(Runnable task, long msDelay) {
+    /*return*/ this.repeatingTasks.schedule(task, msDelay, TimeUnit.MILLISECONDS);
   }
-  
-  public ScheduledFuture<?> submitNow(Runnable task) {
-    return this.repeatingTasks.schedule(task, 0, TimeUnit.MILLISECONDS);
+
+  //public ScheduledFuture<?> submitNow(Runnable task) {
+  public void submitNow(Runnable task) {
+    /*return*/ this.repeatingTasks.schedule(task, 0, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -440,7 +441,7 @@ public class RPP extends Instance implements Runnable {
    */
   @Override
   public void run() {
-    this.logInfo("Main Thread Started");
+    this.logInfo(MSG.RPP_MAIN_THREAD_STARTED);
     //Service that clears old sessions    
     submitRepeating(this::cleanExpiredSessions, Parameters.RPP_CLEAR_SESSION_DELAY);
 
@@ -458,41 +459,41 @@ public class RPP extends Instance implements Runnable {
   }
 
   private void cleanExpiredSessions() {
-    this.logDebug("Cleaning Expired Sessions...");
+    this.logInfo(MSG.RPP_CLEAN_START);
     for (String session : getRPPSessions()) {
-      this.logDebug("Session [" + session + "]");
+      this.logDebug(MSG.RPP_CLEAN_SESSION(session));
       if (isExpired(session)) {
-        this.logDebug("...Is expired");
+        this.logDebug(MSG.RPP_CLEAN_EXPIRED);
         try {
           clearExpired(session);
-          this.logDebug("has been removed");
+          this.logDebug(MSG.RPP_CLEAN_REMOVED);
         } catch (IOException ex) {
-          this.logDebug("could not be removed");
+          this.logDebug(MSG.RPP_CLEAN_NOT_REMOVED);
         }
       } else
-        this.logDebug("...Isn't expired");
+        this.logDebug(MSG.RPP_CLEAN_NOT_EXPIRED);
     }
   }
 
   private ArrayList<String> getRPPSessions() {
     ArrayList<String> ids = new ArrayList<>();
     File dir = new File(this.sessionDirectory);
-    for (File file : dir.listFiles())
-      if (file.isDirectory())
-        ids.add(file.getName());
+    if(dir.listFiles() != null)
+      for (File file : Objects.requireNonNull(dir.listFiles()))
+        if (file.isDirectory())
+          ids.add(file.getName());
     return ids;
   }
 
   /**
    * Creates a new ConfigFileParsingException for a missing parameter
    *
-   * @param missing    the name of the Missing Parameter
    * @param configFile the Config File being read
-   * @param syntax     the proper Syntax for this Parameter
-   * @return
+   * @param tag        the tag of the missing parameter
+   * @return ConfigFileParsingException for a missing parameter
    */
-  private ConfigFileParsingException missingParameters(String missing, String configFile, String syntax) {
-    return new ConfigFileParsingException(missing, configFile, syntax);
+  private ConfigFileParsingException missingParameters(String configFile, Tag tag) {
+    return new ConfigFileParsingException(configFile, tag);
   }
 
   /**
@@ -501,7 +502,7 @@ public class RPP extends Instance implements Runnable {
    * <li>Creates a Server Socket to received Messages
    * <li>Starts processing Messages in the Socket
    * </ol><p>
-   * @param port
+   * @param port the port number of this server
    */
   private void init(int port) throws IOException {
     File sessionDir = new File(this.sessionDirectory);
@@ -516,7 +517,7 @@ public class RPP extends Instance implements Runnable {
   }
   
   public void createSessionDirectory(String sessionId){
-    File sessionDir = new File(this.getFilenameFor(sessionId, ""));
+    File sessionDir = new File(this.getFilenameForDir(sessionId));
     if (!sessionDir.exists() && !sessionDir.mkdirs())
       this.logError(MSG.cat(MSG.FAIL_MKDIR, sessionDir.getAbsolutePath()));
   }
@@ -525,7 +526,7 @@ public class RPP extends Instance implements Runnable {
    * Deletes a directory for an expired Session
    *
    * @param session the Session ID
-   * @throws IOException
+   * @throws IOException if unable to delete directory
    */
   private void clearExpired(String session) throws IOException {
     deleteDirectory(new File(getFilenameFor(session, null)));
@@ -548,13 +549,13 @@ public class RPP extends Instance implements Runnable {
    * Returns the Start Date of a session
    *
    * @param session the Session ID
-   * @return
+   * @return start Date of given session
    */
   private Date getStart(String session) {
     try {
       return Constants.DF_DAY_DOT_TIME.parse(session);//trailing characters in the Session ID are ignored by the date format
     } catch (ParseException ignore) {
-      this.logWarning("Could not parse Session date for [" + session + "]");
+      this.logWarning(MSG.cat(MSG.RPP_SESSION_DATE_PARSE_FAILED, session));
       return new Date();
     }
   }
@@ -564,10 +565,9 @@ public class RPP extends Instance implements Runnable {
       RPPSessionProcessor sp = new RPPSessionProcessor(this, session);
       sp.init();
     } catch (BedRegion.BedRegionException | IOException | NumberFormatException | QCException e) {
-      logError("Unable to restore saved session ["+session+"]");
+      logError(MSG.cat(MSG.RPP_SESSION_RESTORE_FAILED, session));
       logError(e);
     }
-    
   }
 
   /**
@@ -592,7 +592,7 @@ public class RPP extends Instance implements Runnable {
    *
    * @param session     the Session ID
    * @param fileContent the code of the file being requested
-   * @return
+   * @return path to the file
    */
   public String getFilenameFor(String session, String fileContent) {
     if (session == null || session.length() < 1) {
@@ -604,6 +604,10 @@ public class RPP extends Instance implements Runnable {
     if (fileContent == null)
       return ret;
     return ret + File.separator + fileContent;
+  }
+
+  public String getFilenameForDir(String session) {
+    return getFilenameFor(session, "");
   }
 
   /**
@@ -622,7 +626,7 @@ public class RPP extends Instance implements Runnable {
   /**
    * Generates a new Session ID (could be non unique)
    *
-   * @return
+   * @return a new session ID
    */
   private String generateRandomSessionString() {
     final int LENGTH = 4;
@@ -647,20 +651,6 @@ public class RPP extends Instance implements Runnable {
 //    return vcfFilenames;
 //  }
 
-  /**
-   * Gets the number of variant in a Genotype File
-   *
-   * @param filename the path to the Genotype File
-   * @return
-   */
-  public int getGenotypeFileSize(String filename) {
-    try {
-      return GenotypesFileHandler.getNumberOfLinesGenotypes(filename);
-    } catch (IOException e) {
-      return -1;
-    }
-  }
-
   public RPPDataset getRPPDataset(String datasetName){
     return this.rppDatasets.get(datasetName);
   }
@@ -682,8 +672,8 @@ public class RPP extends Instance implements Runnable {
    * <li>Gets the Results from the Third Party
    * </ol>
    */
-  private void processSession(String session, String datasetName, double maxMaf, double maxMafNFE, String minCsq, boolean limitToSNVs, BedFile bed, QCParam qcParam, String kHash) {
-    RPPSessionProcessor sp = new RPPSessionProcessor(this, session, datasetName, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed, qcParam, kHash);
+  private void processSession(String session, String datasetName, String gnomadVersion, double maxMaf, String subpop, double maxMafSubpop, String minCsq, boolean limitToSNVs, BedFile bed, QCParam qcParam, String kHash) {
+    RPPSessionProcessor sp = new RPPSessionProcessor(this, session, datasetName, gnomadVersion, maxMaf, subpop, maxMafSubpop, minCsq, limitToSNVs, bed, qcParam, kHash);
     this.rppSessionProcessors.put(session, sp);
     sp.serialize();
     //sp.init();
@@ -715,16 +705,16 @@ public class RPP extends Instance implements Runnable {
    * Gets the current status for a Session
    *
    * @param session the Session ID
-   * @return
+   * @return the RPPStatus for the session
    */
   public RPPStatus getStatus(String session) {
     if (isExpired(session))
       return RPPStatus.expired();
     RPPStatus status = RPPStatus.unknown();
     try {
-      status = RPPStatus.deserialize(this.getFilenameFor(session, FileFormat.FILE_RPP_STATUS));
+      status = RPPStatus.deserialize(this.getFilenameFor(session, FileFormat.FILE_RPP_STATUS), this);
     } catch (Exception e) {
-      logDebug("Could not restore status from file : "+e.getMessage());
+      logDebug(MSG.cat(MSG.RPP_CANNOT_RESTORE_STATUS,e.getMessage()));
       this.setStatus(session, status);
     }
     return status;
@@ -738,9 +728,13 @@ public class RPP extends Instance implements Runnable {
    * @param encryptedClientData             the Client Genotype Data, encrypted with the AES Key
    * @param encryptedClientExcludedVariants the Client's Excluded Variants, encrypted with the AES Key
    * @param algorithm                       the selected Algorithm and its parameters
-   * @throws IOException
+   * @throws IOException if unable to write to Client Data
    */
-  private void writeClientData(String session, String encryptedAESKey, String encryptedClientData, String encryptedClientExcludedVariants, String algorithm) throws IOException, NoSuchAlgorithmException, InvalidKeyException {
+  private void writeClientData(String session, String encryptedAESKey, String encryptedClientData, String encryptedClientExcludedVariants, String algorithm) throws IOException {
+    /*logDebug("Received data length : encryptedAESKey["+encryptedAESKey.length()+"], " +
+            "encryptedClientData["+encryptedClientData.length()+"], " +
+            "encryptedClientExcludedVariants["+encryptedClientExcludedVariants.length()+"], " +
+            "algorithm["+algorithm.length()+"]");*/
     PrintWriter out = new PrintWriter(new FileWriter(this.getFilenameFor(session, FileFormat.FILE_AES_KEY)));
     out.println(encryptedAESKey);
     out.close();
@@ -810,8 +804,8 @@ public class RPP extends Instance implements Runnable {
   /**
    * Checks if all rpp data were fully extracted
    * 
-   * @param session
-   * @return 
+   * @param session sessionID
+   * @return true if all rpp data were fully extracted
    */
   boolean checkRPPFile(String session) {
     String line;
@@ -834,7 +828,7 @@ public class RPP extends Instance implements Runnable {
    *
    * @param session the ID of the Session that the Client wants to monitor
    * @param socket  the MessageSocket through which the RPPStatus updates will be sent
-   * @return
+   * @return a SendStatus message
    */
   private Message sendStatus(String session, MessageSocket socket) {
     this.rppMonitors.put(session, socket);
@@ -886,7 +880,7 @@ public class RPP extends Instance implements Runnable {
    * Gets the TPSStatus of the Third Party for the Session
    *
    * @param sessionId the Session ID
-   * @return
+   * @return the TPSStatus for the session
    */
   public List<TPStatus> getThirdPartyStatuses(String sessionId, int last) throws Exception {
     return this.thirdPartyConnector.getStatuses(sessionId, last);
@@ -928,7 +922,7 @@ public class RPP extends Instance implements Runnable {
         request = socket.readMessage();
         reply = this.getReply(request);
       } catch(IOException se) {
-        logWarning("Socket Disconnected");
+        logWarning(MSG.RPP_SOCKET_DISCONNECTED);
         try {
           socket.close();
         } catch(Exception ignore) {
@@ -986,21 +980,22 @@ public class RPP extends Instance implements Runnable {
      * Creates a Response Message containing the RPP Configuration (list of datasets available, name of the Third Party Server)
      *
      * @param askRPPConfiguration the initial Request
-     * @return
-     * @throws fr.inserm.u1078.tludwig.privas.messages.Message.EmptyParameterException
+     * @return SendRPPConfiguration Message
+     * @throws fr.inserm.u1078.tludwig.privas.messages.Message.EmptyParameterException if required parameters are not found
      */
+    @SuppressWarnings("UnusedParameters")
     private Message getRPPConfiguration(AskRPPConfiguration askRPPConfiguration) throws Message.EmptyParameterException {
-      StringBuilder datasets = new StringBuilder();
-      for (String dataset : RPP.this.orderedDatasets)
-        datasets.append(",").append(dataset);
-      return new SendRPPConfiguration(datasets.substring(1), tpsName);
+      return new SendRPPConfiguration(
+              String.join(",", RPP.this.rppDatasets.navigableKeySet()),
+              String.join(",", RPP.this.gnomADReferences.navigableKeySet()),
+              tpsName);
     }
 
     /**
      * Creates a Response Message acknowledging that the Client is registered to monitor a given Session
      *
      * @param askMonitor the initial Message (contains the ID of the Session to monitor)
-     * @return
+     * @return SendRPPStatus message
      */
     private Message startMonitoringRPP(AskMonitor askMonitor) {
       return sendStatus(askMonitor.getSession(), socket);
@@ -1010,15 +1005,14 @@ public class RPP extends Instance implements Runnable {
      * Creates a Response Message acknowledging the the Client Data were received
      *
      * @param sendClientData the initial Message (contains the Client Data)
-     * @return
-     * @throws fr.inserm.u1078.tludwig.privas.messages.Message.EmptyParameterException
+     * @return a AckClientData message
      */
     private Message receiveData(SendClientData sendClientData) {
       try {
         String session = sendClientData.getSession();
         writeClientData(session, sendClientData.getEncryptedAESKey(), sendClientData.getEncryptedClientData(), sendClientData.getEncryptedClientExcludedVariants(), sendClientData.getAlgorithm());
         return new AckClientData(session);
-      } catch (Message.EmptyParameterException | IOException | InvalidKeyException | NoSuchAlgorithmException e) {
+      } catch (Message.EmptyParameterException | IOException e) {
         String errorMessage = MSG.cat(MSG.RPP_ERR_RECEIVE_DATA, e);
         logWarning(errorMessage);
         logWarning(e);
@@ -1030,8 +1024,8 @@ public class RPP extends Instance implements Runnable {
      * Creates a Message contains the Results (encrypted with the AES Key)
      *
      * @param askResults the initial Message (contains the Session ID)
-     * @return
-     * @throws fr.inserm.u1078.tludwig.privas.messages.Message.EmptyParameterException
+     * @return a SendResults message
+     * @throws fr.inserm.u1078.tludwig.privas.messages.Message.EmptyParameterException if there are missing parameters in the request
      */
     private Message resultsAsked(AskResults askResults) throws Message.EmptyParameterException {
       String session = askResults.getSession();
@@ -1058,14 +1052,16 @@ public class RPP extends Instance implements Runnable {
      * Creates a Message containing the newly created Session's parameters (hash, session ID, Third Party Public RSA Key)
      *
      * @param askSession the initial Message (contains parameters such as the dataset name, cryptographic keys)
-     * @return
+     * @return a SendSession message
      */
     private Message sessionAsked(AskSession askSession) {
       try {
         tryToConnect(getIP(socket.getClientIP()));
-        logDebug("Connection allowed");
+        logDebug(MSG.RPP_CONNECTION_ALLOWED);
+        String gnomADVersion = askSession.getGnomADVersion();
         double maxMaf = askSession.getMaxAF();
-        double maxMafNFE = askSession.getMaxAFNFE();
+        String subpop = askSession.getSubpopulation();
+        double maxMafSubpop = askSession.getMaxAFSubpop();
         String minCsq = askSession.getMinCSQ();
         boolean limitToSNVs = askSession.getLimitToSNVs();
         BedFile bed = askSession.getBedFile();
@@ -1090,13 +1086,13 @@ public class RPP extends Instance implements Runnable {
         setStatus(session, RPPStatus.newSession());
         BedFile bed2 = BedFile.getIntersection(bed, rppDatasets.get(datasetName).getBedFile());
         SendSession sendSession = new SendSession(session, encryptedKHash, thirdPartyPublicPem, bed2);
-        processSession(session, datasetName, maxMaf, maxMafNFE, minCsq, limitToSNVs, bed2, qcParam, kHash);
+        processSession(session, datasetName, gnomADVersion, maxMaf, subpop, maxMafSubpop, minCsq, limitToSNVs, bed2, qcParam, kHash);
         return sendSession;
       } catch (UnauthorizedConnectionException f) {
         String msg = f.getMessage();
         logWarning(msg);
         return new SendError(msg);
-      } catch (Message.EmptyParameterException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | IOException | BedRegion.BedRegionException | QCException e) {
+      } catch (Message.EmptyParameterException | IOException | BedRegion.BedRegionException | QCException e) {
         String errorMessage = MSG.cat(MSG.RPP_ERR_NEW_SESSION, e);
         logWarning(errorMessage);
         logWarning(e);
@@ -1128,9 +1124,8 @@ public class RPP extends Instance implements Runnable {
    * Exception thrown when there is a problem while parsing an RPP Configuration File
    */
   public static class ConfigFileParsingException extends Exception {
-
-    ConfigFileParsingException(String missing, String configFile, String syntax) {
-      this(MSG.CL_EX(missing, configFile, syntax));
+    ConfigFileParsingException(String configFile, Tag tag) {
+      this(Tag.MISSING_EXCEPTION(configFile, tag));
     }
 
     ConfigFileParsingException(String message) {
@@ -1143,14 +1138,13 @@ public class RPP extends Instance implements Runnable {
   }
 
   public static class UnauthorizedConnectionException extends Exception {
-
     UnauthorizedConnectionException(String message) {
       super(message);
     }
 
+    @SuppressWarnings("unused")
     UnauthorizedConnectionException(String message, Throwable cause) {
       super(message, cause);
     }
-
   }
 }

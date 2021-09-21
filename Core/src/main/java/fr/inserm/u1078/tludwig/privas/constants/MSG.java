@@ -4,6 +4,7 @@ import fr.inserm.u1078.tludwig.privas.Main;
 import fr.inserm.u1078.tludwig.privas.messages.SessionMessage;
 import fr.inserm.u1078.tludwig.privas.instances.RPPStatus;
 import fr.inserm.u1078.tludwig.privas.messages.Message;
+import fr.inserm.u1078.tludwig.privas.utils.CanonicalVariant;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,15 +34,7 @@ public class MSG {
   //public static final String ARG_GUI = "gui";
   //public static final String ARG_RPPS = "rpp";
   //public static final String ARG_THIRDPARTY = "thirdparty";
-  public static final String ARG_KEYGEN = "--keygen";
-  public static final String ARG_DEBUG = "--debug";
-  public static final String ARG_DOC = "--doc";
-  public static final String ARG_CONVERT_VCF = "--vcf2genotype";
-  public static final String ARG_ATTACK = "--attack";
-  public static final String ARG_WSSKEY = "--wss";
-  public static final String ARG_RANKSUMKEY = "--rank";
-  public static final String ARG_QC = "--qc";
-  public static final String ARG_QC_CONV = "--qc-convert";
+
 
   //general
   public static final String FAIL_MKDIR = "Could not create directory";
@@ -49,40 +42,6 @@ public class MSG {
   public static final String MSG_MISSING_PARAMETER = "Missing value for parameter";
 
   //RPP
-  public static final String RPP_DESC_PORT = "Port Number";
-  public static final String RPP_DESC_DATA = "Data File";
-  public static final String RPP_DESC_RPP_SESSION_DIR = "RPP Session Directory";
-  public static final String RPP_DESC_RPP_EXPIRED_SESSION_LIST = "RPP Expired Session List";
-  public static final String RPP_DESC_TPS_NAME = "Third-Party Server Name";
-  public static final String RPP_DESC_TPS_ADDRESS = "Third-Party Server Address";
-  public static final String RPP_DESC_TPS_USER = "Third-Party Server Username (ssh)";
-  public static final String RPP_DESC_TPS_LAUNCH_COMMAND = "Third-Party Server Launch_command";
-  public static final String RPP_DESC_TPS_GETKEY_COMMAND = "Third-Party Server Get_Key_command";
-  public static final String RPP_DESC_TPS_SESSION_DIR = "Third-Party Server session directory";
-  public static final String RPP_DESC_CONNECTION_LOG = "File containing the connection log";
-  public static final String RPP_DESC_BACKLIST = "List of blacklisted addresses or ranges";
-  public static final String RPP_DESC_WHITELIST = "List of whitelisted addresses or ranges";
-  public static final String RPP_DESC_MAX_PER_DAY = "Maximum number of connections per day from the same address";
-  public static final String RPP_DESC_MAX_PER_WEEK = "Maximum number of connections per week from the same address";
-  public static final String RPP_DESC_MAX_PER_MONTH = "Maximum number of connections per month from the same address";
-
-  public static final String RPP_SYNTAX_PORT = FileFormat.RPP_TAG_PORT + "<TAB>Integer";
-  public static final String RPP_SYNTAX_DATA = FileFormat.RPP_TAG_DATA + "<TAB>Name1:datafile1(.gz),Name2:datafile2(.gz),...,NameN:datafileN(.gz)";
-  public static final String RPP_SYNTAX_RPP_SESSION_DIR = FileFormat.RPP_TAG_RPP_SESSION_DIR + "<TAB>path_to_directory";
-  public static final String RPP_SYNTAX_RPP_EXPIRED_SESSION_LIST = FileFormat.RPP_TAG_RRP_EXPIRED_SESSION + "<TAB>path_to_file";
-  public static final String RPP_SYNTAX_TPS_NAME = FileFormat.RPP_TAG_TPS_NAME + "<TAB>name of the server";
-  public static final String RPP_SYNTAX_TPS_ADDRESS = FileFormat.RPP_TAG_TPS_ADDRESS + "<TAB>address_or_IP";
-  public static final String RPP_SYNTAX_TPS_USER = FileFormat.RPP_TAG_TPS_USER + "<TAB>username";
-  public static final String RPP_SYNTAX_TPS_LAUNCH_COMMAND = FileFormat.RPP_TAG_TPS_LAUNCH_COMMAND + "<TAB>launch_command_or_path_to_script";
-  public static final String RPP_SYNTAX_TPS_GETKEY_COMMAND = FileFormat.RPP_TAG_TPS_GETKEY_COMMAND + "<TAB>get_rsa_public_key_command_or_path_to_script";
-  public static final String RPP_SYNTAX_TPS_SESSION_DIR = FileFormat.RPP_TAG_TPS_SESSION_DIR + "<TAB>path_to_directory";
-  public static final String RPP_SYNTAX_CONNECTION_LOG = FileFormat.RPP_TAG_CONNECTION_LOG + "<TAB>path_to_file";
-  public static final String RPP_SYNTAX_BLACKLIST = FileFormat.RPP_TAG_BLACKLIST + "<TAB>comma-separated_addresses_or_ranges";
-  public static final String RPP_SYNTAX_WHITELIST = FileFormat.RPP_TAG_WHITELIST + "<TAB>comma-separated_addresses_or_ranges";
-  public static final String RPP_SYNTAX_MAX_PER_DAY = FileFormat.RPP_TAG_MAX_PER_DAY + "<TAB>number_of_connections (0 for unlimited)";
-  public static final String RPP_SYNTAX_MAX_PER_WEEK = FileFormat.RPP_TAG_MAX_PER_WEEK + "<TAB>number_of_connections (0 for unlimited)";
-  public static final String RPP_SYNTAX_MAX_PER_MONTH = FileFormat.RPP_TAG_MAX_PER_MONTH + "<TAB>number_of_connections (0 for unlimited)";
-
   public static final String RPP_ERR_CONFIG = "Unable to read Configuration File";
   public static final String RPP_ERR_DELETE = "Failed to delete";
   public static final String RPP_ERR_INVALID_ID = "Invalid session ID :";
@@ -109,6 +68,59 @@ public class MSG {
   public static final String RPP_INF_STARTED = "Job Started";
   public static final String RPP_INF_REQUEST = "Received request";
   public static final String RPP_INF_FROM = "From";
+  public static final String RPP_DUPLICATE_DATASET = "Ignoring duplicate dataset name";
+  public static final String RPP_DUPLICATE_GNOMAD = "Ignoring duplicate GnomAD version";
+  public static final String RPP_UNABLE_TO_PARSE_ADDRESS = "Unable to parse IP";
+  public static final String RPP_UNABLE_TO_PARSE_LINE = "Unable to parse line";
+  public static final String RPP_CONNECTION_ALLOWED = "Connection allowed";
+  public static final String RPP_SOCKET_DISCONNECTED = "Socket Disconnected";
+  public static final String RPP_CANNOT_RESTORE_STATUS = "Could not restore status from file :";
+  public static final String RPP_NO_CONNECTION_LOG = "Could not check / write to connection log";
+  public static final String RPP_LOG_SESSION_FAILED = "Could not log Session in connection log";
+  public static String RPP_EXCEEDED_MAX_CONNECTION_PER_DAY(int maxPerDay){return "You cannot connect to this server more than " + maxPerDay + " times per day";}
+  public static String RPP_EXCEEDED_MAX_CONNECTION_PER_WEEK(int maxPerWeek){return "You cannot connect to this server more than " + maxPerWeek + " times per week";}
+  public static String RPP_EXCEEDED_MAX_CONNECTION_PER_MONTH(int maxPerMonth){return "You cannot connect to this server more than " + maxPerMonth + " times per month";}
+  public static final String RPP_ADDRESS_IS_BLACKLISTED = "Your address has been blacklisted. Contact the administrator for more information";
+  public static String FILE_DOES_NOT_EXIST(String type, String filename){return cat(type+" does not exist", filename); }
+
+  public static String FILE_IS_DIRECTORY(String type, String filename){return cat(type+" is a directory", filename);}
+  public static String RPP_DATASET_PARSING_EXCEPTION(String string){return "Could not parse dataset parameters from ["+string+"]. Expected : " +
+          "dataset_name:" +
+          "vcf_filename:" +
+          "vcf_size:" +
+          "well_covered_position_bed_filename";}
+
+  public static final String RPP_DEBUG_CREATED = "SessionProcessor created";
+  public static final String RPP_DEBUG_RESTORED = "SessionProcessor restored";
+  public static final String RPP_SAVE_KO = "Unable to save session parameters";
+
+  public static String RPP_FILE_FOUND(String... s){return cat("Following file(s) found", String.join(",",s));}
+  public static String RPP_FILE_MISSING(String... s){return cat("Following file(s) missing", String.join(",",s));}
+
+  public static final String RPP_STARTING = "Starting RPP Server";
+  public static final String RPP_STARTED = "RPP Server Started";
+
+  public static final String RPP_LOG_PORT = "RPP server listening on port";
+  public static final String RPP_LOG_DIR = "Session directory";
+  public static final String RPP_LOG_EXPIRED = "Expired Session list";
+  public static final String RPP_LOG_DATASETS = "Available Datasets";
+  public static final String RPP_LOG_GNOMAD = "Available GnomAD Versions";
+  public static final String RPP_LOG_CONNECTION_LOG = "Connection log";
+  public static final String RPP_LOG_MAX_CONNECT = "Maximum number of connections per day/week/month";
+  public static final String RPP_LOG_BLACKLIST = "Blacklisted addresses";
+  public static final String RPP_LOG_WHITELIST = "Whitelisted addresses";
+  public static String RPP_LOG_TPS(String name, String user, String address, String dir) {return "TPS credentials: "+ name + "(" + user + "@" + address + ":" + dir + ")";}
+  public static final String RPP_LOG_TPS_LAUNCH = "TPS Launch Command";
+  public static final String RPP_LOG_TPS_GET_KEY = "TPS Get Key Command";
+  public static final String RPP_MAIN_THREAD_STARTED = "Main Thread Started";
+  public static final String RPP_CLEAN_START = "Cleaning Expired Sessions...";
+  public static String RPP_CLEAN_SESSION(String session){return cat("Session" ,session);}
+  public static final String RPP_CLEAN_EXPIRED = "...Is expired";
+  public static final String RPP_CLEAN_REMOVED = "has been removed";
+  public static final String RPP_CLEAN_NOT_REMOVED = "could not be removed";
+  public static final String RPP_CLEAN_NOT_EXPIRED = "...Isn't expired";
+  public static final String RPP_SESSION_DATE_PARSE_FAILED = "Could not parse Session date for";
+  public static final String RPP_SESSION_RESTORE_FAILED = "Unable to restore saved session";
 
   //Client
   public static final String CL_LOAD_GENO = "Loading Genotype File";
@@ -122,7 +134,8 @@ public class MSG {
   public static final String CL_KO_CONNECT = "Failed to Connect to RPP";
 
   public static final String CL_APPLY_QC = "Applying Quality control to VCF File";
-  public static final String Cl_QC_APPLIED = "QC Successfully applied";
+  public static final String CL_QC_APPLIED = "QC Successfully applied";
+  public static final String CL_QC_FILTERED = "Variants Filtered";
   public static final String CL_KO_QC = "Failed to apply QC";
 
   public static final String CL_NEW_SESSION_LABEL = "Asking a new Session";
@@ -131,10 +144,20 @@ public class MSG {
   public static final String CL_NEW_SESSION_CSQ = "Least Severe Consequence";
   public static final String CL_NEW_SESSION_BED = "Bed File";
   public static final String CL_NEW_SESSION_EXCLUSION = "Exclusion File";
+  public static final String CL_NEW_SESSION_GNOMAD_VERSION = "GnomAD Version";
+  public static final String CL_NEW_SESSION_SUBPOP_INDEX = "Subpop index";
+  public static final String CL_NEW_SESSION_MAF_SUBPOP = "Max Minor Allele Frequency for Subpopulation";
 
-  public static String CL_NEW_SESSION(String dataset, double maxMAF, String minCSQ, String bedFilename, String exclusionFilename) {
+  public static String QC_DONE(String output, int filtered){
+    return done(cat(CL_QC_APPLIED, output, CL_QC_FILTERED, filtered+""));
+  }
+
+  public static String CL_NEW_SESSION(String dataset, String gnomadVersion, double maxMAF, String subpop, double maxMAFSubpop, String minCSQ, String bedFilename, String exclusionFilename) {
     return CL_NEW_SESSION_LABEL
+            + ": " + cat(CL_NEW_SESSION_GNOMAD_VERSION, gnomadVersion)
             + ": " + cat(CL_NEW_SESSION_MAF, maxMAF)
+            + ": " + cat(CL_NEW_SESSION_SUBPOP_INDEX, subpop)
+            + ": " + cat(CL_NEW_SESSION_MAF_SUBPOP, maxMAFSubpop)
             + ", " + cat(CL_NEW_SESSION_CSQ, minCSQ)
             + ", " + cat(CL_NEW_SESSION_DATASET, dataset)
             + ", " + cat(CL_NEW_SESSION_BED, bedFilename)
@@ -169,20 +192,60 @@ public class MSG {
   public static final String CL_KO_MONITOR = "Connection to RPP was lost. Monitoring will stop until connection is restored";
   public static final String CL_RESTORED_MONITOR = "Connection to RPP has been restored, monitoring will resume.";
 
+  public static final String CL_DEBUG_ASKING_SESSION = "Asking Session";
+  public static final String CL_DEBUG_REPLY_RECEIVED = "Reply received";
+  public static final String CL_EXCLUDED_EMPTY_FILENAME = "Filename for Client's Excluded Variants is empty";
+  public static final String CL_EXCLUDED_FAILED = "Unable to read Excluded Variants from file";
+
+  public static final String MON_EMPTY_SESSION = "Session ID empty";
+  public static final String MON_NO_RPP = "No RPP provided";
+  public static final String MON_NO_PORT = "No port provided";
+  public static final String MON_WRONG_ARGUMENT = "Wrong Argument for start session";
+
+  public static final String BIN_EOF = "Reached end of file";
+  public static final String BIN_DOUBLE3_LENGTH = "Input bytes array's length must be exactly 3";
+
+  public static final String TPS_SAVING_PRIVATE_KEY = "Saving private Key";
+  public static final String TPS_SAVING_PUBLIC_KEY = "Saving public Key";
+  public static final String TPS_UNSUPPORTED_ALGORITHM = "Algorithm is still un supported";
+  public static final String TPS_UNKNOWN_ALGORITHM = "Algorithm unknown";
+  public static final String TPS_STATUS_UPDATE_KO = "Failed to update status file";
+
+  public static final String TPS_RANDOM = "random";
+
+  public static final String UNKNOWN_COMMAND = "Unknown command";
+
+  public static final String FU_STRIP_QC_KO = "Cannot strip GnomAD prefix from a file that has no QC";
+
   public static final String CL_QUIT = "Good bye";
 
   public static final String CL_EX_MISSING = "Missing";
   public static final String CL_EX_IN = "in";
   public static final String CL_EX_SYNTAX = "Syntax:";
 
+  public static final String CL_MISSING_QC_TAG = "Missing QC TAG in filename";
+
   public static final String CL_MSG_NULL = "No Reply";
 
+  public static final String CL_UNDEFINED = "undefined";
+  public static final String CL_INPUT_VCF = "input VCF ";
+  public static final String CL_QC_PARAM = " QC Param";
+  public static final String CL_READ_RESULTS_FAILED = "Unable to read results";
+  public static final String CL_READ_BED_FAILED = "Unable to Read Bed File";
+  public static final String CL_READ_QC_FAILED = "Unable to Read QC Parameter File";
+
+  public static final String KO_PARSE_INT = "Unable to parse Integer from ";
+  public static final String KO_PARSE_LONG= "Unable to parse Long from ";
+  public static final String KO_PARSE_FLOAT = "Unable to parse Float from ";
+  public static final String KO_PARSE_DOUBLE = "Unable to parse Double from ";
+
+  /*
   public static final String CL_MSG_UNEXPECTED = "Unexpected Message Type";
   public static final String CL_MSG_EXPECTED = "instead of";
 
   public static String CL_MSG_EXPECTED_TYPE(Message unexpected, Class expected) {
     return cat(CL_MSG_UNEXPECTED, unexpected.getType()) + " " + cat(CL_MSG_EXPECTED, expected.getName());
-  }
+  }*/
 
   public static final String CL_MSG_SESSION_MISMATCH_MSG = "SessionID mismatch between";
   public static final String CL_MSG_SESSION_MISMATCH_CLIENT = " and Client";
@@ -201,12 +264,6 @@ public class MSG {
 
   public static final String CL_MSG_ERROR_SESSION = "Error while creating new Session";
 
-  public static String CL_EX(String missing, String configFile, String syntax) {
-    return cat(CL_EX_MISSING, missing) + " "
-            + cat(CL_EX_IN, configFile) + N
-            + CL_EX_SYNTAX + " " + syntax;
-  }
-
   //Session
   public static final String SS_KO_PORT = "\nUnable to parse RPP address and port. Must be in format rpp.server.address:port";
   public static final String SS_UNK_KEY = "Unknown keyword";
@@ -219,8 +276,7 @@ public class MSG {
   public static final String SS_PARSE_MAX_MAF = "Unable to parse Max MAF from Session File";
   public static final String SS_PARSE_CONSEQUENCE = "Unable to parse Least Severe Consequence from Session File";
   public static final String SS_PARSE_BED_FILE = "Unable to parse Bed File content from Session File";
-  public static final String SS_PARSE_EXCLUDED_VARIANT = "Unable to parse Excluded Variant List from Session File";
-  public static final String SS_PARSE_CLIENT_PRIVATE_RSA = "Unable to parse Client Private RSA Key from Session File";
+    public static final String SS_PARSE_CLIENT_PRIVATE_RSA = "Unable to parse Client Private RSA Key from Session File";
 
   public static String SS_NO_KEY(String keyword, String filename) {
     return N + cat(SS_NO_KEY1, keyword) + " " + cat(SS_NO_KEY2, filename);
@@ -255,6 +311,8 @@ public class MSG {
   public static final String WSS_COMMON_GENES = "Number of Genes common to all Datasets";
   public static final String WSS_FILTERED_FREQUENCY = "Number of Variants filtered due to pooled frequency";
   public static final String WSS_FILTERED_FISHER = "Number of Variants filtered due to significant call-rate discrepancy";
+  public static final String WSS_NO_VARIANTS = "Unexpected : no variants for gene";
+  public static final String WSS_MISSING_GENOTYPES = "Unexpected : missing genotypes";
 
   public static final String WSS_OK_PARSE = "All data have been parsed.";
   public static final String WSS_OK_FILTER = "All filters have been applied.";
@@ -281,7 +339,9 @@ public class MSG {
     return WH_PROGRESS(permutations, left, total) + " " + cat(WH_ETA, Constants.formatEnd(eta));
   
   }
-  public static final String WH_START= "Start Association Tests";
+
+  public static final String WH_LOADING = "Loading Association Tests Data";
+  public static final String WH_START = "Start Association Tests";
   
   public static final String WH_END= "Computation complete. All genes have been processed in";
   public static String WH_END(long start, long end) {
@@ -356,7 +416,7 @@ public class MSG {
     return before > -1 ? "There are " + before + " job(s) before this one." : null;
   }
 
-  public static final String STS_KO_DESERIAL = "Unable to parse date";
+  public static final String STS_KO_DESERIALIZE = "Unable to parse date";
 
   //Status
   public static final String STS_PARSING_ERROR = "Unable to parse status";
@@ -367,83 +427,51 @@ public class MSG {
   //Messages and command line parsing
   public static final String MSG_WELCOME = "Welcome to " + MSG.getTitle();
   public static final String MSG_USAGE = "Usage :";
-  public static final String MSG_INSTANCES = "Instances :";
-  public static final String MSG_QC = "Quality Control :";
   public static final String MSG_TOOLS = "Tools :";
 
-  public static final String MSG_CMD_JAVA_CLIENT = "java -jar PrivAS.Client.jar";
-  public static final String MSG_CMD_JAVA_RPP = "java -jar PrivAS.RPP.jar";
-  public static final String MSG_CMD_JAVA_TPS = "java -jar PrivAS.TPS.jar";
+  public static final String MSG_EXTRA_TITLE = "Configuration File Format :";
+  public static final String MSG_EXTRA_UNDERSCORE = MSG_EXTRA_TITLE.replaceAll(".", "_");
+  public static final String NULL = "";
+  public static final String MSG_EXTRA_RPP = String.join(N,
+          MSG_EXTRA_UNDERSCORE,
+          MSG_EXTRA_TITLE,
+          MSG_EXTRA_UNDERSCORE,
+          NULL
+  ) + String.join(N,
+          Tag.getAllSyntax()
+  ) + String.join(N,
+          NULL,
+          MSG_EXTRA_UNDERSCORE,
+          NULL
+  );
 
-  public static final String MSG_DESC_GUI = "- Launch the Client GUI:";
-  public static final String MSG_CMD_GUI = T + MSG_CMD_JAVA_CLIENT + " " + "[Directory]";
-  public static final String MSG_FAIL_GUI = "Unable to start instance of GUI client: ";
-
-  public static final String MSG_DESC_RPP = "- Launch the Reference Panel Provider Server: ";
-  public static final String MSG_CMD_RPP = T + MSG_CMD_JAVA_RPP + " " + "ConfigFile.rpp";
-  public static final String MSG_EXTRA_RPP = N
-          + "ConfigFile Format :" + N
-          + "___________________" + N
-          + N
-          + RPP_SYNTAX_PORT + N
-          + RPP_SYNTAX_DATA + N
-          + RPP_SYNTAX_RPP_SESSION_DIR + N
-          + RPP_SYNTAX_TPS_ADDRESS + N
-          + RPP_SYNTAX_TPS_USER + N
-          + RPP_SYNTAX_TPS_LAUNCH_COMMAND + N
-          + RPP_SYNTAX_TPS_GETKEY_COMMAND + N
-          + RPP_SYNTAX_TPS_SESSION_DIR + N;
-  public static final String MSG_FAIL_RPP = "Unable to start instance of RPP Server: ";
-  public static final String MSG_DESC_TPS = "- Launch the Third-Party Server (should be used by the provided script, to manage scheduler issues):";
-  
   //tps
-  public static final String TPS_RANDOM = "random";
-  
-  public static final String MSG_CMD_TPS = T
-          + " Session_ID"
-          + " Work_Directory"
-          + " NB_CORES"
-          + " random_numerical_seed( or "+TPS_RANDOM+" for a new seed)";
-  public static final String MSG_FAIL_TPS = "Unable to start instance of Third Party Server: ";
+  public static final String MSG_UNABLE_READ_MESSAGE = "Unable to read Message";
+  public static final String MSG_UNKNOWN_TYPE = "Unknown Message Type";
+  public static final String MSG_UNABLE_BUILD = "Unable to build new message of type";
 
-  public static final String MSG_DESC_KEYGEN = "- Generate a keypair for the Third-Party Server:";
-  public static final String MSG_CMD_KEYGEN = T + MSG_CMD_JAVA_TPS + " " + MSG.ARG_KEYGEN
-          + " Work_Directory"
-          + " Session_ID";
+  public static final String ENCODE_NO_NEGATIVE = "Impossible to compress values negative values";
+  public static final String ENCODE_NO_LARGE = "Impossible to compress values larger than 1";
+  public static final String ENCODE_NO_PRECISE = "Impossible to compress values smaller than 1e-15";
+  public static final String ENCODE_RESERVED_STRING = "A reserved character cannot be used in an encoded String";
 
-  public static final String MSG_FAIL_KEYGEN = "Unable to save generated keypair: ";
+  public static final String BED_UNABLE_PARSE = "Unable to parse line from bedfile ";
 
-  public static final String MSG_DESC_PREPARE = "- Convert a VCF file to a genotypes file:";
-  public static final String MSG_CMD_PREPARE_CLIENT = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_CONVERT_VCF
-          + " vep_annotated_file.vcf(.gz)";
-  public static final String MSG_CMD_PREPARE_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_CONVERT_VCF
-          + " vep_annotated_file.vcf(.gz)";
-  public static final String MSG_FAIL_PREPARE = "Unable to save generated keypair: ";
+  public static final String EXT_PROCESS_GNOMAD = "Processing Input GnomAD File";
+  public static final String EXT_LINES = "Lines extracted";
+  public static final String EXT_DURATION_EXOME = "Exome Data Extracted in ";
+  public static final String EXT_DURATION_GENOME = "Genome Data Extracted in ";
+  public static final String EXT_DURATION_INDEX = "Index Created in ";
+  public static final String EXT_HEADER = "Header:";
 
-  public static final String MSG_DESC_QC = "- Perform a Quality Control on a VCF file";
-  public static final String MSG_CMD_QC_CLIENT = T + MSG_CMD_JAVA_CLIENT + " " + MSG.ARG_QC + " input.vcf(.gz) qc.param";
-  public static final String MSG_CMD_QC_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_QC + " input.vcf(.gz) qc.param";
-  public static final String MSG_FAIL_QC = "Unable to perform QC on VCF file: ";
+  public static String EXT_DURATION_EXOME(Date s, Date e){ return EXT_DURATION_EXOME+Constants.duration(s, e);}
+  public static String EXT_DURATION_GENOME(Date s, Date e){ return EXT_DURATION_GENOME+Constants.duration(s, e);}
+  public static String EXT_DURATION_INDEX(Date s, Date e){ return EXT_DURATION_INDEX+Constants.duration(s, e);}
+  public static String EXT_UNSORTED(CanonicalVariant variant, int position){return "Unsorted file, variant "+variant.toString()+" found after "+variant.getChrom()+":"+position;}
 
-  public static final String MSG_DESC_QC_CONV = "- Perform default Quality Control on a VCF file and convert results to genotype file.";
-  public static final String MSG_CMD_QC_CONV_CLIENT = T + MSG_CMD_JAVA_CLIENT + " " + MSG.ARG_QC_CONV + " input.vcf(.gz)";
-  public static final String MSG_CMD_QC_CONV_RPP = T + MSG_CMD_JAVA_RPP + " " + MSG.ARG_QC_CONV + " input.vcf(.gz)";
-
-  public static final String MSG_DESC_WSS = "- Compute a WSS Association Test (locally):";
-  public static final String MSG_CMD_WSS = T + MSG_CMD_JAVA_TPS + " " + MSG.ARG_WSSKEY
-          + " genotype_files.lst"
-          + " phenotypes.tsv"
-          + " NB_CORES"
-          + " RANDOM_SEED"
-          + " results.tsv";
-  
-  public static final String MSG_DESC_RANKSUM = "- Compute a WSS Ranksum:";
-  public static final String MSG_CMD_RANKSUM = T + MSG_CMD_JAVA_TPS + " " + MSG.ARG_RANKSUMKEY
-          + " geneName"
-          + " genotypes.tsv"
-          + " statuses.bool";
-  
-  public static final String MSG_FAIL_WSS = "Unable to start WSS computation: ";
+  public static final String GNFH_CONVERTED_LINES = "Lines converted";
+  public static final String GNFH_EXTRACTED_LINES = "Lines extracted";
+  public static String GNFH_READ_LINES(String filename, long read){ return cat("Lines read from "+filename, read);}
 
   //gui
   public static final String GUI_DEFAULT_DIRECTORY = ".";
@@ -498,7 +526,7 @@ public class MSG {
   /**
    * Gets the name of this Program
    *
-   * @return
+   * @return the name of this Program
    */
   public static String getTitle() {
     return TITLE + " " + Main.getVersion();
@@ -507,7 +535,7 @@ public class MSG {
   /**
    * Gets the version of this Program
    *
-   * @return
+   * @return the version of this Program
    */
   public static String getVersion() {
     Date d = getClassBuildTime();
@@ -532,7 +560,7 @@ public class MSG {
   /**
    * Gets the BuildTime of the current jar. This methods is used for generating the version number
    *
-   * @return
+   * @return the BuildTime of the current jar. This methods is used for generating the version number
    */
   private static Date getClassBuildTime() {
     Date d = null;

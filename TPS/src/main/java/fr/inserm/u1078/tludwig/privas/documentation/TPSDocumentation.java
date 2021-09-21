@@ -1,5 +1,7 @@
 package fr.inserm.u1078.tludwig.privas.documentation;
 
+import fr.inserm.u1078.tludwig.privas.Main;
+
 /**
  * Generates an Up-to-date documentation for the TPS
  *
@@ -14,7 +16,7 @@ public class TPSDocumentation extends Documentation {
     configuration(doc);
     getKey(doc);
     launch(doc);
-
+    getCommandLines(doc, Main.Party.TPS);
     return doc.toString();
   }
 
@@ -84,6 +86,4 @@ public class TPSDocumentation extends Documentation {
     );
     doc.newLine();
   }
-
-
 }

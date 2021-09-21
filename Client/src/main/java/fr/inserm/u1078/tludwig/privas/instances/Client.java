@@ -14,14 +14,8 @@ import fr.inserm.u1078.tludwig.privas.utils.qc.QualityControl;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 /**
  * The Client is the instance of the program used by a User to perform Association Studies on his/her data against RPP data<p>
@@ -37,7 +31,6 @@ public class Client extends Instance {
   private String lastError = null;
   private String data = null;
   private String saveFilename = null;
-  private String excludedVariantsFileName = null;
 
   private final ClientSession session;
   private ClientWindow window;
@@ -45,10 +38,8 @@ public class Client extends Instance {
 
   /**
    * Creates a new Client
-   *
-   * @throws Exception
    */
-  public Client() throws Exception {
+  public Client() {
     this.session = new ClientSession();
   }
 
@@ -59,7 +50,7 @@ public class Client extends Instance {
   /**
    * Gets the name of the Genotype File associated to the Session
    *
-   * @return
+   * @return the name of the Genotype File associated to the Session
    */
   public String getGenotypeFilename() {
     return this.session.getClientGenotypeFilename();
@@ -68,7 +59,7 @@ public class Client extends Instance {
   /**
    * Gets the number of variants in the Genotype File associated to the Session
    *
-   * @return
+   * @return the number of variants in the Genotype File associated to the Session
    */
   public int getGenotypeFileSize() {
     return this.session.getClientGenotypeFileSize();
@@ -95,7 +86,7 @@ public class Client extends Instance {
   /**
    * Gets the last known error encountered
    *
-   * @return
+   * @return the last known error encountered
    */
   public String getLastError() {
     return lastError;
@@ -104,19 +95,20 @@ public class Client extends Instance {
   /**
    * Converts a VCF File to a Genotype File
    *
-   * @param vcfFilename the name of the VCF File to convert
+   * @param vcfFilename           the name of the VCF File to convert
+   * @param gnomADFilename   the name of the GnomAD Exome binary file
    * @return TRUE - if the VCF File was successfully converted
    */
-  public String convert(String vcfFilename) {
+  public String convert(String vcfFilename, String gnomADFilename) {
     try {
       this.session.setClientGenotypeFile(null);
-      String outFilename = GenotypesFileHandler.vcfFilename2GenotypesFilename(vcfFilename);
+      //String outFilename = GenotypesFileHandler.vcfFilename2GenotypesFilename(vcfFilename, gnomADVersion);
       logInfo(MSG.action(MSG.CL_CONVERT_GENO, vcfFilename));
-      int size = GenotypesFileHandler.convertVCF2Genotypes(vcfFilename, outFilename);
-      logSuccess(MSG.done(MSG.CL_OK_CONVERT_GENO, getGenotypeFileSize() + " ("+size+")"));
-      this.setGenotypeFilename(outFilename);
+      GenotypesFileHandler.GenotypesFile genotypesFile = GenotypesFileHandler.convertVCF2Genotypes(vcfFilename, gnomADFilename, this);
+      logSuccess(MSG.done(MSG.CL_OK_CONVERT_GENO, getGenotypeFileSize() + " ("+genotypesFile.getSize()+")"));
+      this.setGenotypeFilename(genotypesFile.getFilename());
 
-      return outFilename;
+      return genotypesFile.getFilename();
     } catch (GenotypeFileException | IOException e) {
       this.lastError = e.getMessage();
       logError(MSG.done(MSG.CL_KO_CONVERT_GENO, vcfFilename, e));
@@ -131,17 +123,17 @@ public class Client extends Instance {
    * @param qcParamFilename the name of the file containing the QC parameters
    * @return TRUE -if the QC was successful
    */
-  public boolean applyQC(String inputVCF, String qcParamFilename){
-    String outputVCF = "undefined";
+  public boolean applyQC(String inputVCF, String qcParamFilename) {
+    String outputVCF = MSG.CL_UNDEFINED;
     try{
       String message =
-              MSG.cat("input VCF ", inputVCF) +
-              MSG.cat(" QC Param ", qcParamFilename);
+              MSG.cat(MSG.CL_INPUT_VCF, inputVCF) +
+              MSG.cat(MSG.CL_QC_PARAM, qcParamFilename);
       logInfo(MSG.action(MSG.CL_APPLY_QC, message));
       QCParam qcParam = new QCParam(qcParamFilename);
-      QualityControl.applyQC(inputVCF, qcParam);
-      outputVCF = FileUtils.getQCVCFFilename(inputVCF, qcParam);
-      logSuccess(MSG.done(MSG.Cl_QC_APPLIED, outputVCF));
+      int filtered = QualityControl.applyQC(inputVCF, qcParam);
+      outputVCF = FileUtils.addQCPrefixToVCFFilename(inputVCF, qcParam);
+      logSuccess(MSG.QC_DONE(outputVCF, filtered));
       return true;
     } catch (QCException | IOException e) {
       logError(MSG.done(MSG.CL_KO_QC, outputVCF, e));
@@ -165,8 +157,8 @@ public class Client extends Instance {
    *
    * @param msg the Message to send
    * @return the RPP's Response
-   * @throws IOException
-   * @throws MessageException
+   * @throws IOException If an I/O error occurs while writing into the Server Socket
+   * @throws MessageException if there was a problem Parsing the Reply
    */
   private Message sendMessage(Message msg) throws IOException, MessageException {
     return this.sendMessage(msg, null);
@@ -178,23 +170,21 @@ public class Client extends Instance {
    * @param msg the Message to send
    * @param pd  that will be notified of the transfer progression
    * @return the RPP's Response
-   * @throws IOException
-   * @throws MessageException
+   * @throws IOException If an I/O error occurs while writing into the Server Socket
+   * @throws MessageException if there was a problem Parsing the Reply
    */
   private Message sendMessage(Message msg, ProgressListener pd) throws IOException, MessageException {
-    //this.logDebug("SEND " + this.session.getRPP() + ":" + this.session.getPort() + " <-  [" + msg.getType() + "]");
     MessageSocket ms = new MessageSocket(this.session.getRPP(), this.session.getPort());
     ms.writeMessage(msg, pd);
     Message reply = ms.readMessage();
     ms.close();
-    //this.logDebug("RECV " + this.session.getRPP() + ":" + this.session.getPort() + " ->  [" + reply.getType() + "]");
     return reply;
   }
 
   /**
    * Gets the Client AES Key
    *
-   * @return
+   * @return the Client AES Key
    */
   private String getAESKey() {
     return this.session.getAesKey();
@@ -203,7 +193,7 @@ public class Client extends Instance {
   /**
    * Gets the Client's RSA Private Key
    *
-   * @return
+   * @return the Client's RSA Private Key
    */
   private PublicKey getPublicKey() {
     return this.session.getClientPublicRSA();
@@ -212,7 +202,7 @@ public class Client extends Instance {
   /**
    * Gets the Client's RSA Private Key
    *
-   * @return
+   * @return the Client's RSA Private Key
    */
   private PrivateKey getPrivateKey() {
     return this.session.getClientPrivateRSA();
@@ -221,7 +211,7 @@ public class Client extends Instance {
   /**
    * Gets the Client's Public RSA Key as a one-line pem String
    *
-   * @return
+   * @return the Client's Public RSA Key as a one-line pem String
    */
   private String getPublicKeyString() {
     return Crypto.bytes2OneLinePem(this.getPublicKey().getEncoded());
@@ -232,9 +222,8 @@ public class Client extends Instance {
    *
    * @param encrypted the encrypted message
    * @return the clear text message
-   * @throws Exception
    */
-  private String decryptRSA(String encrypted) throws Exception {
+  private String decryptRSA(String encrypted) {
     return Crypto.decryptRSA(this.getPrivateKey(), encrypted);
   }
 
@@ -243,9 +232,8 @@ public class Client extends Instance {
    *
    * @param message the clear text message
    * @return the encrypted message
-   * @throws Exception
    */
-  private String encryptAES(String message) throws Exception {
+  private String encryptAES(String message) {
     return Crypto.encryptAES(this.getAESKey(), message);
   }
 
@@ -254,9 +242,8 @@ public class Client extends Instance {
    *
    * @param message the clear text message
    * @return the encrypted message
-   * @throws Exception
    */
-  private String encryptThirdParty(String message) throws Exception {
+  private String encryptThirdParty(String message) {
     return Crypto.encryptRSA(this.session.getThirdPartyPublicKey(), message);
   }
 
@@ -272,9 +259,13 @@ public class Client extends Instance {
       if (this.isConnected) {
         this.session.setThirdPartyName(((SendRPPConfiguration) reply).getTPSName());
         this.session.setAvailableDatasets(((SendRPPConfiguration) reply).getDatasets());
+        this.session.setAvailableGnomADVersions(((SendRPPConfiguration) reply).getGnomADVersions());
       }
-    } catch (IOException | MessageException e) {
+    } catch (MessageException e) {
       logError(MSG.done(MSG.CL_KO_CONNECT, this.session.getRPPFullAddress(), e));
+      logError(e);
+    } catch(IOException ioe) {
+      //ignore, processed in 'else'
     }
     if (this.isConnected)
       logSuccess(MSG.done(MSG.CL_OK_CONNECT, this.session.getRPPFullAddress()));
@@ -282,21 +273,10 @@ public class Client extends Instance {
       logError(MSG.done(MSG.CL_KO_CONNECT, this.session.getRPPFullAddress()));
   }
 
-  /*private boolean connect(){
-    this.isConnected = false;
-    try {
-      Message reply = this.sendMessage(new AskRPPConfiguration());
-      this.isConnected = (reply instanceof SendRPPConfiguration);
-    } catch (Message.EmptyParameterException | IOException | ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InstantiationException | NoSuchMethodException | InvocationTargetException ignore) {
-    }
-    if(this.window != null)
-      this.window.reconnect(isConnected);
-    return this.isConnected;
-  }*/
   /**
    * Is the Client connected to the RPP ?
    *
-   * @return
+   * @return true if the Client connected
    */
   public boolean isConnected() {
     return this.isConnected;
@@ -306,6 +286,7 @@ public class Client extends Instance {
    * Method in charge of handling Messages (replies)
    *
    * @param reply    the Message
+   * @throws MessageException if there was a problem Parsing/Handling the Reply
    */
   private void handleMessage(Message reply) throws MessageException {
     //logDebug("Message type ["+reply.getType()+"] expected ["+expected.getName()+"]");
@@ -357,7 +338,6 @@ public class Client extends Instance {
     if(reply instanceof SendTPSStatus) {
       SendTPSStatus status = (SendTPSStatus) reply;
       if (this.getSessionId().equals(status.getSession()))
-
         Client.this.window.postTPStatus(status.getStatus());
       return;
     }
@@ -370,11 +350,12 @@ public class Client extends Instance {
       try {
         BedFile bed = sendSession.getBedFile();
         this.session.setThirdPartyPublicKey(Crypto.buildPublicRSAKey(thirdPartyKeyPEM));
-        this.session.setBedFile(bed);
+        this.session.setIntersectBedFile(bed);
         this.session.setHash(this.decryptRSA(encryptedKHash));
       } catch (Exception e) {
         String error = MSG.cat(MSG.CL_MSG_ERROR_SESSION, e);
-        logError(error);
+        //logError(error); //Exception is rethrown
+        //logError(e);
         this.lastError = error;
         throw new MessageException(error);
       }
@@ -390,7 +371,8 @@ public class Client extends Instance {
         this.getSession().setSessionReady();
       } catch (Exception e) {
         String error = MSG.cat(MSG.CL_MSG_ERROR_SESSION, e);
-        logError(error);
+        //logError(error); //Exception is rethrown
+        //logError(e);
         this.lastError = error;
         throw new MessageException(error);
       }
@@ -406,13 +388,13 @@ public class Client extends Instance {
           for (String res : clearResults.split("\n"))
             out.println(unhash(res));
           out.close();
-        } catch (IOException | InvalidAlgorithmParameterException | InvalidKeyException | NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException e) {
-          logError(e);
-          throw new MessageException("Unable to read results", e);
+        } catch (IOException e) {
+          //logError(e); //Exception is thrown
+          throw new MessageException(MSG.CL_READ_RESULTS_FAILED, e);
         }
       else {
         String error = MSG.CL_MSG_SESSION_MISMATCH(sendResults, this.getSessionId());
-        logError(error);
+        //logError(error);Exception is thrown
         this.lastError = error;
         throw new MessageException(error);
       }
@@ -420,7 +402,7 @@ public class Client extends Instance {
     }
 
     String error = MSG.CL_MSG_UNHANDLED(reply);
-    logError(error);
+    //logError(error);Exception is thrown
     this.lastError = error;
     throw new MessageException(error);
   }
@@ -430,25 +412,25 @@ public class Client extends Instance {
    *
    * @param dataset                  the dataset to use
    * @param maxMAF                   the Maximum Allele Frequency used to select variants
-   * @param maxMAFNFE                the Maximum Allele Frequency in GnomADNFE used to select variants
+   * @param maxMAFSubpop                the Maximum Allele Frequency in GnomADNFE used to select variants
    * @param minCSQ                   the Least Severe Consequence used to select variants
    * @param limitToSNVs              is variant selection limited to SNVs ?
    * @param bedFilename              filename of the list of all well covered positions
    * @param excludedVariantsFileName filename of the list of variants excluded due to bad QC
-   * @throws fr.inserm.u1078.tludwig.privas.instances.MessageException
+   * @throws fr.inserm.u1078.tludwig.privas.instances.MessageException if there wa a problem construction or parsing a Message
    *
    */
-  public void communicationAskSession(String dataset, double maxMAF, double maxMAFNFE, String minCSQ, boolean limitToSNVs, String bedFilename, String excludedVariantsFileName, String qcParamFilename) throws MessageException {
-    this.excludedVariantsFileName = excludedVariantsFileName;
+  public void communicationAskSession(String dataset, String gnomadVersion, double maxMAF, String subPop, double maxMAFSubpop, String minCSQ, boolean limitToSNVs, String bedFilename, String excludedVariantsFileName, String qcParamFilename) throws MessageException {
     BedFile bed;
     QCParam qcParam;
-    this.logDebug("Reading [" + bedFilename + "]");
+
+    //this.logDebug("Reading [" + bedFilename + "]");
     try {
       bed = new BedFile(bedFilename);
     } catch (BedRegion.BedRegionException | IOException e) {
-      String error = "Unable to Read Bed File [" + bedFilename + "]";
-      logError(error);
-      logError(e);
+      String error = MSG.cat(MSG.CL_READ_BED_FAILED, bedFilename);
+      //logError(error); //Exception is rethrown
+      //logError(e);
       this.lastError = error;
       throw new MessageException(error, e);
     }
@@ -456,31 +438,34 @@ public class Client extends Instance {
     try {
       qcParam = new QCParam(qcParamFilename);
     } catch(IOException | QCException e) {
-      String error = "Unable to Read QC Parameter File File [" + qcParamFilename + "]";
-      logError(error);
-      logError(e);
+      String error = MSG.cat(MSG.CL_READ_QC_FAILED, qcParamFilename);
+      //logError(error); //Exception is rethrown
+      //logError(e);
       this.lastError = error;
       throw new MessageException(error, e);
     }
 
-    this.logDebug("Asking Session");
+    this.logDebug(MSG.CL_DEBUG_ASKING_SESSION);
     this.session.setSelectedDataset(dataset);
+    this.session.setSelectedGnomADVersion(gnomadVersion);
     this.session.setMaxMAF(maxMAF);
-    this.session.setMaxMAFNFE(maxMAFNFE);
+    this.session.setSelectedSubpop(subPop);
+    this.session.setMaxMAFSubpop(maxMAFSubpop);
     this.session.setLeastSevereConsequence(minCSQ);
     this.session.setLimitToSNVs(limitToSNVs);
-    this.session.setQCParam(qcParam);
-    this.session.setBedFile(bed);
-    logInfo(MSG.action(MSG.CL_NEW_SESSION(dataset, maxMAF, minCSQ, bedFilename, excludedVariantsFileName)));
+    this.session.setQCParamFilename(qcParamFilename);
+    this.session.setBedFilename(bedFilename);
+    this.session.setExcludedVariantsFilename(excludedVariantsFileName);
+    logInfo(MSG.action(MSG.CL_NEW_SESSION(dataset, gnomadVersion, maxMAF, subPop, maxMAFSubpop, minCSQ, bedFilename, excludedVariantsFileName)));
 
     try {
-      Message reply = this.sendMessage(new AskSession(this.getPublicKeyString(), dataset, maxMAF, maxMAFNFE, minCSQ.split("\\.")[1], limitToSNVs, bed, qcParam));
-      this.logDebug("Reply received");
+      Message reply = this.sendMessage(new AskSession(this.getPublicKeyString(), dataset, gnomadVersion, maxMAF, subPop, maxMAFSubpop, minCSQ.split("\\.")[1], limitToSNVs, bed, qcParam));
+      this.logDebug(MSG.CL_DEBUG_REPLY_RECEIVED);
       this.handleMessage(reply);
     } catch (MessageException | Message.EmptyParameterException | IOException e) {
       String error = MSG.done(MSG.CL_KO_NEW_SESSION, e.getMessage());
-      logError(error);
-      logError(e);
+      //logError(error); //Exception is rethrown
+      //logError(e);
       this.lastError = error;
       throw new MessageException(error, e);
     }
@@ -490,12 +475,12 @@ public class Client extends Instance {
   public void communicationStartSession(String session) throws MessageException {
     try {
       Message reply = this.sendMessage(new StartSession(session));
-      this.logDebug("Reply received : "+reply);
+      this.logDebug(MSG.cat(MSG.CL_DEBUG_REPLY_RECEIVED, reply.toString()));
       this.handleMessage(reply);
     } catch (Message.EmptyParameterException | IOException e){
       String error = MSG.done(MSG.CL_KO_START_SESSION, e);
-      logError(error);
-      logError(e);
+      //logError(error); //Exception is rethrown
+      //logError(e);
       this.lastError = error;
       throw new MessageException(error, e);
     }
@@ -504,7 +489,7 @@ public class Client extends Instance {
   /**
    * Get the ID of the current Session
    *
-   * @return
+   * @return the ID of the current Session
    */
   public String getSessionId() {
     return this.session.getId();
@@ -514,7 +499,7 @@ public class Client extends Instance {
    * Asks the RPP for the Results
    *
    * @param saveFilename the name of the File to which the Results will be saved
-   * @throws fr.inserm.u1078.tludwig.privas.instances.MessageException
+   * @throws MessageException if there was a problem Parsing the Reply
    */
   public void communicationAskResults(String saveFilename) throws MessageException {
     logInfo(MSG.action(MSG.CL_RESULTS, this.session.getId()));
@@ -525,8 +510,8 @@ public class Client extends Instance {
       logSuccess(MSG.done(MSG.CL_OK_RESULTS, this.session.getId()));
     } catch (MessageException | Message.EmptyParameterException | IOException e) {
       String error = (MSG.done(MSG.CL_KO_RESULTS, this.session.getId(), e));
-      logError(error);
-      logError(e);
+      //logError(error); //Exception is rethrown
+      //logError(e);
       this.lastError = error;
       throw new MessageException(error, e);
     }
@@ -536,12 +521,13 @@ public class Client extends Instance {
    * Sends the Data to the RPP
    *
    * @param pd the ProgressListener that will be notified of the transfer progression
-   * @throws fr.inserm.u1078.tludwig.privas.instances.MessageException
+   * @throws IOException If an I/O error occurs while writing into the Server Socket
+   * @throws MessageException if there was a problem Parsing the Reply or if data are empty
    */
-  public void communicationSendData(ProgressListener pd) throws MessageException {
+  public void communicationSendData(ProgressListener pd) throws MessageException, IOException {
     if (data == null || data.length() == 0) {
       String error = MSG.done(MSG.CL_SEND_EMPTY);
-      logError(error);
+      //logError(error);Exception is thrown
       this.lastError = error;
       throw new MessageException(error);
     }
@@ -551,25 +537,29 @@ public class Client extends Instance {
       String encryptedData = this.encryptAES(data);
       String encryptedExcludedVariants = this.encryptAES(getExcludedVariants().serialize());
       logInfo(MSG.action(MSG.CL_SEND));
+      //logDebug("Sent data length : encryptedAESKey["+encryptedAESKey.length()+"], encryptedClientData["+encryptedData.length()+"], encryptedClientExcludedVariants["+encryptedExcludedVariants.length()+"], algorithm["+session.getAlgorithm().length()+"]");
       Message reply = this.sendMessage(new SendClientData(this.getSessionId(), encryptedAESKey, encryptedData, encryptedExcludedVariants, session.getAlgorithm()), pd);
       this.handleMessage(reply);
       logSuccess(MSG.done(MSG.CL_OK_SEND));
-    } catch (Exception e) {
+    } catch (MessageException | Message.EmptyParameterException e) {
       String error = MSG.done(MSG.cat(MSG.CL_KO_SEND, e));
-      logError(error);
-      logError(e);
+      //logError(error); //Exception is rethrown
+      //logError(e);
       this.lastError = error;
       throw new MessageException(error, e);
     }
   }
 
   private VariantExclusionSet getExcludedVariants() {
-    if (excludedVariantsFileName == null || excludedVariantsFileName.isEmpty())
+    String excludedVariantsFileName = session.getExcludedVariantsFilename();
+    if (excludedVariantsFileName == null || excludedVariantsFileName.isEmpty()) {
+      this.logError(MSG.CL_EXCLUDED_EMPTY_FILENAME);
       return new VariantExclusionSet();
+    }
     try {
       return new VariantExclusionSet(excludedVariantsFileName, this.session.getHash());
-    } catch (IOException | InvalidKeyException | NoSuchAlgorithmException ex) {
-      this.logError("Unable to read Excluded Variants from file [" + excludedVariantsFileName + "]");
+    } catch (IOException ex) {
+      this.logError(MSG.cat(MSG.CL_EXCLUDED_FAILED, excludedVariantsFileName));
       this.logError(ex);
       return new VariantExclusionSet();
     }
@@ -579,7 +569,7 @@ public class Client extends Instance {
    * Gets the clear text value of a Hashed String
    *
    * @param line the Hashed String
-   * @return
+   * @return the clear text String
    */
   private String unhash(String line) {
     String[] f = line.split("\t");
@@ -592,7 +582,7 @@ public class Client extends Instance {
   /**
    * Gets the Session object
    *
-   * @return
+   * @return the ClientSession attached to this Client
    */
   public ClientSession getSession() {
     return this.session;
@@ -606,9 +596,20 @@ public class Client extends Instance {
    */
   public boolean extractData(ProgressListener pd) {
     try {
+
       logInfo(MSG.action(MSG.CL_EXTRACT));
-      data = GenotypesFileHandler.extractGenotypes(this.session.getClientGenotypeFilename(), this.session.getClientGenotypeFileSize(), this.session.getMaxMAF(), this.session.getMaxMAFNFE(), this.session.getLeastSevereConsequence().split("\\.")[1], this.session.getLimitToSNVs(), this.session.getBedFile(), this.session.getHash(), this, pd);
-      
+      data = GenotypesFileHandler.extractGenotypes(
+              this.session.getClientGenotypeFilename(),
+              this.session.getClientGenotypeFileSize(),
+              this.session.getMaxMAF(),
+              this.session.getSelectedSubpop(),
+              this.session.getMaxMAFSubpop(),
+              this.session.getLeastSevereConsequence().split("\\.")[1],
+              this.session.getLimitToSNVs(),
+              this.session.getIntersectBedFile(),
+              this.session.getHash(),
+              this,
+              pd);
       logSuccess(MSG.done(MSG.CL_OK_EXTRACT));
       return true;
     } catch (Exception ex) {
@@ -624,18 +625,15 @@ public class Client extends Instance {
    * Loads a Session into the Client
    *
    * @param filename the name of the File from which to load the Session
-   * @return TRUE - if the Session was loaded successfully
    */
-  public boolean loadSession(String filename) {
+  public void loadSession(String filename) {
     logInfo(MSG.action(MSG.cat(MSG.CL_LOAD_SESSION, filename)));
     try {
       session.load(filename);
       logSuccess(MSG.done(MSG.CL_OK_LOAD_SESSION));
-      return true;
     } catch (ClientSession.SessionFileException | IOException e) {
       logError(MSG.done(MSG.CL_KO_LOAD_SESSION, e));
       logError(e);
-      return false;
     }
   }
 
@@ -661,7 +659,7 @@ public class Client extends Instance {
   /**
    * Was the Session saved ?
    *
-   * @return
+   * @return true if the session was saved
    */
   public boolean isSessionSaved() {
     return session.isSaved();
@@ -670,7 +668,7 @@ public class Client extends Instance {
   /**
    * Gets the last known Session Filename
    *
-   * @return
+   * @return the last known Session Filename
    */
   public String getLastSessionFilename() {
     return session.getLastFilename();
@@ -687,7 +685,7 @@ public class Client extends Instance {
   /**
    * Starts monitoring RPP Status associated to the current Session
    *
-   * @throws fr.inserm.u1078.tludwig.privas.instances.MonitoringException
+   * @throws fr.inserm.u1078.tludwig.privas.instances.MonitoringException  if session, rpp or port is invalid
    */
   public void monitorRPP() throws MonitoringException {
     if(rppMonitor != null)
@@ -699,30 +697,36 @@ public class Client extends Instance {
   /**
    * Sets the algorithm and its trailing parameters
    *
-   * @param algorithm
+   * @param algorithm the algorithm and its trailing parameters
    */
   public void setAlgorithm(String algorithm) {
     this.session.setAlgorithm(algorithm);
   }
 
   private class RPPMonitor extends Thread {
-
     private final String sessionId;
     private final String rpp;
     private final int port;
     private boolean run = true;
-    
+
+    /**
+     * Constructor for a new RPPMonitor
+     * @param sessionId the session to monitor
+     * @param rpp the address of the rpp server
+     * @param port the port of the rpp server
+     * @throws MonitoringException if session, rpp or port was not provided
+     */
     RPPMonitor(String sessionId, String rpp, int port) throws MonitoringException {
       super();
 
       if (sessionId == null || sessionId.length() < 1)
-        throw new MonitoringException("Session ID empty");
+        throw new MonitoringException(MSG.MON_EMPTY_SESSION);
 
       if (rpp == null || rpp.length() < 1)
-        throw new MonitoringException("No RPP provided");
+        throw new MonitoringException(MSG.MON_NO_RPP);
 
       if (port == -1)
-        throw new MonitoringException("No port provided");
+        throw new MonitoringException(MSG.MON_NO_PORT);
 
       this.sessionId = sessionId;
       this.rpp = rpp;
@@ -732,11 +736,12 @@ public class Client extends Instance {
     @Override
     public void run() {
       MessageSocket ms = null;
-      Message msg = null;
+      Message msg;
       try {
         msg = new AskMonitor(sessionId);
       } catch (Message.EmptyParameterException ex) {
         //Impossible
+        throw new RuntimeException(MSG.MON_WRONG_ARGUMENT, ex);
       }
 
       boolean ok = true;
@@ -753,15 +758,13 @@ public class Client extends Instance {
             first = false;
           }
           if (!ok) {
-            ok = true;
             logSuccess(MSG.CL_RESTORED_MONITOR);
-            window.reconnect(ok);
+            window.reconnect(ok = true);
           }
         } catch (MessageException | IOException ex) {
           if (ok) {
-            ok = false;
             logError(MSG.CL_KO_MONITOR);
-            window.reconnect(ok);
+            window.reconnect(ok = false);
             try {
               new AskMonitor(sessionId);
             } catch (Message.EmptyParameterException e) {
@@ -770,18 +773,16 @@ public class Client extends Instance {
           }
           try {
             ms = null;
-            Thread.sleep(Parameters.CLIENT_RECONNECT_DELAY);
+            Thread.sleep(Parameters.CLIENT_RECONNECT_DELAY); //TODO look up how to get out of busy-waiting : https://josephmate.wordpress.com/2016/02/04/how-to-avoid-busy-waiting/
           } catch (InterruptedException ex1) {
-            System.err.println(Message.INTERRUPT(this));
+            logError(Message.INTERRUPT(this));
             break;
           }
         }
       }
     }
-    
     void close(){
       this.run = false;
     }
   }
-
 }

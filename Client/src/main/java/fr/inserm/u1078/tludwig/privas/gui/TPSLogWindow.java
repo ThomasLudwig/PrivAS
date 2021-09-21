@@ -59,7 +59,7 @@ public class TPSLogWindow extends JFrame {
     table.setFont(GUI.DEFAULT_FONT);
 
     mainPanel.setLayout(new BorderLayout());
-    mainPanel.add(new JLabel("Messages from Third-Party Server"), BorderLayout.NORTH);
+    mainPanel.add(new JLabel(GUI.TPS_LABEL_MESSAGES), BorderLayout.NORTH);
     JScrollPane scroll = new JScrollPane(this.table);
     mainPanel.add(scroll, BorderLayout.CENTER);
 
@@ -102,19 +102,13 @@ public class TPSLogWindow extends JFrame {
     }
   }
 
-  //TODO renderer (date, color....)
   private static class FieldsRenderer extends DefaultTableCellRenderer {
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
       Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
       //style
       c.setForeground(table.getTableHeader().getForeground());
-
-      if(column == COL_NUM || column == COL_TIME){
-        this.setHorizontalAlignment(SwingConstants.RIGHT);
-      } else
-        this.setHorizontalAlignment(SwingConstants.LEFT);
-
+      this.setHorizontalAlignment((column == COL_NUM || column == COL_TIME) ? SwingConstants.RIGHT : SwingConstants.LEFT);
 
       if(column == COL_STATE) {
         c.setForeground(getForeground((TPStatus.State)value));
@@ -132,10 +126,6 @@ public class TPSLogWindow extends JFrame {
         }
         ((JLabel) c).setText(text);
       }
-
-      /*
-        ((JLabel) c).setText(val);
-      }*/
 
       return c;
     }
@@ -169,13 +159,13 @@ public class TPSLogWindow extends JFrame {
     public String getColumnName(int columnIndex) {
       switch(columnIndex){
         case COL_NUM:
-          return "#";
+          return GUI.TPS_COL_NUM;
         case COL_TIME:
-          return "Time";
+          return GUI.TPS_COL_TIME;
         case COL_STATE:
-          return "Status";
+          return GUI.TPS_COL_STATE;
         case COL_MSG:
-          return "Message";
+          return GUI.TPS_COL_MESSAGE;
         default :
           return null;
       }

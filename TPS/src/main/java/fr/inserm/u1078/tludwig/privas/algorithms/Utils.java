@@ -1,5 +1,6 @@
 package fr.inserm.u1078.tludwig.privas.algorithms;
 
+import fr.inserm.u1078.tludwig.privas.constants.Constants;
 import fr.inserm.u1078.tludwig.privas.utils.UniversalReader;
 
 import java.io.IOException;
@@ -17,15 +18,12 @@ public class Utils {
   /**
    * Authorized and sorted values for the 64 digits code
    */
-  public static final String CODE64 = "0123456789" +
-          "abcdefghijklmnopqrstuvwxyz" +
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-          "+*";
+  public static final String CODE64 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+*";
 
   /**
    * Conversion of int (< 64) to a character
-   * @param i
-   * @return
+   * @param i the integer to encode
+   * @return the encoded character
    */
   public static char code64(int i){
     return i > CODE64.length() ? '?' : CODE64.charAt(i);
@@ -33,11 +31,11 @@ public class Utils {
 
   /**
    * Simplifies an array of boolean to a text in a 64 characters code
-   * @param bs
-   * @return
+   * @param bs the array of boolean to encode
+   * @return the encoded String
    */
   public static String getTextPhenotype(boolean[] bs){
-    String code64 = "";
+    StringBuilder code64 = new StringBuilder();
     for(int i = 0 ; i < bs.length; i+=6){
       int fac = 1;
       int l = 0;
@@ -46,16 +44,16 @@ public class Utils {
         l += v * fac;
         fac *= 2;
       }
-      code64 = code64(l) + code64;
+      code64.insert(0, code64(l));
     }
-    return code64;
+    return code64.toString();
   }
 
   /**
    * Parses a text file containing phenotypes as boolean (0/false : unaffected, 1/true : affected)
    * @param phenotypeFilename the filename
    * @return array of boolean phenotypes
-   * @throws IOException
+   * @throws IOException If an I/O error occurs while reading the phenotype file
    */
   public static boolean[] parsePhenotypes(String phenotypeFilename) throws IOException {
     UniversalReader in = new UniversalReader(phenotypeFilename);
@@ -63,7 +61,7 @@ public class Utils {
     in.close();
     boolean[] phenotypes = new boolean[f.length];
     for(int i = 0 ; i < f.length; i++)
-      phenotypes[i] = Boolean.parseBoolean(f[i].replace("0", "false").replace("1", "true"));
+      phenotypes[i] = Constants.parseBoolean(f[i]);
     return phenotypes;
   }
 
@@ -77,5 +75,4 @@ public class Utils {
     long ms = (new Date().getTime() - start);
     return ms * 0.001;
   }
-
 }
